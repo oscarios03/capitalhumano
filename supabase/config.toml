@@ -1,0 +1,13 @@
+# Config de Supabase CLI para Edge Functions.
+# checador-kiosco y checador-webhook son endpoints públicos con su propia
+# autenticación (kiosco_token / x-api-key) — no deben exigir un JWT de
+# usuario de Supabase, por eso se desactiva verify_jwt.
+#
+# Si despliegas desde el Dashboard en vez del CLI, desactiva manualmente
+# "Enforce JWT Verification" en Settings de cada una de estas dos funciones.
+
+[functions.checador-kiosco]
+verify_jwt = false
+
+[functions.checador-webhook]
+verify_jwt = false

@@ -1,0 +1,19 @@
+# Config local de Claude Code (rutas absolutas de la máquina del desarrollador)
+.claude/
+
+# Carpeta de cuarentena — archivos pendientes de revisión, no debe llegar al repo
+_revisar_para_borrar/
+
+# Entornos y secretos
+.env
+.env.local
+*.pem
+*.key
+
+# Node (por si se agregan tooling/deps a futuro)
+node_modules/
+dist/
+
+# Sistema
+.DS_Store
+Thumbs.db

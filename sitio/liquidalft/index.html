@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Calculadora gratuita de liquidaciones laborales y finiquitos en México. Genera documentos PDF listos para firmar: Carta de Renuncia, Aviso de Rescisión y Recibo de Liquidación/Finiquito. 100% conforme a la LFT 2026." />
+  <title>LiquidaLFT — Calculadora de Liquidaciones Laborales México 2026</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════════════════ -->
+<nav class="site-nav" role="navigation" aria-label="Navegación principal">
+  <div class="nav-brand">
+    <div class="nav-brand-icon" aria-hidden="true">⚖️</div>
+    LiquidaLFT
+  </div>
+  <div class="nav-links" role="list">
+    <a href="#calculadora" role="listitem">Calculadora</a>
+    <a href="#caracteristicas" role="listitem">Características</a>
+    <a href="#tabla-lft" role="listitem">Tabla LFT</a>
+    <a href="#actas" role="listitem">Actas Admin.</a>
+    <a href="#faq" role="listitem">FAQ</a>
+  </div>
+  <button class="nav-cta" onclick="scrollToCalc('liquidacion')" aria-label="Ir a la calculadora">
+    ⚡ Calcular Ahora
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════ -->
+<section class="hero-section" id="inicio" aria-labelledby="hero-h1">
+  <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+  <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge" aria-label="Versión LFT 2026">🇲🇽 LFT 2026 Actualizada</div>
+
+    <h1 class="hero-title" id="hero-h1">
+      Genera tu <span>Liquidación<br>Laboral</span> en México
+    </h1>
+
+    <p class="hero-desc">
+      Calcula indemnizaciones y genera documentos legales listos para firmar.<br>
+      100% conforme a la <strong>Ley Federal del Trabajo</strong> vigente.
+    </p>
+
+    <div class="hero-ctas">
+      <button class="hero-btn-primary" onclick="scrollToCalc('liquidacion')" id="hero-btn-liq"
+              aria-label="Calcular liquidación por despido injustificado">
+        ⚖️ Calcular Liquidación
+      </button>
+      <button class="hero-btn-secondary" onclick="scrollToCalc('finiquito')" id="hero-btn-fin"
+              aria-label="Calcular finiquito por renuncia voluntaria">
+        📄 Calcular Finiquito
+      </button>
+    </div>
+
+    <div class="hero-stats" role="list" aria-label="Características de la calculadora">
+      <div class="hero-stat" role="listitem">
+        <div class="hero-stat-num">7</div>
+        <div class="hero-stat-label">conceptos calculados</div>
+      </div>
+      <div class="hero-stat" role="listitem">
+        <div class="hero-stat-num">3</div>
+        <div class="hero-stat-label">documentos PDF generados</div>
+      </div>
+      <div class="hero-stat" role="listitem">
+        <div class="hero-stat-num">100%</div>
+        <div class="hero-stat-label">conforme a la LFT</div>
+      </div>
+      <div class="hero-stat" role="listitem">
+        <div class="hero-stat-num">0</div>
+        <div class="hero-stat-label">costo, totalmente gratis</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint" aria-hidden="true">
+    <span>Comenzar</span>
+    <span>↓</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     CALCULADORA — FORMULARIO ÚNICO (DATOS LABORALES)
+═══════════════════════════════════════════════════════ -->
+<section class="calc-section" id="calculadora" aria-labelledby="calc-heading">
+  <div class="calc-inner">
+
+    <div class="section-header">
+      <span class="section-label">Calculadora</span>
+      <h2 class="section-title" id="calc-heading">Ingresa los datos del empleo</h2>
+      <p class="section-desc">Obtén el comparativo completo: Finiquito y Liquidación — sin datos personales ni de empresa</p>
+    </div>
+
+    <div class="form-card">
+      <h3 class="step-title">Datos del empleo</h3>
+      <p class="step-subtitle">Solo fechas y salario para calcular ambos escenarios al instante</p>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="start-date">
+            Fecha de Ingreso <span class="req">*</span>
+          </label>
+          <input type="date" id="start-date" class="form-input no-prefix"
+                 required aria-required="true" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="end-date">
+            Fecha de Baja <span class="req">*</span>
+          </label>
+          <input type="date" id="end-date" class="form-input no-prefix"
+                 required aria-required="true" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="monthly-salary">
+            Salario Ordinario <span class="req">*</span>
+          </label>
+          <div class="input-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" id="monthly-salary" class="form-input has-prefix"
+                   placeholder="20,000" min="1" step="0.01"
+                   required aria-required="true" />
+          </div>
+          <div class="helper-text">Salario base sin bonos. El SDI se calcula automáticamente.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="periodo-salario">Periodo de Pago</label>
+          <select id="periodo-salario" class="form-select">
+            <option value="mensual">Mensual (÷ 30)</option>
+            <option value="quincenal">Quincenal (÷ 15)</option>
+            <option value="semanal">Semanal (÷ 7)</option>
+          </select>
+          <div class="helper-text">Art. 89 LFT — el salario diario se calcula según el periodo.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="smg-zone">Zona de Salario Mínimo</label>
+          <select id="smg-zone" class="form-select">
+            <option value="general">Área General — $315.04/día (2026)</option>
+            <option value="frontera">Zona Libre Frontera Norte — $440.87/día (2026)</option>
+          </select>
+          <div class="helper-text">Tope para prima de antigüedad (2 × SMG, Art. 162).</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dias-pendientes">Días de Salario Pendientes</label>
+          <div class="input-wrap">
+            <span class="input-prefix">#</span>
+            <input type="number" id="dias-pendientes" class="form-input has-prefix"
+                   placeholder="0" min="0" max="365" value="0" />
+          </div>
+        </div>
+
+        <div class="form-group span-2">
+          <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:6px;">
+            <input type="checkbox" id="vac-gozadas" checked
+                   style="width:18px;height:18px;accent-color:var(--gold-primary);cursor:pointer;flex-shrink:0;"
+                   onchange="toggleVacPendientes(this.checked)" />
+            Las vacaciones de años anteriores <strong>fueron gozadas</strong>
+          </label>
+          <div class="helper-text">Desmarca si hay vacaciones de años cumplidos que no se han tomado ni pagado.</div>
+        </div>
+
+        <div class="form-group hidden" id="vac-pendientes-group">
+          <label class="form-label" for="vac-pendientes">Días de vacaciones pendientes (años anteriores)</label>
+          <div class="input-wrap">
+            <span class="input-prefix">#</span>
+            <input type="number" id="vac-pendientes" class="form-input has-prefix"
+                   placeholder="0" min="0" value="0" />
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="ag-pagado-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:6px;">
+            <input type="checkbox" id="ag-pagado"
+                   style="width:18px;height:18px;accent-color:var(--gold-primary);cursor:pointer;flex-shrink:0;" />
+            El aguinaldo del año en curso <strong>ya fue pagado</strong>
+          </label>
+          <div class="helper-text">Solo aplica si la fecha de baja es en diciembre y el aguinaldo ya se liquidó.</div>
+        </div>
+
+        <div class="form-group" id="antig-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:6px;">
+            <input type="checkbox" id="tiene-antig"
+                   style="width:18px;height:18px;accent-color:var(--gold-primary);cursor:pointer;flex-shrink:0;" />
+            Incluir prima de antigüedad en finiquito
+          </label>
+          <div class="helper-text">Aplica automáticamente si el trabajador tiene ≥ 15 años. Marca para acuerdo voluntario.</div>
+        </div>
+      </div>
+
+      <div style="text-align:right;margin-top:28px;">
+        <button class="btn-calc" id="btn-calc" aria-label="Calcular finiquito y liquidación">
+          <span aria-hidden="true">⚡</span>
+          <span class="btn-calc-label">Calcular Finiquito y Liquidación</span>
+        </button>
+      </div>
+    </div><!-- /form-card -->
+  </div><!-- /calc-inner -->
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     RESULTS — Dual panel (finiquito + liquidación)
+═══════════════════════════════════════════════════════ -->
+<section class="results-section hidden" id="results-section" aria-live="polite" aria-label="Resultados del cálculo">
+
+  <div class="section-header" style="margin-bottom:32px;">
+    <span class="section-label">Resultados</span>
+    <h2 class="section-title">Comparativa de prestaciones</h2>
+    <p class="section-desc">Ambos escenarios calculados conforme a la LFT 2026</p>
+  </div>
+
+  <!-- Barra resumen: días laborados, período, salario, SDI, antigüedad -->
+  <div id="results-summary" class="animate-in" style="margin-bottom:28px;"></div>
+
+  <!-- Paneles duales: Finiquito | Liquidación -->
+  <div class="results-grid" id="dual-results-grid" style="grid-template-columns:1fr 1fr;">
+    <div id="panel-finiquito" aria-label="Cálculo de finiquito"></div>
+    <div id="panel-liquidacion" aria-label="Cálculo de liquidación"></div>
+  </div>
+
+  <!-- Documentos — sección opcional colapsable -->
+  <div style="text-align:center;margin-top:48px;margin-bottom:8px;">
+    <div style="font-size:.88rem;color:var(--text-muted);margin-bottom:14px;">¿Necesitas generar los documentos legales?</div>
+    <button id="btn-toggle-docs"
+            style="padding:13px 32px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-weight:600;font-size:.9rem;cursor:pointer;transition:var(--transition);"
+            onmouseover="this.style.borderColor='rgba(255,255,255,.25)';this.style.color='var(--text-primary)'"
+            onmouseout="this.style.borderColor='';this.style.color=''">
+      📄 Generar documentos (opcional) ▾
+    </button>
+  </div>
+
+  <!-- Formulario opcional para datos de patrón y trabajador -->
+  <div id="docs-optional-form" class="form-card hidden" style="margin-top:20px;">
+    <h3 class="step-title">Datos para los documentos PDF</h3>
+    <p class="step-subtitle">Esta información solo se usa para generar los documentos — no afecta el cálculo</p>
+
+    <div class="form-grid">
+      <div class="form-group span-2">
+        <label class="form-label" for="razon-social">Razón Social / Nombre del Patrón <span class="req">*</span></label>
+        <input type="text" id="razon-social" class="form-input no-prefix"
+               placeholder="Ej. Grupo Empresarial Omega S.A. de C.V." autocomplete="organization" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ciudad-firma">Ciudad de Firma <span class="req">*</span></label>
+        <input type="text" id="ciudad-firma" class="form-input no-prefix"
+               placeholder="Ej. Ciudad de México" autocomplete="address-level2" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="rfc-patron">RFC del Patrón</label>
+        <input type="text" id="rfc-patron" class="form-input no-prefix"
+               placeholder="GOEO801231AB1" maxlength="13" style="text-transform:uppercase;" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="representante-legal">Representante Legal</label>
+        <input type="text" id="representante-legal" class="form-input no-prefix"
+               placeholder="Lic. Juan Pérez García" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="domicilio-fiscal">Domicilio Fiscal</label>
+        <input type="text" id="domicilio-fiscal" class="form-input no-prefix"
+               placeholder="Av. Insurgentes Sur 1234, CDMX" autocomplete="street-address" />
+      </div>
+      <div class="form-group span-2">
+        <label class="form-label" for="nombre-trabajador">Nombre Completo del Trabajador <span class="req">*</span></label>
+        <input type="text" id="nombre-trabajador" class="form-input no-prefix"
+               placeholder="Nombre(s) Apellido Paterno Apellido Materno" autocomplete="name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="rfc-trabajador">RFC del Trabajador</label>
+        <input type="text" id="rfc-trabajador" class="form-input no-prefix"
+               placeholder="LOHM900415XY2" maxlength="13" style="text-transform:uppercase;" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="curp">CURP</label>
+        <input type="text" id="curp" class="form-input no-prefix"
+               placeholder="LOHM900415MDFPRL09" maxlength="18" style="text-transform:uppercase;" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="nss">NSS (IMSS)</label>
+        <input type="text" id="nss" class="form-input no-prefix"
+               placeholder="12345678901" maxlength="11" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="puesto">Puesto / Cargo</label>
+        <input type="text" id="puesto" class="form-input no-prefix"
+               placeholder="Ej. Coordinador de Ventas" autocomplete="organization-title" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="departamento">Departamento / Área</label>
+        <input type="text" id="departamento" class="form-input no-prefix"
+               placeholder="Ej. Comercial" autocomplete="off" />
+      </div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <div style="font-size:.82rem;font-weight:700;color:var(--text-muted);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        📄 Finiquito — Renuncia voluntaria
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;">
+        <button class="btn-download" id="btn-gen-renuncia">✍️ Carta de Renuncia</button>
+        <button class="btn-download" id="btn-gen-recibo-fin">🧾 Recibo de Finiquito</button>
+      </div>
+      <div style="font-size:.82rem;font-weight:700;color:var(--text-muted);margin-bottom:14px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        ⚖️ Liquidación — Despido injustificado
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn-download" id="btn-gen-aviso">📋 Aviso de Rescisión</button>
+        <button class="btn-download" id="btn-gen-recibo-liq">🧾 Recibo de Liquidación</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:40px;">
+    <button onclick="window.scrollTo({top:document.getElementById('calculadora').offsetTop,behavior:'smooth'})"
+            style="padding:12px 28px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-weight:600;font-size:.9rem;cursor:pointer;transition:var(--transition);"
+            onmouseover="this.style.borderColor='rgba(255,255,255,.2)';this.style.color='var(--text-primary)'"
+            onmouseout="this.style.borderColor='';this.style.color=''">
+      ↑ Hacer otro cálculo
+    </button>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     ACTAS ADMINISTRATIVAS — FORMULARIO
+═══════════════════════════════════════════════════════ -->
+<section class="calc-section" id="actas" aria-labelledby="acta-heading">
+  <div class="calc-inner">
+
+    <div class="section-header">
+      <span class="section-label">Actas Administrativas</span>
+      <h2 class="section-title" id="acta-heading">Genera tu Acta Administrativa</h2>
+      <p class="section-desc">Documenta faltas imputables al trabajador con respaldo legal conforme a la LFT y al Reglamento Interior de Trabajo</p>
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepper-wrapper" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-label="Progreso del formulario de acta">
+      <div class="stepper">
+        <div class="step-dot active" data-acta-step="1" aria-label="Paso 1: Tipo de acta">1</div>
+        <div class="step-line" data-acta-after="1"></div>
+        <div class="step-dot" data-acta-step="2" aria-label="Paso 2: Datos de la empresa">2</div>
+        <div class="step-line" data-acta-after="2"></div>
+        <div class="step-dot" data-acta-step="3" aria-label="Paso 3: Datos del trabajador">3</div>
+        <div class="step-line" data-acta-after="3"></div>
+        <div class="step-dot" data-acta-step="4" aria-label="Paso 4: Descripción de la falta">4</div>
+      </div>
+      <div class="stepper-labels" aria-hidden="true">
+        <span class="stepper-label active" data-acta-step="1">Tipo</span>
+        <span class="stepper-label" data-acta-step="2">Empresa</span>
+        <span class="stepper-label" data-acta-step="3">Trabajador</span>
+        <span class="stepper-label" data-acta-step="4">La Falta</span>
+      </div>
+    </div>
+
+    <!-- Form card -->
+    <div class="form-card">
+
+      <!-- ── PASO 1: Tipo de acta ── -->
+      <div class="step-panel" id="acta-step-1" role="tabpanel" aria-labelledby="acta-step1-title">
+        <h3 class="step-title" id="acta-step1-title">¿Qué tipo de acta necesitas generar?</h3>
+        <p class="step-subtitle">Selecciona la severidad según la gravedad de la falta cometida</p>
+
+        <div class="mode-cards-grid mode-cards-grid-3">
+
+          <div class="mode-card selected" id="acta-card-amon" role="radio" aria-checked="true" tabindex="0"
+               aria-label="Acta de Amonestación para faltas leves">
+            <div class="mode-card-header">
+              <span class="mode-card-emoji" aria-hidden="true">📝</span>
+              <div><div class="mode-card-title">Amonestación</div></div>
+            </div>
+            <p class="mode-card-desc">Llamado de atención formal para faltas leves o primer incidente</p>
+            <ul class="mode-card-list" aria-label="Aplica para">
+              <li><span aria-hidden="true">✓</span> Retrasos o impuntualidad</li>
+              <li><span aria-hidden="true">✓</span> Incumplimiento leve de reglamento</li>
+              <li><span aria-hidden="true">✓</span> Primer incidente documentado</li>
+            </ul>
+            <br>
+            <small style="color:var(--text-muted);font-size:.75rem;">Documento: Acta de Amonestación</small>
+          </div>
+
+          <div class="mode-card" id="acta-card-formal" role="radio" aria-checked="false" tabindex="0"
+               aria-label="Acta Administrativa Formal con apercibimiento">
+            <div class="mode-card-header">
+              <span class="mode-card-emoji" aria-hidden="true">⚠️</span>
+              <div><div class="mode-card-title">Acta Formal</div></div>
+            </div>
+            <p class="mode-card-desc">Acta con apercibimiento para faltas graves o reincidencia</p>
+            <ul class="mode-card-list" aria-label="Aplica para">
+              <li><span aria-hidden="true">✓</span> Faltas de asistencia reiteradas</li>
+              <li><span aria-hidden="true">✓</span> Desobediencia a instrucciones</li>
+              <li><span aria-hidden="true">✓</span> Daños a bienes de la empresa</li>
+            </ul>
+            <br>
+            <small style="color:var(--text-muted);font-size:.75rem;">Documento: Acta Administrativa con Apercibimiento</small>
+          </div>
+
+          <div class="mode-card" id="acta-card-rescisoria" role="radio" aria-checked="false" tabindex="0"
+               aria-label="Acta Rescisoria conforme al Art. 47 LFT">
+            <div class="mode-card-header">
+              <span class="mode-card-emoji" aria-hidden="true">🚫</span>
+              <div><div class="mode-card-title">Acta Rescisoria</div></div>
+            </div>
+            <p class="mode-card-desc">Fundamenta rescisión sin responsabilidad patronal (Art. 47 LFT)</p>
+            <ul class="mode-card-list" aria-label="Aplica para">
+              <li><span aria-hidden="true">✓</span> Robo, fraude o deshonestidad</li>
+              <li><span aria-hidden="true">✓</span> Violencia grave o acoso</li>
+              <li><span aria-hidden="true">✓</span> Causales del Art. 47 LFT</li>
+            </ul>
+            <br>
+            <small style="color:var(--text-muted);font-size:.75rem;">Documento: Acta Rescisoria (Art. 47 LFT)</small>
+          </div>
+
+        </div>
+
+        <div class="step-nav">
+          <div></div>
+          <div class="step-nav-right">
+            <button class="btn-next" id="acta-btn-next-1" aria-label="Ir al paso 2: Datos de la empresa">
+              Siguiente: Datos de la Empresa →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PASO 2: Datos de la Empresa ── -->
+      <div class="step-panel hidden" id="acta-step-2" role="tabpanel" aria-labelledby="acta-step2-title">
+        <h3 class="step-title" id="acta-step2-title">Datos de la Empresa (Patrón)</h3>
+        <p class="step-subtitle">Esta información aparecerá en el acta generada</p>
+
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label" for="acta-razon-social">Razón Social / Nombre del Patrón <span class="req">*</span></label>
+            <input type="text" id="acta-razon-social" class="form-input no-prefix"
+                   placeholder="Ej. Grupo Empresarial Omega S.A. de C.V." required aria-required="true" autocomplete="organization" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-rfc-patron">RFC del Patrón</label>
+            <input type="text" id="acta-rfc-patron" class="form-input no-prefix"
+                   placeholder="GOEO801231AB1" maxlength="13" style="text-transform:uppercase;" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-representante">Representante Legal / Gerente de Área</label>
+            <input type="text" id="acta-representante" class="form-input no-prefix"
+                   placeholder="Lic. Juan Pérez García" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-ciudad">Ciudad de Elaboración <span class="req">*</span></label>
+            <input type="text" id="acta-ciudad" class="form-input no-prefix"
+                   placeholder="Ej. Monterrey, Nuevo León" required aria-required="true" autocomplete="address-level2" />
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn-back" id="acta-btn-back-2" aria-label="Regresar al paso 1">← Regresar</button>
+          <div class="step-nav-right">
+            <button class="btn-next" id="acta-btn-next-2" aria-label="Ir al paso 3: Datos del trabajador">
+              Siguiente: Datos del Trabajador →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PASO 3: Datos del Trabajador ── -->
+      <div class="step-panel hidden" id="acta-step-3" role="tabpanel" aria-labelledby="acta-step3-title">
+        <h3 class="step-title" id="acta-step3-title">Datos del Trabajador</h3>
+        <p class="step-subtitle">Datos de la persona a quien se levanta el acta</p>
+
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label" for="acta-nombre">Nombre Completo <span class="req">*</span></label>
+            <input type="text" id="acta-nombre" class="form-input no-prefix"
+                   placeholder="Nombre(s) Apellido Paterno Apellido Materno" required aria-required="true" autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-rfc-trab">RFC del Trabajador</label>
+            <input type="text" id="acta-rfc-trab" class="form-input no-prefix"
+                   placeholder="LOHM900415XY2" maxlength="13" style="text-transform:uppercase;" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-nss">NSS (IMSS)</label>
+            <input type="text" id="acta-nss" class="form-input no-prefix"
+                   placeholder="12345678901" maxlength="11" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-puesto">Puesto / Cargo <span class="req">*</span></label>
+            <input type="text" id="acta-puesto" class="form-input no-prefix"
+                   placeholder="Ej. Operador de Producción" required aria-required="true" autocomplete="organization-title" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-departamento">Departamento / Área</label>
+            <input type="text" id="acta-departamento" class="form-input no-prefix"
+                   placeholder="Ej. Producción" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-fecha-ingreso">Fecha de Ingreso a la Empresa</label>
+            <input type="date" id="acta-fecha-ingreso" class="form-input no-prefix" />
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn-back" id="acta-btn-back-3" aria-label="Regresar al paso 2">← Regresar</button>
+          <div class="step-nav-right">
+            <button class="btn-next" id="acta-btn-next-3" aria-label="Ir al paso 4: Descripción de la falta">
+              Siguiente: Descripción de la Falta →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PASO 4: La Falta ── -->
+      <div class="step-panel hidden" id="acta-step-4" role="tabpanel" aria-labelledby="acta-step4-title">
+        <h3 class="step-title" id="acta-step4-title">Descripción de la Falta</h3>
+        <p class="step-subtitle">Detalla los hechos y la causal legal aplicable</p>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="acta-fecha-falta">Fecha de la Falta <span class="req">*</span></label>
+            <input type="date" id="acta-fecha-falta" class="form-input no-prefix" required aria-required="true" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-hora-falta">Hora Aproximada</label>
+            <input type="time" id="acta-hora-falta" class="form-input no-prefix" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="acta-lugar">Lugar donde Ocurrió la Falta</label>
+            <input type="text" id="acta-lugar" class="form-input no-prefix"
+                   placeholder="Ej. Piso de producción, Área de almacén, Instalaciones de la empresa" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-tipo-falta">Tipo de Falta <span class="req">*</span></label>
+            <select id="acta-tipo-falta" class="form-select" aria-label="Tipo de falta cometida"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-reincidente">¿Es reincidente?</label>
+            <select id="acta-reincidente" class="form-select">
+              <option value="no">No — Primera vez</option>
+              <option value="si">Sí — Ha incurrido en esta falta antes</option>
+            </select>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="acta-causal">Causal Legal / Artículo Aplicable <span class="req">*</span></label>
+            <input type="text" id="acta-causal" class="form-input no-prefix"
+                   placeholder="Se auto-completa al elegir tipo de falta (editable)" />
+            <div class="helper-text">Se llena automáticamente según la falta elegida. Puedes editarlo para mayor precisión.</div>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="acta-descripcion">Descripción Detallada de los Hechos <span class="req">*</span></label>
+            <textarea id="acta-descripcion" class="form-input form-textarea no-prefix" rows="5"
+                      placeholder="Describe con precisión qué ocurrió: circunstancias, hora, lugar y personas involucradas. Esta narración aparecerá textualmente en el acta."
+                      required aria-required="true"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-testigo1">Testigo 1 — Nombre Completo</label>
+            <input type="text" id="acta-testigo1" class="form-input no-prefix"
+                   placeholder="Nombre del primer testigo" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-testigo1-puesto">Testigo 1 — Puesto</label>
+            <input type="text" id="acta-testigo1-puesto" class="form-input no-prefix"
+                   placeholder="Ej. Supervisor de turno" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-testigo2">Testigo 2 — Nombre Completo</label>
+            <input type="text" id="acta-testigo2" class="form-input no-prefix"
+                   placeholder="Nombre del segundo testigo (opcional)" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="acta-testigo2-puesto">Testigo 2 — Puesto</label>
+            <input type="text" id="acta-testigo2-puesto" class="form-input no-prefix"
+                   placeholder="Ej. Jefe de departamento" autocomplete="off" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="acta-aceptacion">Posición del Trabajador ante los Hechos</label>
+            <select id="acta-aceptacion" class="form-select">
+              <option value="acepta">Acepta los hechos y firma de conformidad</option>
+              <option value="no_acepta">No acepta los hechos pero firma el acta</option>
+              <option value="no_firma">Se negó a firmar el acta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn-back" id="acta-btn-back-4" aria-label="Regresar al paso 3">← Regresar</button>
+          <div class="step-nav-right">
+            <button class="btn-calc" id="acta-btn-gen" aria-label="Generar acta administrativa en PDF">
+              <span aria-hidden="true">📋</span>
+              <span id="acta-btn-label">Generar Acta de Amonestación</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /form-card -->
+  </div><!-- /calc-inner -->
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     ACTA RESULTS
+═══════════════════════════════════════════════════════ -->
+<section class="results-section hidden" id="acta-results-section" aria-live="polite" aria-label="Acta generada">
+  <div class="section-header" style="margin-bottom:32px;">
+    <span class="section-label">Acta Lista</span>
+    <h2 class="section-title">Tu acta está lista</h2>
+    <p class="section-desc">Revisa el resumen y descarga el documento para firmar</p>
+  </div>
+  <div class="results-grid">
+    <div id="acta-summary-panel" aria-label="Resumen del acta"></div>
+    <div id="acta-doc-panel" aria-label="Documento generado"></div>
+  </div>
+  <div style="text-align:center;margin-top:32px;">
+    <button onclick="window.scrollTo({top:document.getElementById('actas').offsetTop,behavior:'smooth'})"
+            style="padding:12px 28px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-secondary);font-weight:600;font-size:.9rem;cursor:pointer;transition:var(--transition);"
+            onmouseover="this.style.borderColor='rgba(255,255,255,.2)';this.style.color='var(--text-primary)'"
+            onmouseout="this.style.borderColor='';this.style.color=''">
+      ↑ Generar otra acta
+    </button>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FEATURES SECTION
+═══════════════════════════════════════════════════════ -->
+<section class="landing-section" id="caracteristicas" aria-labelledby="feat-heading">
+  <div class="section-header">
+    <span class="section-label">Características</span>
+    <h2 class="section-title" id="feat-heading">¿Qué incluye el cálculo?</h2>
+    <p class="section-desc">Todos los conceptos conforme a la Ley Federal del Trabajo vigente en México</p>
+  </div>
+
+  <div class="features-grid">
+
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(245,166,35,.15);" aria-hidden="true">⚖️</div>
+      <div class="feature-title">Indemnización Constitucional</div>
+      <div class="feature-desc">3 meses de salario integrado (90 días × SDI). Solo aplica en despido injustificado. Artículo 50 LFT.</div>
+      <span class="feature-tag">Art. 50 LFT</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(155,89,182,.15);" aria-hidden="true">🏅</div>
+      <div class="feature-title">Prima de Antigüedad</div>
+      <div class="feature-desc">12 días de salario por año trabajado. El salario diario tiene un tope de 2 veces el SMG. Aplica en ambos casos bajo ciertas condiciones.</div>
+      <span class="feature-tag">Art. 162 LFT</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(46,204,113,.15);" aria-hidden="true">🌴</div>
+      <div class="feature-title">Vacaciones Proporcionales</div>
+      <div class="feature-desc">Días de vacaciones proporcionales según la tabla del Art. 76 LFT, calculados al día exacto de la fecha de baja.</div>
+      <span class="feature-tag">Art. 76 LFT</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(26,188,156,.15);" aria-hidden="true">🎄</div>
+      <div class="feature-title">Aguinaldo Proporcional</div>
+      <div class="feature-desc">Mínimo 15 días de SDI por año. Se calcula la parte proporcional a los días trabajados en el año en curso.</div>
+      <span class="feature-tag">Art. 87 LFT</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(231,76,60,.15);" aria-hidden="true">📑</div>
+      <div class="feature-title">Documentos PDF Legales</div>
+      <div class="feature-desc">Genera Carta de Renuncia, Aviso de Rescisión y Recibo de Liquidación/Finiquito con todos los datos capturados, listos para firmar.</div>
+      <span class="feature-tag">Listos para firmar</span>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     VACATION TABLE
+═══════════════════════════════════════════════════════ -->
+<section class="landing-section" id="tabla-lft" aria-labelledby="tabla-heading">
+  <div class="section-header">
+    <span class="section-label">Referencia Legal</span>
+    <h2 class="section-title" id="tabla-heading">Tabla de Vacaciones — Art. 76 LFT</h2>
+    <p class="section-desc">Días de vacaciones a los que tiene derecho el trabajador según su antigüedad</p>
+  </div>
+
+  <div style="overflow-x:auto; border-radius:var(--radius-lg); border:1px solid var(--border);">
+    <table class="vac-table" role="table" aria-label="Días de vacaciones por año de antigüedad LFT">
+      <thead>
+        <tr>
+          <th scope="col">Años cumplidos</th>
+          <th scope="col">Días de vacaciones</th>
+          <th scope="col">Con prima vacacional (25%)</th>
+        </tr>
+      </thead>
+      <tbody id="vac-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="info-note" style="margin-top:18px;">
+    <span class="note-icon" aria-hidden="true">📌</span>
+    <span>A partir del año 35 en adelante, se suman 2 días adicionales cada 5 años de antigüedad. La calculadora aplica esta progresión automáticamente.</span>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FAQ
+═══════════════════════════════════════════════════════ -->
+<section class="landing-section" id="faq" aria-labelledby="faq-heading">
+  <div class="section-header">
+    <span class="section-label">Preguntas Frecuentes</span>
+    <h2 class="section-title" id="faq-heading">Dudas sobre liquidaciones en México</h2>
+    <p class="section-desc">Respuestas a las preguntas más comunes sobre la LFT</p>
+  </div>
+
+  <div class="faq-list" role="list">
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-question" aria-expanded="false" aria-controls="faq-a1" id="faq-q1">
+        ¿Cuál es la diferencia entre liquidación y finiquito?
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-a1" role="region" aria-labelledby="faq-q1">
+        <div class="faq-answer-inner">
+          La <strong>liquidación</strong> se da cuando el patrón despide al trabajador sin causa justificada (despido injustificado). Incluye la indemnización constitucional de 3 meses, 20 días por año y las partes proporcionales. El <strong>finiquito</strong> se entrega cuando el trabajador renuncia voluntariamente o cuando la terminación es justificada; solo incluye las prestaciones proporcionales (vacaciones, prima vacacional, aguinaldo) y, en su caso, la prima de antigüedad si tiene 15 o más años.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-question" aria-expanded="false" aria-controls="faq-a2" id="faq-q2">
+        ¿Qué es el Salario Diario Integrado (SDI)?
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-a2" role="region" aria-labelledby="faq-q2">
+        <div class="faq-answer-inner">
+          El SDI es el salario que incluye todas las prestaciones proporcionales además del salario base. Se calcula con la fórmula: <strong>SDI = Salario diario × Factor de integración</strong>. El factor de integración incorpora la parte proporcional del aguinaldo (15 días mínimo) y la prima vacacional (25% de los días de vacaciones). Es la base para calcular indemnizaciones y primas.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-question" aria-expanded="false" aria-controls="faq-a3" id="faq-q3">
+        ¿Cuándo se paga la prima de antigüedad en una renuncia?
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-a3" role="region" aria-labelledby="faq-q3">
+        <div class="faq-answer-inner">
+          Conforme al <strong>Artículo 162 de la LFT</strong>, la prima de antigüedad se paga en renuncia voluntaria cuando el trabajador tiene <strong>15 o más años</strong> de servicio. En caso de despido injustificado, se paga siempre independientemente de la antigüedad. Equivale a 12 días de salario por año trabajado, con un tope de 2 veces el Salario Mínimo General diario.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-question" aria-expanded="false" aria-controls="faq-a4" id="faq-q4">
+        ¿Los montos calculados incluyen impuestos (ISR)?
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-a4" role="region" aria-labelledby="faq-q4">
+        <div class="faq-answer-inner">
+          No. Los montos mostrados son <strong>brutos</strong> antes de retenciones. El Artículo 93 de la LISR establece que están exentos de ISR los pagos de liquidación hasta por un monto equivalente a 90 veces el SMG por año de servicio. Los montos que excedan esta exención están sujetos a retención. Consulte a un contador para el cálculo definitivo de impuestos.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-question" aria-expanded="false" aria-controls="faq-a5" id="faq-q5">
+        ¿En cuántos días debe pagarse la liquidación?
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-a5" role="region" aria-labelledby="faq-q5">
+        <div class="faq-answer-inner">
+          La LFT no establece un plazo específico en días para el pago de la liquidación o finiquito. Sin embargo, por costumbre y buenas prácticas laborales, debe pagarse a más tardar el día de la baja o en un plazo razonable (generalmente no más de 3–5 días hábiles). El retraso puede generar recargos e intereses. Se recomienda firmar el recibo solo cuando el pago esté efectivamente realizado.
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item" role="listitem">
+      <button class="faq-question" aria-expanded="false" aria-controls="faq-a6" id="faq-q6">
+        ¿Los documentos generados tienen validez legal?
+        <span class="faq-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="faq-answer" id="faq-a6" role="region" aria-labelledby="faq-q6">
+        <div class="faq-answer-inner">
+          Los documentos generados por LiquidaLFT son <strong>modelos de referencia</strong> que contienen la estructura estándar de los documentos laborales en México. Para que tengan plena validez legal, deben ser revisados por un abogado laboral, ajustados a las circunstancias específicas y firmados de forma autógrafa por las partes. Esta herramienta no sustituye la asesoría jurídica profesional.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /faq-list -->
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════ -->
+<footer class="site-footer" role="contentinfo">
+  <div class="footer-brand">⚖️ LiquidaLFT</div>
+  <div>Calculadora de Liquidaciones Laborales · México 2026</div>
+  <div style="margin-top:6px;">
+    Ley Federal del Trabajo · Arts. 50, 76, 80, 87 y 162 · Salario Mínimo 2026
+  </div>
+  <div style="margin-top:10px; color:#3a4260;">
+    ⚠️ Herramienta de referencia. No constituye asesoría legal. Consulte a un abogado laboral certificado.
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="calculator.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capital Humano MX</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2315803d'/><text x='16' y='23' font-family='Georgia,serif' font-size='19' font-weight='600' fill='white' text-anchor='middle'>C</text></svg>" />
+</head>
+<body>
+
+<!-- Sprite de iconos de línea (tema 1C) -->
+<svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true"><defs>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="8" rx="1.3"></rect><rect x="14" y="3" width="7" height="5" rx="1.3"></rect><rect x="14" y="11" width="7" height="10" rx="1.3"></rect><rect x="3" y="14" width="7" height="7" rx="1.3"></rect></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5.5 20c.7-3.6 3.3-5.4 6.5-5.4s5.8 1.8 6.5 5.4"></path></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M9 13h6M9 17h4"></path></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"></rect><path d="M4 9.5h16M8 3v4M16 3v4"></path></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"></rect><path d="M3 10.5h18"></path><circle cx="16.5" cy="14.7" r="1.2"></circle></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.6 20h18.8z"></path><path d="M12 10v4"></path><path d="M12 17.2h.01"></path></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"></path><path d="M3 12h11"></path><path d="M11 8l4 4-4 4"></path></symbol>
+  <symbol id="i-bank" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 21 8H3z"></path><path d="M4 10.5h16"></path><path d="M6 10.5v8M10 10.5v8M14 10.5v8M18 10.5v8"></path><path d="M4 21h16"></path></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"></path></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5 7 5-15 2.5 8h4"></path></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="11" rx="1.5"></rect><path d="M4 13h16M12 9v11"></path><path d="M12 9C10.4 9 8.6 8.2 8.6 6.5 8.6 5.4 9.4 4.8 10.2 4.8c1.8 0 1.8 2.3 1.8 4.2zM12 9c1.6 0 3.4-.8 3.4-2.5 0-1.1-.8-1.7-1.6-1.7-1.8 0-1.8 2.3-1.8 4.2z"></path></symbol>
+  <symbol id="i-pie" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 12V3M12 12l7.8 4.5"></path></symbol>
+  <symbol id="i-network" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="5" rx="1"></rect><rect x="3" y="16" width="6" height="5" rx="1"></rect><rect x="15" y="16" width="6" height="5" rx="1"></rect><path d="M12 8v4M6 16v-2h12v2"></path></symbol>
+  <symbol id="i-bar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><path d="M7.5 17v-6M12 17V7M16.5 17v-3"></path></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M18.5 14.5l.6 1.7 1.7.6-1.7.6-.6 1.7-.6-1.7-1.7-.6 1.7-.6z"></path></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"></path><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"></path></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"></path><path d="M13.5 6.5l4 4"></path></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M8 11l4 4 4-4"></path><path d="M5 20h14"></path></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M4 7l8 6 8-6"></path></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></symbol>
+</defs></svg>
+
+<div class="app-shell" id="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand topbar-brand">
+      <div class="topbar-brand-icon">C</div>
+      Capital Humano
+    </div>
+
+    <span class="nav-section-label">Principal</span>
+    <div class="nav-item active" data-route="dashboard" onclick="navigate('dashboard')"
+         style="position:relative;">
+      <svg class="ic"><use href="#i-grid"></use></svg> Dashboard
+      <span id="badge-alertas"
+        style="display:none;position:absolute;top:6px;right:10px;
+               background:var(--red-warn);color:#fff;
+               font-size:.6rem;font-weight:800;
+               min-width:16px;height:16px;line-height:16px;
+               text-align:center;padding:0 4px;
+               border-radius:100px;"></span>
+    </div>
+
+    <span class="nav-section-label">Gestión</span>
+    <div class="nav-item" data-route="empleados" onclick="navigate('empleados')">
+      <svg class="ic"><use href="#i-user"></use></svg> Trabajadores
+    </div>
+    <div class="nav-item" data-route="contratos" onclick="navigate('contratos')">
+      <svg class="ic"><use href="#i-file"></use></svg> Contratos
+    </div>
+    <div class="nav-item" data-route="asistencia" onclick="navigate('asistencia')">
+      <svg class="ic"><use href="#i-calendar"></use></svg> Asistencia
+    </div>
+    <div class="nav-item" data-route="checador" onclick="navigate('checador')">
+      <svg class="ic"><use href="#i-clock"></use></svg> Reloj Checador
+    </div>
+    <div class="nav-item" data-route="nomina" onclick="navigate('nomina')">
+      <svg class="ic"><use href="#i-wallet"></use></svg> Nómina
+    </div>
+    <div class="nav-item" data-route="disciplinario" onclick="navigate('disciplinario')">
+      <svg class="ic"><use href="#i-alert"></use></svg> Actas Admin.
+    </div>
+    <div class="nav-item" data-route="bajas" onclick="navigate('bajas')">
+      <svg class="ic"><use href="#i-exit"></use></svg> Bajas
+    </div>
+    <div class="nav-item" data-route="imss" onclick="navigate('imss')">
+      <svg class="ic"><use href="#i-bank"></use></svg> IMSS / Movimientos
+    </div>
+
+    <span class="nav-section-label">Prestaciones</span>
+    <div class="nav-item" data-route="vacaciones" onclick="navigate('vacaciones')">
+      <svg class="ic"><use href="#i-sun"></use></svg> Vacaciones
+    </div>
+    <div class="nav-item" data-route="incapacidades" onclick="navigate('incapacidades')">
+      <svg class="ic"><use href="#i-activity"></use></svg> Incapacidades
+    </div>
+    <div class="nav-item" data-route="aguinaldo" onclick="navigate('aguinaldo')">
+      <svg class="ic"><use href="#i-gift"></use></svg> Aguinaldo
+    </div>
+    <div class="nav-item" data-route="ptu" onclick="navigate('ptu')">
+      <svg class="ic"><use href="#i-pie"></use></svg> PTU
+    </div>
+
+    <span class="nav-section-label">Organización</span>
+    <div class="nav-item" data-route="organigrama" onclick="navigate('organigrama')">
+      <svg class="ic"><use href="#i-network"></use></svg> Organigrama
+    </div>
+    <div class="nav-item" data-route="reportes" onclick="navigate('reportes')">
+      <svg class="ic"><use href="#i-bar"></use></svg> Reportes
+    </div>
+
+    <span class="nav-section-label">Configuración</span>
+    <div class="nav-item" data-route="empresa" onclick="navigate('empresa')">
+      <svg class="ic"><use href="#i-bank"></use></svg> Mi Empresa
+    </div>
+
+    <span class="nav-section-label">Herramientas</span>
+    <div class="nav-item" id="nav-agente" onclick="showModalAgente(null)" style="color:var(--accent-navy);font-weight:600;"
+         title="Generar documentos con IA">
+      <svg class="ic"><use href="#i-sparkle"></use></svg> Agente IA
+    </div>
+    <div class="nav-item" data-route="manual" onclick="navigate('manual')"
+         title="Manual de usuario">
+      <svg class="ic"><use href="#i-book"></use></svg> Manual de Uso
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-search" id="topbar-search-wrap">
+      <svg class="topbar-search-icon"><use href="#i-search"></use></svg>
+      <input id="global-search" type="search" class="topbar-search-input" placeholder="Buscar trabajador…"
+        oninput="busquedaGlobal(this.value)" autocomplete="off" />
+      <div id="global-results" class="global-results" style="display:none;"></div>
+    </div>
+    <div style="flex:1;"></div>
+
+    <div class="topbar-right">
+      <span class="topbar-empresa" id="topbar-empresa">—</span>
+      <button id="btn-switch-empresa" style="display:none;background:var(--gold-dim);border:1px solid var(--gold-border);color:var(--accent);border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:pointer;margin-right:4px;" onclick="switchEmpresa()" title="Cambiar empresa">
+        <svg class="ic" style="width:14px;height:14px;vertical-align:-2px;"><use href="#i-exit"></use></svg>
+      </button>
+      <span class="topbar-user" id="topbar-user">—</span>
+      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEW -->
+  <main class="main-view" id="main-view">
+    <div class="loading"><div class="spinner"></div> Cargando…</div>
+  </main>
+</div>
+
+<!-- Modal container (reutilizable) -->
+<div id="modal-container"></div>
+
+<!-- Modal Agente IA -->
+<div id="modal-agente" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(15,25,35,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;">
+  <div class="agente-inner">
+    <!-- Header fijo -->
+    <div class="agente-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--accent);display:grid;place-items:center;">
+          <svg class="ic" style="color:#fff;"><use href="#i-sparkle"></use></svg>
+        </div>
+        <div>
+          <div style="font-family:var(--font-serif);font-weight:600;font-size:.95rem;color:var(--text-primary);">Agente IA — Capital Humano MX</div>
+          <div style="font-size:.72rem;color:var(--text-muted);">Generación de documentos laborales con Claude</div>
+        </div>
+      </div>
+      <button onclick="closeModalAgente()" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <!-- Stepper -->
+    <div class="agente-stepper-wrap" style="padding:14px 24px 0;flex-shrink:0;"></div>
+    <!-- Body scrolleable -->
+    <div class="agente-body" style="flex:1;overflow-y:auto;padding:20px 24px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
+      <div style="text-align:center;padding:40px;color:var(--text-muted);">Cargando…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="js/config.js?v=3"></script>
+<script src="js/auth.js?v=3"></script>
+<script src="js/calculo.js?v=9"></script>
+<script src="js/pdfs.js?v=9"></script>
+<script src="js/db.js?v=3"></script>
+<script src="js/plan.js?v=1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+<script src="js/plantillas.js?v=4"></script>
+<script src="js/agente.js?v=4"></script>
+<script src="js/alertas.js?v=5"></script>
+<script src="js/asistencia.js?v=5"></script>
+<script src="js/checador.js?v=2"></script>
+<script src="js/festivos.js?v=1"></script>
+<script src="js/descuentos.js?v=1"></script>
+<script src="js/prestaciones.js?v=1"></script>
+<script src="js/nomina.js?v=13"></script>
+<script src="js/vacaciones.js?v=3"></script>
+<script src="js/incapacidades.js?v=1"></script>
+<script src="js/aguinaldo.js?v=2"></script>
+<script src="js/ptu.js?v=1"></script>
+<script src="js/organigrama.js?v=1"></script>
+<script src="js/reportes.js?v=3"></script>
+<script src="js/expediente.js?v=2"></script>
+<script src="js/resguardos.js?v=1"></script>
+<script src="js/empleados.js?v=9"></script>
+<script src="js/disciplinario.js?v=1"></script>
+<script src="js/contratos.js?v=1"></script>
+<script src="js/bajas.js?v=3"></script>
+<script src="js/imss.js?v=1"></script>
+<script src="js/empresa.js?v=6"></script>
+<script src="js/app.js?v=11"></script>
+</body>
+</html>

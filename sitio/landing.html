@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capital Humano MX — Gestión de RRHH con Blindaje Legal</title>
+  <meta name="description" content="Plataforma integral de recursos humanos conforme a la LFT 2026. Contratos, nómina, actas disciplinarias y documentos legales generados con IA." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f172a;
+      --bg2: #1e293b;
+      --bg3: #334155;
+      --blue: #3b82f6;
+      --blue-dark: #2563eb;
+      --green: #10b981;
+      --green-dark: #059669;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ─── HEADER ─────────────────────────────────────── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      white-space: nowrap;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .logo span { color: var(--blue); }
+
+    nav {
+      display: flex;
+      gap: 28px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    nav a:hover { color: var(--text); }
+
+    .header-ctas {
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg2);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: var(--blue-dark); }
+
+    .btn-green {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn-green:hover { background: var(--green-dark); }
+
+    .btn-lg {
+      padding: 14px 28px;
+      font-size: 1rem;
+      border-radius: var(--radius);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover { background: var(--bg2); }
+
+    /* ─── SECCIONES ─────────────────────────────────── */
+    section {
+      padding: 96px 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--blue);
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    .section-label.green {
+      color: var(--green);
+      background: rgba(16, 185, 129, 0.1);
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    h1, h2, h3 { font-weight: 700; line-height: 1.2; }
+
+    h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+    h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); }
+    h3 { font-size: 1.15rem; }
+
+    .text-muted { color: var(--text-muted); }
+    .text-center { text-align: center; }
+
+    /* ─── HERO ───────────────────────────────────────── */
+    #hero {
+      padding-top: 140px;
+      padding-bottom: 96px;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,0.15) 0%, transparent 70%);
+    }
+
+    .hero-content {
+      max-width: 760px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.25);
+      color: var(--green);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 24px;
+    }
+
+    .hero-badge::before { content: "✦"; }
+
+    #hero h1 {
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #fff 40%, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #hero h1 .accent {
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 56px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+      padding-top: 40px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── BLINDAJE LEGAL ─────────────────────────────── */
+    #blindaje {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .blindaje-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .blindaje-header p {
+      margin-top: 16px;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .shield-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .shield-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color 0.2s;
+    }
+
+    .shield-card:hover { border-color: var(--green); }
+
+    .shield-icon {
+      width: 48px; height: 48px;
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 16px;
+    }
+
+    .shield-card h3 { margin-bottom: 8px; }
+
+    .shield-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .shield-card .law-ref {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--green);
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.15);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    /* ─── BENEFICIOS ─────────────────────────────────── */
+    .benefits-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .benefits-header p {
+      margin-top: 16px;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .benefit-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .benefit-card:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+    }
+
+    .benefit-icon {
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+
+    .benefit-card h3 {
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .benefit-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .benefit-card .tag {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--blue);
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.15);
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .benefit-card .tag.free {
+      color: var(--green);
+      background: rgba(16,185,129,0.08);
+      border-color: rgba(16,185,129,0.15);
+    }
+
+    .benefit-card .tag.ai {
+      color: var(--yellow);
+      background: rgba(245,158,11,0.08);
+      border-color: rgba(245,158,11,0.15);
+    }
+
+    /* ─── CÓMO FUNCIONA ──────────────────────────────── */
+    #como-funciona {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .steps-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .steps-header p {
+      margin-top: 16px;
+      color: var(--text-muted);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 32px;
+      position: relative;
+    }
+
+    .step {
+      text-align: center;
+      padding: 32px 24px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      position: relative;
+    }
+
+    .step-number {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin: 0 auto 20px;
+      color: #fff;
+    }
+
+    .step h3 { margin-bottom: 10px; }
+    .step p { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* ─── HERRAMIENTAS GRATUITAS ─────────────────────── */
+    #herramientas .tools-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .tool-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px;
+    }
+
+    .tool-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    .tool-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    .tool-items {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .tool-items li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .tool-items li::before {
+      content: "✓";
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ─── CTA FINAL ──────────────────────────────────── */
+    #cta-final {
+      text-align: center;
+      background: radial-gradient(ellipse 80% 60% at 50% 110%, rgba(59,130,246,0.15) 0%, transparent 70%);
+    }
+
+    #cta-final h2 {
+      margin-bottom: 16px;
+    }
+
+    #cta-final p {
+      color: var(--text-muted);
+      margin-bottom: 36px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .guarantee {
+      margin-top: 24px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────── */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .footer-links a:hover { color: var(--text); }
+
+    .footer-copy {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { display: none; }
+      #herramientas .tools-inner { grid-template-columns: 1fr; }
+      .hero-stats { gap: 24px; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .header-ctas .btn-ghost { display: none; }
+    }
+
+    @media (max-width: 500px) {
+      section { padding: 64px 16px; }
+      #hero { padding-top: 110px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════ -->
+<header>
+  <div class="header-inner">
+    <a href="landing.html" class="logo">
+      <div class="logo-icon">⚖️</div>
+      Capital Humano <span>MX</span>
+    </a>
+
+    <nav>
+      <a href="#blindaje">Blindaje Legal</a>
+      <a href="#beneficios">Módulos</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#herramientas">Calculadora</a>
+    </nav>
+
+    <div class="header-ctas">
+      <a href="app/index.html" class="btn btn-ghost">Iniciar sesión</a>
+      <a href="app/index.html#registro" class="btn btn-primary">Crear cuenta</a>
+    </div>
+  </div>
+</header>
+
+
+<!-- ═══════════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">Conforme a LFT 2026</div>
+
+      <h1>
+        Gestiona tu equipo<br />
+        con <span class="accent">blindaje legal total</span>
+      </h1>
+
+      <p class="hero-sub">
+        La plataforma de Recursos Humanos diseñada para empresas mexicanas. Contratos, nómina, actas disciplinarias y documentos legales, generados con inteligencia artificial y respaldados por la Ley Federal del Trabajo.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="app/index.html#registro" class="btn btn-green btn-lg">Comenzar gratis</a>
+        <a href="index.html" class="btn btn-outline btn-lg">Ver calculadora de liquidación →</a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-number">15+</div>
+          <div class="stat-label">Módulos de RRHH</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">40+</div>
+          <div class="stat-label">Tipos de documentos legales</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">100%</div>
+          <div class="stat-label">Conforme a LFT 2026</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">IA</div>
+          <div class="stat-label">Redacción de contratos y actas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════
+     BLINDAJE LEGAL
+════════════════════════════════════════════════════ -->
+<section id="blindaje">
+  <div class="container">
+    <div class="blindaje-header">
+      <div class="section-label green">Protección jurídica</div>
+      <h2>Tu empresa, blindada ante cualquier contingencia laboral</h2>
+      <p>Cada acción en la plataforma genera la documentación legal que necesitas para actuar con certeza frente al IMSS, la STPS y los tribunales laborales.</p>
+    </div>
+
+    <div class="shield-grid">
+      <div class="shield-card">
+        <div class="shield-icon">📋</div>
+        <h3>Actas disciplinarias válidas ante tribunales</h3>
+        <p>Genera actas de amonestación, apercibimiento y rescisión con los hechos, testigos y causales correctos. Redactadas por IA con lenguaje jurídico preciso.</p>
+        <span class="law-ref">Art. 47 LFT — Causales de rescisión</span>
+      </div>
+
+      <div class="shield-card">
+        <div class="shield-icon">📝</div>
+        <h3>Contratos laborales a prueba de impugnaciones</h3>
+        <p>5 tipos de contrato (indeterminado, determinado, obra, temporada, comisión) con cláusulas generadas para tu giro específico y actualizadas a la ley vigente.</p>
+        <span class="law-ref">Art. 24–28 LFT — Contratos de trabajo</span>
+      </div>
+
+      <div class="shield-card">
+        <div class="shield-icon">💰</div>
+        <h3>Finiquitos y liquidaciones calculados al centavo</h3>
+        <p>Indemnización constitucional (3 meses de SDI), prima de antigüedad (12 días/año), vacaciones proporcionales, aguinaldo y más. Documentos listos para firma.</p>
+        <span class="law-ref">Art. 49, 87, 162 LFT — Derechos de salida</span>
+      </div>
+
+      <div class="shield-card">
+        <div class="shield-icon">🔔</div>
+        <h3>Alertas preventivas de riesgo legal</h3>
+        <p>El sistema te avisa antes de que venza un contrato temporal, termine un período de prueba o acumule faltas que activen causales de rescisión. Anticipa, no reacciones.</p>
+        <span class="law-ref">Art. 39-A, 47 LFT — Plazos críticos</span>
+      </div>
+
+      <div class="shield-card">
+        <div class="shield-icon">🛡️</div>
+        <h3>Registro de incidencias con valor probatorio</h3>
+        <p>Cada falta, retardo, incapacidad o sanción queda registrada con fecha, hora y estado. Historial completo exportable en caso de demanda o inspección del trabajo.</p>
+        <span class="law-ref">Art. 784 LFT — Carga de la prueba</span>
+      </div>
+
+      <div class="shield-card">
+        <div class="shield-icon">⚖️</div>
+        <h3>Cartas de renuncia con renuncia explícita de derechos</h3>
+        <p>Documentos de renuncia voluntaria correctamente redactados para que no puedan ser impugnados como despido injustificado ante el LFCA o tribunales laborales.</p>
+        <span class="law-ref">Art. 53 LFT — Terminación voluntaria</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════
+     BENEFICIOS
+════════════════════════════════════════════════════ -->
+<section id="beneficios">
+  <div class="container">
+    <div class="benefits-header">
+      <div class="section-label">Plataforma completa</div>
+      <h2>Todo lo que tu departamento de RRHH necesita</h2>
+      <p>Desde el alta del primer empleado hasta su baja, con toda la documentación legal integrada en un solo lugar.</p>
+    </div>
+
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <div class="benefit-icon">👥</div>
+        <h3>Gestión de Empleados</h3>
+        <p>Expediente digital completo: datos personales, puesto, salario, contrato, historial de incidencias y documentos adjuntos.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">💼</div>
+        <h3>Contratos Laborales</h3>
+        <p>Biblioteca de contratos con alertas de vencimiento. Generación asistida por IA con cláusulas adaptadas a tu empresa.</p>
+        <span class="tag ai">IA incluida</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🗓</div>
+        <h3>Control de Asistencias</h3>
+        <p>Registro diario por trabajador. Tipos: asistencia, falta, incapacidad, justificada. Auto-detección de ausencias que activan causales del Art. 47.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">💳</div>
+        <h3>Nómina y Cálculos Fiscales</h3>
+        <p>Generación de nómina mensual con cálculo automático de ISR, cuotas IMSS e INFONAVIT. Exportación a Excel para tu contador.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">⚠️</div>
+        <h3>Actas Disciplinarias</h3>
+        <p>Tres niveles de sanción con texto jurídico generado por IA. Incluye datos de testigos, postura del trabajador y cita legal correspondiente.</p>
+        <span class="tag ai">IA incluida</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🚪</div>
+        <h3>Bajas y Finiquitos</h3>
+        <p>Cálculo automático de liquidación o finiquito. Genera recibo de pago, carta de renuncia o aviso de rescisión listos para firma.</p>
+        <span class="tag">Legal</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🏖</div>
+        <h3>Vacaciones</h3>
+        <p>Acumulación conforme a la tabla del Art. 76 LFT. Solicitudes, aprobaciones y saldo de días disponibles por empleado.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🏥</div>
+        <h3>Incapacidades IMSS</h3>
+        <p>Registro de bajas médicas con código ICD, porcentaje de subsidio y descuento automático en nómina durante el período.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🎄</div>
+        <h3>Aguinaldo</h3>
+        <p>Cálculo del aguinaldo anual (mínimo 15 días de SDI). Distribución proporcional por empleado y registro de pago.</p>
+        <span class="tag">Legal</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">📊</div>
+        <h3>PTU — Utilidades</h3>
+        <p>Distribución de la Participación de los Trabajadores en las Utilidades con cálculo proporcional conforme a la LFT.</p>
+        <span class="tag">Legal</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🏗</div>
+        <h3>Organigrama</h3>
+        <p>Visualización de la estructura organizacional por departamentos, áreas y líneas de reporte. Actualización automática con altas y bajas.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">📈</div>
+        <h3>Reportes y Analytics</h3>
+        <p>KPIs de RRHH: rotación, costo de nómina, headcount por departamento. Exportación a Excel y PDF para dirección.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🤖</div>
+        <h3>Agente de IA Legal</h3>
+        <p>Describe tu situación y el agente redacta el documento que necesitas: contrato, acta, carta o cláusula especial con citas legales precisas.</p>
+        <span class="tag ai">Powered by Claude</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🔔</div>
+        <h3>Centro de Alertas</h3>
+        <p>Notificaciones en tiempo real: contratos por vencer, períodos de prueba, vacaciones pendientes, aniversarios y obligaciones legales próximas.</p>
+        <span class="tag">Core</span>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🧮</div>
+        <h3>LiquidaLFT — Calculadora Pública</h3>
+        <p>Herramienta gratuita y pública para calcular liquidaciones y finiquitos sin necesidad de cuenta. Ideal para consulta rápida.</p>
+        <span class="tag free">Gratis</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════
+     CÓMO FUNCIONA
+════════════════════════════════════════════════════ -->
+<section id="como-funciona">
+  <div class="container">
+    <div class="steps-header">
+      <div class="section-label">Onboarding simple</div>
+      <h2>Empieza a operar en minutos</h2>
+      <p>Sin instalaciones, sin configuraciones complejas. Accede desde cualquier navegador.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Crea tu cuenta de empresa</h3>
+        <p>Registra los datos de tu empresa: nombre, RFC y representante legal. Solo toma 2 minutos. Sin tarjeta de crédito.</p>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Da de alta a tus empleados</h3>
+        <p>Importa o captura el expediente de cada trabajador con su contrato, salario, puesto y fecha de ingreso.</p>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Gestiona con respaldo legal</h3>
+        <p>Cada acción genera el documento correcto. Registra asistencias, corre nómina, crea actas y atiende alertas desde un solo panel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════
+     HERRAMIENTAS GRATUITAS
+════════════════════════════════════════════════════ -->
+<section id="herramientas">
+  <div class="container">
+    <div class="section-label" style="margin-bottom:40px;">Herramienta gratuita</div>
+    <div class="tools-inner">
+      <div>
+        <h2>Calcula liquidaciones y finiquitos al instante</h2>
+        <p style="color:var(--text-muted);margin-top:16px;margin-bottom:28px;font-size:0.95rem;">
+          LiquidaLFT es nuestra calculadora pública y gratuita. Obtén el cálculo exacto de lo que corresponde pagar al terminar una relación laboral, con todos los conceptos desglosados conforme a la LFT.
+        </p>
+        <a href="index.html" class="btn btn-outline btn-lg">Abrir calculadora gratis →</a>
+      </div>
+
+      <div class="tool-card">
+        <h3>🧮 ¿Qué calcula LiquidaLFT?</h3>
+        <p>Introduce el salario, antigüedad y tipo de terminación para obtener:</p>
+        <ul class="tool-items">
+          <li>Indemnización constitucional (3 meses de SDI)</li>
+          <li>Prima de antigüedad (12 días por año, Art. 162)</li>
+          <li>Vacaciones proporcionales (tabla Art. 76)</li>
+          <li>Prima vacacional (25% mínimo)</li>
+          <li>Aguinaldo proporcional (15 días/año)</li>
+          <li>Salario pendiente de pago</li>
+          <li>Documentos PDF listos para firmar</li>
+        </ul>
+        <a href="index.html" class="btn btn-green" style="width:100%;justify-content:center;">Calcular ahora — es gratis</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════
+     CTA FINAL
+════════════════════════════════════════════════════ -->
+<section id="cta-final">
+  <div class="container">
+    <h2>¿Listo para proteger tu empresa y a tu equipo?</h2>
+    <p>Únete a Capital Humano MX y lleva la gestión de RRHH al siguiente nivel, con toda la certeza legal que tu empresa necesita.</p>
+
+    <div class="cta-buttons">
+      <a href="app/index.html#registro" class="btn btn-green btn-lg">Crear cuenta gratis</a>
+      <a href="app/index.html" class="btn btn-ghost btn-lg">Iniciar sesión</a>
+    </div>
+
+    <div class="guarantee">
+      <span>🔒</span>
+      Sin tarjeta de crédito · Datos seguros con cifrado · Multi-empresa
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <div class="logo">
+      <div class="logo-icon">⚖️</div>
+      Capital Humano <span>MX</span>
+    </div>
+
+    <div class="footer-links">
+      <a href="index.html">Calculadora LiquidaLFT</a>
+      <a href="app/index.html">Iniciar sesión</a>
+      <a href="app/index.html#registro">Crear cuenta</a>
+    </div>
+
+    <div class="footer-copy">
+      © 2026 Capital Humano MX. Plataforma conforme a LFT 2026.
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

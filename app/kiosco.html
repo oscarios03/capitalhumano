@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Reloj Checador — Capital Humano MX</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>" />
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; overflow:hidden; }
+    .kiosk-wrap { width:100%; max-width:480px; padding:24px; text-align:center; }
+    .kiosk-clock { font-size:2.4rem; font-weight:800; color:var(--gold-primary); margin-bottom:4px; font-variant-numeric:tabular-nums; }
+    .kiosk-date { color:var(--text-secondary); margin-bottom:28px; text-transform:capitalize; }
+    .kiosk-tabs { display:flex; gap:8px; margin-bottom:22px; }
+    .kiosk-tab { flex:1; padding:12px; border-radius:var(--radius-md); border:2px solid var(--border); background:var(--bg-card); color:var(--text-secondary); font-weight:700; font-size:1rem; }
+    .kiosk-tab.active { border-color:var(--gold-border); color:var(--gold-primary); background:var(--gold-dim); }
+    .kiosk-pin-display { font-size:2.2rem; letter-spacing:14px; font-weight:800; height:56px; margin-bottom:18px; }
+    .kiosk-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .kiosk-key { padding:20px 0; font-size:1.5rem; font-weight:700; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--bg-card); color:var(--text-primary); }
+    .kiosk-key:active { background:var(--bg-card-hover); }
+    .kiosk-key.wide { grid-column:span 1; }
+    #kiosk-qr-reader { width:100%; border-radius:var(--radius-md); overflow:hidden; }
+    .kiosk-result { padding:40px 20px; border-radius:var(--radius-lg); }
+    .kiosk-result.ok { background:var(--green-dim); border:2px solid var(--green-ok); }
+    .kiosk-result.err { background:rgba(231,76,60,.12); border:2px solid var(--red-warn); }
+    .kiosk-result-icon { font-size:3.4rem; margin-bottom:10px; }
+    .kiosk-result-name { font-size:1.4rem; font-weight:800; margin-bottom:4px; }
+    .kiosk-result-detail { color:var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="kiosk-wrap">
+    <div class="kiosk-clock" id="kiosk-clock">--:--:--</div>
+    <div class="kiosk-date" id="kiosk-date"></div>
+    <div id="kiosk-content"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
+<script src="js/config.js?v=1"></script>
+<script src="js/kiosco.js?v=2"></script>
+</body>
+</html>
