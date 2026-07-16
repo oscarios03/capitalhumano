@@ -176,7 +176,7 @@ DO $$
 DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'trabajadores','sucursales','asistencia','actas','contratos','bajas',
+    'trabajadores','sucursales','puestos','asistencia','actas','contratos','bajas',
     'vacaciones','incapacidades','ptu_ejercicios','ptu_detalle',
     'periodos_nomina','recibos_nomina','documentos_trabajador','checadas',
     'integraciones_checador','movimientos_imss','prestaciones_trabajador',

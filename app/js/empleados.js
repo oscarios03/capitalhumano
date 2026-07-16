@@ -41,7 +41,28 @@ function _actualizarPreviewSalario() {
 // ═══════════════════════════════════════════════════════
 //  EMPLEADOS
 // ═══════════════════════════════════════════════════════
+// Subvista activa dentro del área de Trabajadores: 'trabajadores' | 'puestos'
+let _empleadosSubvista = 'trabajadores';
+
+function switchEmpleadosTab(sub) {
+  _empleadosSubvista = sub;
+  renderEmpleados();
+}
+
 async function renderEmpleados() {
+  const sub = _empleadosSubvista;
+  const seg = `
+    <div class="seg-control animate-in" style="display:inline-flex;gap:4px;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:16px;">
+      <button class="btn-sm" style="border:none;border-radius:7px;padding:7px 16px;font-weight:700;cursor:pointer;background:${sub==='trabajadores'?'var(--gold-primary)':'transparent'};color:${sub==='trabajadores'?'#1a1a1a':'var(--text-secondary)'};" onclick="switchEmpleadosTab('trabajadores')">👤 Trabajadores</button>
+      <button class="btn-sm" style="border:none;border-radius:7px;padding:7px 16px;font-weight:700;cursor:pointer;background:${sub==='puestos'?'var(--gold-primary)':'transparent'};color:${sub==='puestos'?'#1a1a1a':'var(--text-secondary)'};" onclick="switchEmpleadosTab('puestos')">💼 Puestos</button>
+    </div>`;
+  const main = eid('main-view');
+  main.innerHTML = `${seg}<div id="empleados-sub"></div>`;
+  if (sub === 'puestos') return renderPuestosCatalogo();
+  return renderTrabajadoresLista();
+}
+
+async function renderTrabajadoresLista() {
   try {
     const [trabajadores, sucursales] = await Promise.all([
       db.getTrabajadores(),
@@ -79,7 +100,7 @@ async function renderEmpleados() {
         </table>
       </div>`;
 
-    const main = eid('main-view');
+    const main = eid('empleados-sub') || eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
         <div><div class="view-title">Trabajadores</div></div>
@@ -157,11 +178,16 @@ async function showModalAltaEmpleado() {
 }
 
 async function showModalTrabajador(id = null) {
-  const [sucursales, trab] = await Promise.all([
+  const [sucursales, puestos, trab] = await Promise.all([
     db.getSucursales(true),
+    db.getPuestos(true),
     id ? db.getTrabajador(id) : Promise.resolve(null),
   ]);
   const sucBranch = sucursales.filter(s => s.tipo !== 'matriz');
+  _puestosCache = puestos;
+  const puestoActualId  = trab?.puesto_id || '';
+  const puestoActualTxt = trab?.puesto || '';
+  const puestoEnCatalogo = puestos.some(p => p.id === puestoActualId);
   const esEdicion = !!trab;
   const hoy = new Date().toISOString().split('T')[0];
   const v = (k, fb = '') => { const val = trab?.[k]; return val === null || val === undefined ? fb : val; };
@@ -270,7 +296,49 @@ async function showModalTrabajador(id = null) {
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">Puesto / Cargo <span class="req">*</span></label>
-            <input id="n-puesto" type="text" class="form-input" value="${v('puesto')}" placeholder="Ej. Coordinador de Ventas" />
+            <div style="display:flex;gap:6px;">
+              <select id="n-puesto" class="form-select" style="flex:1;" onchange="_onPuestoSeleccionado()">
+                <option value="" ${!puestoActualId && !puestoActualTxt ? 'selected' : ''} disabled>— Selecciona un puesto —</option>
+                ${(puestoActualTxt && !puestoEnCatalogo) ? `<option value="__keep__" selected>${puestoActualTxt} (actual)</option>` : ''}
+                ${puestos.map(p => `<option value="${p.id}" ${puestoActualId === p.id ? 'selected' : ''}>${p.nombre}</option>`).join('')}
+              </select>
+              <button type="button" class="btn-secondary btn-sm" title="Crear un puesto nuevo" onclick="_toggleNuevoPuestoPanel(true)">＋ Nuevo</button>
+            </div>
+            <div class="helper-text">Elige una plantilla de puesto o crea una nueva.</div>
+          </div>
+          <div class="form-group span-2" id="n-nuevo-puesto-panel" style="display:none;background:rgba(245,166,35,.05);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);padding:14px 16px;">
+            <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-primary);margin-bottom:10px;">＋ Nuevo puesto</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Nombre del puesto <span class="req">*</span></label>
+                <input id="np-nombre" type="text" class="form-input" placeholder="Ej. Coordinador de Ventas" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Departamento / Área</label>
+                <input id="np-dept" type="text" class="form-input" placeholder="Ej. Comercial" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Salario sugerido</label>
+                <input id="np-salario" type="number" class="form-input" min="0" step="0.01" placeholder="20000" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Periodo de pago</label>
+                <select id="np-periodo" class="form-select">
+                  <option value="mensual">Mensual</option>
+                  <option value="quincenal">Quincenal</option>
+                  <option value="semanal">Semanal</option>
+                </select>
+              </div>
+              <div class="form-group span-2">
+                <label class="form-label">Funciones del puesto</label>
+                <textarea id="np-funciones" class="form-textarea" rows="2" placeholder="Funciones principales del puesto."></textarea>
+              </div>
+            </div>
+            <div id="np-error" class="error-msg" style="display:none;margin:6px 0;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button type="button" class="btn-secondary btn-sm" onclick="_toggleNuevoPuestoPanel(false)">Cancelar</button>
+              <button type="button" class="btn-primary btn-sm" onclick="_guardarNuevoPuestoInline()">💾 Guardar puesto</button>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Departamento / Área</label>
@@ -762,12 +830,90 @@ function validarCamposLegales({ rfc, curp, nss }) {
   return null;
 }
 
+// ── Puestos dentro del alta: cache, autollenado y creación inline ───────────
+let _puestosCache = [];
+
+// Al elegir un puesto del catálogo, prellena el tab Laboral. Los campos de texto
+// (departamento, funciones, salario) solo se llenan si están vacíos, para no
+// pisar lo que el usuario ya haya capturado; los selects toman el valor de la
+// plantilla si ésta lo define.
+function _onPuestoSeleccionado() {
+  const id = eid('n-puesto')?.value;
+  if (!id || id === '__keep__') return;
+  const p = _puestosCache.find(x => x.id === id);
+  if (!p) return;
+  const setIfEmpty = (elId, val) => { const el = eid(elId); if (el && !el.value && val != null && val !== '') el.value = val; };
+  const setSel     = (elId, val) => { const el = eid(elId); if (el && val) el.value = val; };
+  setIfEmpty('n-dept', p.departamento);
+  setIfEmpty('n-funciones', p.funciones);
+  setIfEmpty('n-salario', p.salario_sugerido);
+  setSel('n-periodo', p.periodo_salario);
+  setSel('n-smg', p.smg_zone);
+  if (p.tipo_contrato) { const c = eid('n-contrato'); if (c) { c.value = p.tipo_contrato; if (typeof onTipoContratoChange === 'function') onTipoContratoChange(); } }
+  if (p.tipo_salario) { const ts = eid('n-tipo-salario'); if (ts) { ts.value = p.tipo_salario; if (typeof _toggleNominaConfig === 'function') _toggleNominaConfig(); } }
+  if (p.pct_comision) { const pc = eid('n-pct-comision'); if (pc && !pc.value) pc.value = parseFloat(p.pct_comision) * 100; }
+  if (p.es_puesto_direccion) { const dir = eid('n-es-direccion'); if (dir) { dir.checked = true; if (typeof _actualizarLimitesPrueba === 'function') _actualizarLimitesPrueba(); } }
+  if (typeof _actualizarPreviewSalario === 'function') _actualizarPreviewSalario();
+}
+
+function _toggleNuevoPuestoPanel(mostrar) {
+  const panel = eid('n-nuevo-puesto-panel');
+  if (panel) panel.style.display = mostrar ? '' : 'none';
+  if (mostrar) {
+    // Semilla: reusar lo ya capturado en el tab Laboral
+    const np = eid('np-nombre'); if (np && !np.value) np.value = '';
+    const nd = eid('np-dept'); if (nd && !nd.value) nd.value = eid('n-dept')?.value || '';
+    const nf = eid('np-funciones'); if (nf && !nf.value) nf.value = eid('n-funciones')?.value || '';
+    const ns = eid('np-salario'); if (ns && !ns.value) ns.value = eid('n-salario')?.value || '';
+    eid('np-nombre')?.focus();
+  }
+}
+
+// Crea el puesto en el catálogo, lo añade al select, lo selecciona y autollena.
+async function _guardarNuevoPuestoInline() {
+  const err = eid('np-error');
+  if (err) err.style.display = 'none';
+  const nombre = eid('np-nombre')?.value.trim();
+  if (!nombre) { if (err) { err.textContent = 'El nombre del puesto es obligatorio.'; err.style.display = ''; } return; }
+  const salario = parseFloat(eid('np-salario')?.value);
+  const datos = {
+    nombre,
+    departamento:     eid('np-dept')?.value.trim() || null,
+    funciones:        eid('np-funciones')?.value.trim() || null,
+    salario_sugerido: isNaN(salario) ? null : salario,
+    periodo_salario:  eid('np-periodo')?.value || 'mensual',
+  };
+  try {
+    const nuevo = await db.createPuesto(datos, CTX.empresa.id);
+    _puestosCache.push(nuevo);
+    const sel = eid('n-puesto');
+    if (sel) {
+      const opt = document.createElement('option');
+      opt.value = nuevo.id; opt.textContent = nuevo.nombre;
+      sel.appendChild(opt);
+      sel.value = nuevo.id;
+    }
+    _toggleNuevoPuestoPanel(false);
+    _onPuestoSeleccionado();
+    if (typeof showToast === 'function') showToast('✅ Puesto creado y guardado en el catálogo.', 'success', 3500);
+  } catch (e) {
+    if (err) { err.textContent = e.message; err.style.display = ''; }
+  }
+}
+
 async function handleGuardarTrabajador(id = '') {
   const err = eid('trab-modal-error');
   err.style.display = 'none';
 
   const nombre  = eid('n-nombre')?.value.trim();
-  const puesto  = eid('n-puesto')?.value.trim();
+  // El puesto se elige del catálogo: el value del select es el puesto_id
+  // (o '__keep__' para conservar el texto de un trabajador legado).
+  const puestoSel = eid('n-puesto');
+  const puestoId  = puestoSel && puestoSel.value && puestoSel.value !== '__keep__' ? puestoSel.value : null;
+  const puestoTxt = puestoSel && puestoSel.value
+    ? (puestoSel.options[puestoSel.selectedIndex]?.textContent || '').replace(/\s*\(actual\)\s*$/, '').trim()
+    : '';
+  const puesto  = puestoTxt;
   const ingreso = eid('n-ingreso')?.value;
   const salario = parseFloat(eid('n-salario')?.value);
 
@@ -825,6 +971,7 @@ async function handleGuardarTrabajador(id = '') {
 
   const datos = {
     nombre, puesto,
+    puesto_id:      puestoId,
     rfc:            eid('n-rfc')?.value.trim().toUpperCase() || null,
     curp:           eid('n-curp')?.value.trim().toUpperCase() || null,
     nss:            eid('n-nss')?.value.trim() || null,

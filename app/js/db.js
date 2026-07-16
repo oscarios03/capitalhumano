@@ -207,6 +207,46 @@ const db = {
     return data;
   },
 
+  // ─── Puestos (plantillas de puesto) ───────────────────────────────────────
+  async getPuestos(soloActivos = true) {
+    let q = _q().from('puestos').select('*').order('nombre');
+    if (soloActivos) q = q.eq('activo', true);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getPuesto(id) {
+    if (!id) return null;
+    const { data, error } = await _q().from('puestos').select('*').eq('id', id).single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
+  },
+
+  async createPuesto(datos, empresaId) {
+    const { data, error } = await _q().from('puestos')
+      .insert({ ...datos, empresa_id: empresaId }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePuesto(id, datos) {
+    const { error } = await _q().from('puestos').update(datos).eq('id', id);
+    if (error) throw error;
+  },
+
+  async togglePuesto(id, activo) {
+    const { error } = await _q().from('puestos').update({ activo }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async countTrabajadoresByPuesto(puestoId) {
+    const { count } = await _q().from('trabajadores')
+      .select('id', { count:'exact', head:true })
+      .eq('puesto_id', puestoId).eq('estado','activo');
+    return count || 0;
+  },
+
   // ─── Dashboard KPIs ───────────────────────────────────────────────────────
   async getKPIs() {
     const empresaId = CTX?.empresa?.id;
