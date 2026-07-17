@@ -999,7 +999,8 @@ async function _tabDetalle() {
                   ${r.vales_despensa>0?`🛒 ${fmt(r.vales_despensa)}`:''}
                   ${r.bonos>0?`🎯 ${fmt(r.bonos)}`:''}
                   ${r.monto_horas_extra>0?`⏱ ${fmt(r.monto_horas_extra)}`:''}
-                  ${!r.vales_despensa&&!r.bonos&&!r.monto_horas_extra?'—':''}
+                  ${r.prima_vacacional>0?`🏖 ${fmt(r.prima_vacacional)}`:''}
+                  ${!r.vales_despensa&&!r.bonos&&!r.monto_horas_extra&&!r.prima_vacacional?'—':''}
                 </td>
                 <td style="color:${r.monto_faltas>0?'var(--red-warn)':'inherit'};">
                   ${r.dias_falta>0?`${r.dias_falta} día${r.dias_falta!==1?'s':''} (-${fmt(r.monto_faltas)})`:'—'}
@@ -1624,6 +1625,25 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     incapMap[i.trabajador_id].push(i);
   });
 
+  // Vacaciones aprobadas que se traslapan con el período: dan derecho a la
+  // prima vacacional (mínimo 25% del salario de los días gozados — Art. 80
+  // LFT). Los permisos con/sin goce (tipo permiso_goce/permiso_sin) no
+  // llevan prima, por eso se filtra tipo='vacacion'.
+  const { data: todasVac, error: errVacPrima } = await _sbN()
+    .from('vacaciones')
+    .select('trabajador_id, fecha_inicio, fecha_fin')
+    .eq('empresa_id', CTX.empresa.id)
+    .eq('estado', 'aprobada')
+    .eq('tipo', 'vacacion')
+    .lte('fecha_inicio', fechaFin)
+    .gte('fecha_fin', fechaIni);
+  if (errVacPrima) console.warn('vacaciones no disponible para prima vacacional:', errVacPrima.message);
+  const vacMap = {};
+  (todasVac || []).forEach(v => {
+    if (!vacMap[v.trabajador_id]) vacMap[v.trabajador_id] = [];
+    vacMap[v.trabajador_id].push(v);
+  });
+
   // Indexar por trabajador
   const asistMap = {};
   (todasAsist || []).forEach(a => {
@@ -1722,7 +1742,25 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     }
     if (incapacidadDias > 0) incapacidadMonto = parseFloat((daily * incapacidadDias).toFixed(2));
 
-    const totalPerc = parseFloat((salBase + vales + bono + montoHE + primaDom + primaFestivo + otrasPrestacionesMonto + incapacidadMonto).toFixed(2));
+    // Prima vacacional de los días de vacaciones que se gozan en este
+    // período (Art. 80 LFT: mínimo 25% del salario de esos días). Se
+    // cuentan solo los días hábiles (lunes a viernes) de la intersección
+    // entre cada solicitud aprobada y el período, igual criterio que usa
+    // vacaciones.js al capturar la solicitud — así, si una solicitud cruza
+    // dos períodos de pago, cada uno paga solo sus días sin duplicar ni
+    // dejar días sin prima.
+    let diasVacPeriodo = 0;
+    for (const v of (vacMap[t.id] || [])) {
+      const vIni  = new Date(v.fecha_inicio + 'T00:00:00');
+      const vFin  = new Date(v.fecha_fin + 'T00:00:00');
+      const start = new Date(Math.max(dIni, vIni));
+      const end   = new Date(Math.min(dFin, vFin));
+      const cur   = new Date(start);
+      while (cur <= end) { const dw = cur.getDay(); if (dw >= 1 && dw <= 5) diasVacPeriodo++; cur.setDate(cur.getDate() + 1); }
+    }
+    const primaVacGoce = parseFloat((diasVacPeriodo * daily * prest.primaVacPct).toFixed(2));
+
+    const totalPerc = parseFloat((salBase + vales + bono + montoHE + primaDom + primaFestivo + otrasPrestacionesMonto + incapacidadMonto + primaVacGoce).toFixed(2));
 
     // Deducciones base
     const montoFaltas = parseFloat((daily * faltas).toFixed(2));
@@ -1865,6 +1903,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       monto_horas_extra:    montoHE,
       prima_dominical:      primaDom,
       prima_festivo:        primaFestivo,
+      prima_vacacional:     primaVacGoce,
       vales_despensa:       vales,
       bonos:                bono,
       total_percepciones:   totalPerc,

@@ -102,6 +102,7 @@ function _renderVACSolicitudes(c) {
                   ` : s.estado === 'pendiente' ? `
                     <span style="font-size:.75rem;color:var(--text-muted);" title="Solo un gerente o administrador puede aprobar">Pendiente de aprobación</span>
                   ` : ''}
+                  ${s.estado === 'aprobada' && s.tipo === 'vacacion' ? `<button class="btn-secondary btn-sm" onclick="generarConstanciaVacaciones('${s.id}')" title="Constancia de vacaciones (Art. 81 LFT)">📄 Constancia</button>` : ''}
                   ${s.estado === 'aprobada' ? htmlBotonWhatsApp(s.trabajadores?.telefono,
                       `Hola ${s.trabajadores?.nombre||''}, tus ${TIPO_LABEL[s.tipo]||'días'} del ${formatDateShort(s.fecha_inicio)} al ${formatDateShort(s.fecha_fin)} (${s.dias} día${s.dias!==1?'s':''}) fueron aprobados. ¡Que los disfrutes!`,
                       { ocultarSiFalta: true }) : ''}
@@ -314,6 +315,51 @@ async function rechazarVAC(id) {
     if (error) throw error;
     await renderVacaciones();
   } catch(e) { _errorVAC(e, 'rechazar'); }
+}
+
+/**
+ * Constancia de vacaciones (Art. 81 LFT): antigüedad, días que corresponden
+ * según la tabla legal, días ya gozados en el ciclo vigente y saldo.
+ * El "ciclo vigente" es el año de aniversario (ingreso + N años) al que
+ * pertenece la fecha de inicio de esta solicitud — no el año calendario.
+ */
+async function generarConstanciaVacaciones(solicitudId) {
+  const s = _VAC.solicitudes.find(x => x.id === solicitudId);
+  if (!s) return;
+  if (s.estado !== 'aprobada') { alert('Solo se puede generar la constancia de una solicitud aprobada.'); return; }
+  try {
+    const trab = await db.getTrabajador(s.trabajador_id);
+    const prest = prestacionesEmpresa();
+
+    const ingreso  = new Date(trab.fecha_ingreso + 'T00:00:00');
+    const inicioSol = new Date(s.fecha_inicio + 'T00:00:00');
+    // Años completos cumplidos justo antes/al momento de esta solicitud →
+    // mismo criterio que calcularFactorIntegracion() para "año en curso".
+    const ciclosCumplidos = fullYears(ingreso, inicioSol);
+    const antiguedadAnios = ciclosCumplidos + 1;
+
+    const vigenciaIni = new Date(ingreso); vigenciaIni.setFullYear(ingreso.getFullYear() + ciclosCumplidos);
+    const vigenciaFin = new Date(ingreso); vigenciaFin.setFullYear(ingreso.getFullYear() + ciclosCumplidos + 1); vigenciaFin.setDate(vigenciaFin.getDate() - 1);
+    const iso = d => d.toISOString().split('T')[0];
+
+    const diasCorresponden = vacDaysForYear(antiguedadAnios, prest.vacDiasExtra);
+
+    const { data: solsVigencia, error } = await _sbV().from('vacaciones')
+      .select('dias')
+      .eq('trabajador_id', trab.id)
+      .eq('tipo', 'vacacion')
+      .eq('estado', 'aprobada')
+      .gte('fecha_inicio', iso(vigenciaIni))
+      .lte('fecha_inicio', iso(vigenciaFin));
+    if (error) throw error;
+    const diasGozados = (solsVigencia || []).reduce((acc, x) => acc + (parseInt(x.dias) || 0), 0);
+    const saldo = Math.max(0, diasCorresponden - diasGozados);
+
+    generateConstanciaVacacionesPDF(CTX.empresa, trab, {
+      solicitud: s, antiguedadAnios, diasCorresponden, diasGozados, saldo,
+      vigenciaIni: iso(vigenciaIni), vigenciaFin: iso(vigenciaFin),
+    });
+  } catch(e) { alert('No se pudo generar la constancia: ' + e.message); }
 }
 
 async function eliminarVAC(id) {
