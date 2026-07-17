@@ -549,6 +549,22 @@ async function showModalTrabajador(id = null) {
                 value="${v('pension_valor')||0}"
                 placeholder="ej. 0.30 para 30% / 1500 fijo" />
             </div>
+
+            <!-- Pago mixto (parte en efectivo) -->
+            <div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:12px;margin-top:2px;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;">
+                <input type="checkbox" id="n-pago-mixto" style="width:16px;height:16px;accent-color:var(--gold-primary);"
+                  ${v('metodo_pago')==='mixto'?'checked':''} onchange="_toggleNominaConfig()" />
+                <span><strong>Pago mixto</strong> <span style="font-size:.72rem;color:var(--text-muted);">(parte por transferencia, parte en efectivo)</span></span>
+              </label>
+              <div class="helper-text">Independiente de la "Forma de Pago" de arriba (esa solo redacta el contrato). Esto le dice a Nómina cuánto entregar en efectivo cada período — el resto se incluye en el archivo de dispersión bancaria.</div>
+            </div>
+            <div class="form-group" id="ng-pago-mixto-val" style="display:${v('metodo_pago')==='mixto'?'':'none'};">
+              <label class="form-label">Monto en efectivo por período</label>
+              <input id="n-monto-efectivo" type="number" class="form-input" min="0" step="0.01"
+                value="${v('monto_efectivo')||0}"
+                placeholder="ej. 1000" />
+            </div>
           </div>
         </div>
       </div>
@@ -846,6 +862,7 @@ function _toggleNominaConfig() {
   const fondo   = document.getElementById('n-fondo-activo')?.checked;
   const info    = document.getElementById('n-info-activo')?.checked;
   const pension = document.getElementById('n-pension-activa')?.checked;
+  const pagoMixto = document.getElementById('n-pago-mixto')?.checked;
   const show = (id, vis) => { const el = document.getElementById(id); if (el) el.style.display = vis ? '' : 'none'; };
   show('ng-pct-com',      ['comision','mixto'].includes(tipo));
   show('ng-fondo-pct',    fondo);
@@ -853,6 +870,7 @@ function _toggleNominaConfig() {
   show('ng-info-val',     info);
   show('ng-pension-tipo', pension);
   show('ng-pension-val',  pension);
+  show('ng-pago-mixto-val', pagoMixto);
 }
 
 /**
@@ -1124,6 +1142,13 @@ async function handleGuardarTrabajador(id = '') {
     capacitacion_inicial_dias: parseInt(nv('n-capacitacion')) || null,
     funciones:              eid('n-funciones')?.value.trim() || null,
     forma_pago:             nv('n-forma-pago') || 'deposito',
+    // metodo_pago/monto_efectivo son independientes de forma_pago (esa solo
+    // redacta el contrato): si el pago mixto no está activo, metodo_pago se
+    // deriva de forma_pago para que el corte de nómina en efectivo/SPEI
+    // (Fase 6.4) siga siendo correcto sin que el usuario tenga que capturar
+    // lo mismo dos veces.
+    metodo_pago:            eid('n-pago-mixto')?.checked ? 'mixto' : (nv('n-forma-pago') === 'efectivo' ? 'efectivo' : 'transferencia'),
+    monto_efectivo:         eid('n-pago-mixto')?.checked ? (parseFloat(nv('n-monto-efectivo')) || 0) : 0,
     dias_pago:              eid('n-dias-pago')?.value.trim() || null,
     hora_inicio:            nv('n-hora-ini'),
     hora_fin:               nv('n-hora-fin'),
@@ -1320,6 +1345,7 @@ async function renderPerfilEmpleado(id) {
             ${filaInfo('Zona SMG', trab.smg_zone === 'frontera' ? 'Frontera Norte' : 'Área General')}
             ${filaInfo('Centro de Trabajo', sucursal ? `${sucursal.nombre}${sucursal.ciudad ? ' — ' + sucursal.ciudad : ''}` : 'Matriz')}
             ${filaInfo('Forma de pago', trab.forma_pago === 'efectivo' ? 'Efectivo' : 'Depósito bancario')}
+            ${trab.metodo_pago === 'mixto' ? filaInfo('Pago mixto', `${fmt(trab.monto_efectivo||0)} en efectivo por período, resto por transferencia`) : ''}
             ${trab.dias_pago ? filaInfo('Días de pago', trab.dias_pago) : ''}
             ${trab.funciones ? filaInfo('Funciones', trab.funciones) : ''}
             ${trab.hora_inicio ? filaInfo('Horario', `${trab.hora_inicio} – ${trab.hora_fin||''}${trab.hora_descanso_inicio ? '  |  Comida: '+trab.hora_descanso_inicio+' – '+(trab.hora_descanso_fin||'') : ''}`) : ''}

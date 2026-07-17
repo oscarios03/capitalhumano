@@ -39,6 +39,7 @@ correr una migración dos veces no rompe nada.
 | 19 | `19_migration_sbc_movimientos.sql` | `movimientos_imss`, `trabajadores.sbc` y factor de integración (Art. 27 LSS) |
 | 22 | `22_migration_nomina_programacion.sql` | `periodos_nomina.fecha_pago`, días de pago quincenal/mensual en `empresas`, función `generar_alertas_nomina()` |
 | 32 | `32_migration_fiscal_patronal.sql` | **Costo patronal**: `empresas.prima_riesgo_pct` / `entidad_federativa` / `isn_pct`; `recibos_nomina.imss_patronal` / `infonavit_patronal` / `isn` / `subsidio_empleo` / `ajuste_anual_isr`; subsidio al empleo 2026 en `config_valores` |
+| 35 | `35_migration_nomina_extras.sql` | **Fase 6 (parcial — layouts bancarios pendientes)**: amplía el CHECK de `descuentos_trabajador.tipo` con `prestamo_caja`; `recibos_nomina.metodo_pago` / `monto_efectivo` (snapshot del pago mixto configurado en `trabajadores`, migración 34) |
 
 ### 🔔 Alertas y notificaciones
 | # | Archivo | Qué hace |

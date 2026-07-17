@@ -961,6 +961,7 @@ async function _tabDetalle() {
       <button class="btn-secondary" onclick="recalcularTodo()">Recalcular todo</button>
       <button class="btn-secondary" onclick="exportarSPEI('${_N.periodoActualId}')">Exportar SPEI</button>
       <button class="btn-secondary" onclick="descargarZIPRecibos('${_N.periodoActualId}')">Descargar todos los recibos (ZIP)</button>
+      <button class="btn-secondary" onclick="imprimirNominaEfectivo('${_N.periodoActualId}')" title="Listado con línea de firma para quien recibe pago en efectivo o mixto">💵 Nómina en efectivo</button>
     </div>
 
     ${_N.recibos.length === 0 ? `
@@ -1889,6 +1890,17 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     ).toFixed(2));
     const neto = parseFloat((totalPerc - totalDed).toFixed(2));
 
+    // Pago mixto (Fase 6.4): snapshot de trabajadores.metodo_pago/monto_efectivo
+    // (independiente de forma_pago, que solo redacta el contrato). Se topa al
+    // neto del período para no generar una transferencia negativa si el monto
+    // en efectivo configurado excede lo que este período realmente paga.
+    const metodoPagoRecibo   = t.metodo_pago || 'transferencia';
+    const montoEfectivoRecibo = metodoPagoRecibo === 'efectivo'
+      ? neto
+      : metodoPagoRecibo === 'mixto'
+        ? Math.min(parseFloat(t.monto_efectivo || 0), Math.max(0, neto))
+        : 0;
+
     recibos.push({
       empresa_id:           CTX.empresa.id,
       trabajador_id:        t.id,
@@ -1936,6 +1948,8 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       neto_pagar:           neto,
       forma_pago:           t.forma_pago || 'deposito',
       cuenta_bancaria:      t.clabe_interbancaria || t.cuenta_bancaria || null,
+      metodo_pago:          metodoPagoRecibo,
+      monto_efectivo:       montoEfectivoRecibo,
       folio:                `NOM-${Date.now()}-${t.id.slice(-4)}`,
       estado:               'borrador',
     });
@@ -1946,8 +1960,16 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     .from('recibos_nomina')
     .upsert(recibos, { onConflict: 'trabajador_id,periodo_id' });
   if (error) {
+    // Tolerancia: si la migración 35 no está aplicada, reintentar sin las columnas de pago mixto
+    if (/metodo_pago|monto_efectivo/i.test(error.message || '')) {
+      console.warn('Columnas recibos_nomina.metodo_pago/monto_efectivo no existen — aplica la migración 35_migration_nomina_extras.sql');
+      const sinPagoMixto = recibos.map(({ metodo_pago, monto_efectivo, ...resto }) => resto);
+      const { error: err35 } = await _sbN()
+        .from('recibos_nomina')
+        .upsert(sinPagoMixto, { onConflict: 'trabajador_id,periodo_id' });
+      if (err35) throw err35;
     // Tolerancia: si la migración 32 no está aplicada, reintentar sin las columnas patronales
-    if (/imss_patronal|infonavit_patronal|subsidio_empleo|ajuste_anual_isr|"isn"|column .*isn/i.test(error.message || '')) {
+    } else if (/imss_patronal|infonavit_patronal|subsidio_empleo|ajuste_anual_isr|"isn"|column .*isn/i.test(error.message || '')) {
       console.warn('Columnas patronales de recibos_nomina no existen — aplica la migración 32_migration_fiscal_patronal.sql');
       const sinPat = recibos.map(({ imss_patronal, infonavit_patronal, isn, subsidio_empleo, ajuste_anual_isr, ...resto }) => resto);
       const { error: err32 } = await _sbN()
@@ -2035,19 +2057,46 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
 //  EXPORTAR SPEI
 // ═══════════════════════════════════════════════════════════════════════════
 async function exportarSPEI(periodoId) {
-  const { data: recibos } = await _sbN()
+  let { data: recibosTodos, error } = await _sbN()
     .from('recibos_nomina')
-    .select('neto_pagar, cuenta_bancaria, trabajadores(nombre,rfc)')
+    .select('neto_pagar, cuenta_bancaria, metodo_pago, monto_efectivo, trabajadores(nombre,rfc)')
     .eq('periodo_id', periodoId)
     .eq('empresa_id', CTX.empresa.id);
 
-  if (!recibos?.length) { alert('No hay recibos en este período.'); return; }
+  // Tolerancia: si la migración 35 no está aplicada, reintentar sin pago mixto
+  // (todos se tratan como transferencia completa, comportamiento previo).
+  if (error && /metodo_pago|monto_efectivo/i.test(error.message || '')) {
+    console.warn('Columnas recibos_nomina.metodo_pago/monto_efectivo no existen — aplica la migración 35_migration_nomina_extras.sql');
+    ({ data: recibosTodos, error } = await _sbN()
+      .from('recibos_nomina')
+      .select('neto_pagar, cuenta_bancaria, trabajadores(nombre,rfc)')
+      .eq('periodo_id', periodoId)
+      .eq('empresa_id', CTX.empresa.id));
+  }
+  if (error) { alert('Error al exportar: ' + error.message); return; }
+  if (!recibosTodos?.length) { alert('No hay recibos en este período.'); return; }
+
+  // Pago mixto (Fase 6.4): a quien se le paga 100% en efectivo no va en el
+  // archivo de dispersión bancaria; a quien tiene pago mixto solo se le
+  // transfiere la parte que no entrega en efectivo.
+  const enEfectivoTotal = recibosTodos.filter(r => r.metodo_pago === 'efectivo');
+  const recibos = recibosTodos
+    .filter(r => r.metodo_pago !== 'efectivo')
+    .map(r => ({ ...r, monto_transferencia: parseFloat(r.neto_pagar || 0) - parseFloat(r.monto_efectivo || 0) }));
+
+  if (!recibos.length) {
+    alert('Todos los trabajadores de este período se pagan en efectivo. Usa "💵 Nómina en efectivo" para generar su listado.');
+    return;
+  }
+  if (enEfectivoTotal.length) {
+    alert(`${enEfectivoTotal.length} trabajador(es) se pagan en efectivo y no se incluyen en este archivo. Usa "💵 Nómina en efectivo" para ellos.`);
+  }
 
   if (typeof XLSX !== 'undefined') {
     const datos = recibos.map(r => ({
       'CLABE Interbancaria': r.cuenta_bancaria || 'SIN CLABE',
       'Nombre Beneficiario': r.trabajadores?.nombre || '',
-      'Monto':               parseFloat(r.neto_pagar||0).toFixed(2),
+      'Monto':               r.monto_transferencia.toFixed(2),
       'Concepto':            'NOMINA ' + new Date().toLocaleDateString('es-MX'),
       'RFC Beneficiario':    r.trabajadores?.rfc || '',
     }));
@@ -2059,7 +2108,7 @@ async function exportarSPEI(periodoId) {
     // Fallback CSV
     const header = 'CLABE|NOMBRE|MONTO|CONCEPTO|RFC\n';
     const rows   = recibos.map(r =>
-      `${r.cuenta_bancaria||''}|${r.trabajadores?.nombre||''}|${parseFloat(r.neto_pagar||0).toFixed(2)}|NOMINA|${r.trabajadores?.rfc||''}`
+      `${r.cuenta_bancaria||''}|${r.trabajadores?.nombre||''}|${r.monto_transferencia.toFixed(2)}|NOMINA|${r.trabajadores?.rfc||''}`
     ).join('\n');
     const blob = new Blob([header + rows], { type:'text/plain' });
     const url  = URL.createObjectURL(blob);
@@ -2070,8 +2119,34 @@ async function exportarSPEI(periodoId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  DESCARGA MASIVA ZIP
+//  NÓMINA EN EFECTIVO (Fase 6.4 — pago mixto)
 // ═══════════════════════════════════════════════════════════════════════════
+/** Listado imprimible con línea de firma para quien recibe todo o parte de su pago en efectivo. */
+async function imprimirNominaEfectivo(periodoId) {
+  const { data: periodo } = await _sbN().from('periodos_nomina').select('*').eq('id', periodoId).single();
+
+  let { data: recibos, error } = await _sbN()
+    .from('recibos_nomina')
+    .select('neto_pagar, metodo_pago, monto_efectivo, trabajadores(nombre, puesto)')
+    .eq('periodo_id', periodoId)
+    .eq('empresa_id', CTX.empresa.id)
+    .in('metodo_pago', ['efectivo', 'mixto']);
+
+  if (error && /metodo_pago|monto_efectivo/i.test(error.message || '')) {
+    alert('Aplica la migración 35_migration_nomina_extras.sql para usar la nómina en efectivo.');
+    return;
+  }
+  if (error) { alert('Error: ' + error.message); return; }
+  if (!recibos?.length) { alert('No hay trabajadores con pago en efectivo (total o mixto) en este período.'); return; }
+
+  const filas = recibos.map(r => ({
+    nombre: r.trabajadores?.nombre || '—',
+    puesto: r.trabajadores?.puesto || '',
+    monto: r.metodo_pago === 'efectivo' ? parseFloat(r.neto_pagar || 0) : parseFloat(r.monto_efectivo || 0),
+  }));
+
+  generateNominaEfectivoPDF(CTX.empresa, periodo, filas);
+}
 async function descargarZIPRecibos(periodoId) {
   if (typeof JSZip === 'undefined') {
     alert('JSZip no está cargado. Verifica que esté incluido en app.html.');

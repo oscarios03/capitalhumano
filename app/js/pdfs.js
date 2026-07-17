@@ -1428,3 +1428,46 @@ function generateConstanciaVacacionesPDF(empresa, trab, datos, sucursal = null) 
   doc.text('Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
   doc.save(`constancia-vacaciones-${np(trab.nombre).replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NÓMINA EN EFECTIVO (Fase 6.4 — pago mixto)
+//  Entrada: generateNominaEfectivoPDF(empresa, periodo, filas)
+//  filas = [{ nombre, puesto, monto }] — solo quien recibe efectivo (total o
+//  la parte mixta); ver imprimirNominaEfectivo() en nomina.js.
+// ═══════════════════════════════════════════════════════════════════════════
+function generateNominaEfectivoPDF(empresa, periodo, filas) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  const ml = 20, mr = 20;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  let y = pdfHeader(doc, 'NOMINA EN EFECTIVO', np(empresa.nombre), ml, mr);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(80,80,80);
+  doc.text(`Periodo: ${np(periodo?.nombre || '')}  (${npDate((periodo?.fecha_inicio||'')+'T00:00:00')} al ${npDate((periodo?.fecha_fin||'')+'T00:00:00')})`, ml, y);
+  y += 10;
+
+  const total = filas.reduce((s, f) => s + f.monto, 0);
+  doc.autoTable({
+    startY: y, margin:{ left:ml, right:mr },
+    head: [['Trabajador', 'Puesto', 'Monto en efectivo', 'Firma de recibido']],
+    body: filas.map(f => [np(f.nombre), np(f.puesto), fmt(f.monto), '']),
+    foot: [['', '', 'TOTAL', fmt(total)]],
+    styles:{ fontSize:9, cellPadding:4, textColor:[30,30,30] },
+    headStyles:{ fillColor:[15,20,40], textColor:255, fontStyle:'bold' },
+    footStyles:{ fillColor:[240,240,244], textColor:[20,20,20], fontStyle:'bold' },
+    alternateRowStyles:{ fillColor:[248,248,252] },
+    columnStyles:{ 2:{ cellWidth:32, halign:'right' }, 3:{ cellWidth:50, minCellHeight:14 } },
+    theme:'grid'
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  const nota = doc.splitTextToSize('Cada trabajador firma de conformidad haber recibido el monto en efectivo señalado, como comprobante para el patron.', pw - ml - mr);
+  doc.text(nota, ml, y);
+
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Capital Humano MX', pw/2, ph-10, { align:'center' });
+  doc.save(`nomina-efectivo-${(periodo?.nombre||'periodo').replace(/\s+/g,'-').toLowerCase()}.pdf`);
+}

@@ -54,6 +54,7 @@ function _renderShellREP() {
           ['ausentismo',      '🗓 Ausentismo por sucursal'],
           ['costo_depto',     '🏢 Costo laboral por departamento'],
           ['antiguedades',    '🎖 Antigüedades'],
+          ['paquete_contador','📦 Paquete para el contador'],
         ].map(([v,l]) => `
           <button onclick="_repSelTipo('${v}')" id="rep-btn-${v}"
             class="btn-secondary btn-sm ${_REP.tipo===v?'active':''}"
@@ -237,6 +238,32 @@ function _renderREPForm() {
       </div>
     `;
     _repGenAntiguedades();
+  } else if (_REP.tipo === 'paquete_contador') {
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    c.innerHTML = `
+      <div class="card">
+        <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:14px;">
+          Genera un ZIP con la nómina del mes lista para tu contador: un Excel por período, el acumulado del mes, las cuotas patronales por trabajador y el CSV para el SUA.
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Año</label>
+            <select id="rep-pc-anio" class="form-select">
+              ${anios.map(a => `<option value="${a}">${a}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mes</label>
+            <select id="rep-pc-mes" class="form-select">
+              ${MESES.map((m,i) => `<option value="${i+1}" ${i===new Date().getMonth()?'selected':''}>${m}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="btn-primary" id="rep-pc-btn" onclick="_generarPaqueteContador()">📦 Generar paquete (ZIP)</button>
+        </div>
+      </div>
+    `;
   }
 }
 
@@ -452,12 +479,12 @@ async function _repGenConstancia() {
 }
 
 // ── R4: SUA / IMSS ────────────────────────────────────────────────────────────
-async function _repGenSUA() {
-  const res = document.getElementById('rep-resultado');
+/** Filas SUA (compartida entre la pestaña SUA/IMSS y el paquete del contador). */
+function _calcularFilasSUA() {
   const IMSS_PAT_ENFF = 0.1049; // cuota patronal enf. y maternidad estimada
   const _prestRep = prestacionesEmpresa();
   const _umaRep   = typeof _umaVigente === 'function' ? _umaVigente() : (typeof UMA_DIARIA !== 'undefined' ? UMA_DIARIA : 113.14);
-  const filas = _REP.trabajadores.filter(t => t.estado === 'activo').map(t => {
+  return _REP.trabajadores.filter(t => t.estado === 'activo').map(t => {
     const sd  = calcSalarioDiario(t.salario_mensual, t.periodo_salario || 'mensual');
     const sdi = calcSDI ? calcSDI(sd, vacDaysForYear(0, _prestRep.vacDiasExtra), _prestRep.primaVacPct, _prestRep.aguinaldoDias) : sd * 1.045;
     // Base de cotización: SBC del trabajador si existe, si no el SDI estimado
@@ -469,6 +496,11 @@ async function _repGenSUA() {
     const immsPat = sd * 30 * IMSS_PAT_ENFF;
     return { ...t, sd, sdi, imssOb, immsPat };
   });
+}
+
+async function _repGenSUA() {
+  const res = document.getElementById('rep-resultado');
+  const filas = _calcularFilasSUA();
   window._repDataSUA = filas;
 
   if (!filas.length) {
@@ -505,9 +537,8 @@ async function _repGenSUA() {
   `;
 }
 
-function _exportarSUAcsv() {
-  const filas = window._repDataSUA;
-  if (!filas?.length) { alert('Primero genera el listado SUA.'); return; }
+/** Texto CSV del listado SUA (compartido con el paquete del contador). */
+function _textoSUAcsv(filas) {
   const header = 'NSS|RFC|Nombre|Salario diario|SDI|IMSS obrero mensual|IMSS patronal estimado';
   const rows = filas.map(t => [
     t.nss||'', t.rfc||'', t.nombre||'',
@@ -516,7 +547,13 @@ function _exportarSUAcsv() {
     t.imssOb.toFixed(2),
     t.immsPat.toFixed(2),
   ].join('|')).join('\n');
-  const blob = new Blob([header + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+  return header + '\n' + rows;
+}
+
+function _exportarSUAcsv() {
+  const filas = window._repDataSUA;
+  if (!filas?.length) { alert('Primero genera el listado SUA.'); return; }
+  const blob = new Blob([_textoSUAcsv(filas)], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = `SUA_${CTX.empresa.nombre}_${new Date().toISOString().split('T')[0]}.csv`;
@@ -835,4 +872,108 @@ function _exportarAntiguedadesXLSX() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Antigüedades');
   XLSX.writeFile(wb, `Antiguedades_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// ── R9: Paquete para el contador ────────────────────────────────────────────────
+/** Hoja XLSX de un conjunto de recibos, mismo detalle que _repGenNominaPeriodo(). */
+function _hojaXLSXRecibos(recibos) {
+  return XLSX.utils.json_to_sheet(recibos.map(r => ({
+    'Trabajador':      r.trabajadores?.nombre || '—',
+    'NSS':             r.trabajadores?.nss || '—',
+    'Días':            r.dias_laborados || 0,
+    'Percepciones':    r.total_percepciones || 0,
+    'IMSS obrero':     r.cuota_imss || 0,
+    'ISR':             r.isr_retenido || 0,
+    'Otras deducciones': Math.max(0, (r.total_deducciones||0) - (r.cuota_imss||0) - (r.isr_retenido||0)),
+    'Neto a pagar':    r.neto_pagar || 0,
+  })));
+}
+
+async function _generarPaqueteContador() {
+  const anio = parseInt(document.getElementById('rep-pc-anio')?.value) || new Date().getFullYear();
+  const mes  = parseInt(document.getElementById('rep-pc-mes')?.value) || (new Date().getMonth() + 1);
+  const btn  = document.getElementById('rep-pc-btn');
+  if (!window.JSZip) { alert('JSZip no está cargado.'); return; }
+
+  const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
+  const hasta = new Date(anio, mes, 0).toISOString().split('T')[0];
+  const nombreMes = document.getElementById('rep-pc-mes')?.selectedOptions?.[0]?.textContent || mes;
+
+  if (btn) { btn.textContent = '⏳ Generando…'; btn.disabled = true; }
+  try {
+    const { data: periodos, error: errP } = await _sbREP().from('periodos_nomina')
+      .select('id, nombre, fecha_inicio, fecha_fin')
+      .eq('empresa_id', CTX.empresa.id)
+      .gte('fecha_inicio', desde).lte('fecha_inicio', hasta)
+      .order('fecha_inicio');
+    if (errP) throw errP;
+
+    if (!periodos?.length) {
+      alert(`Sin períodos de nómina generados en ${nombreMes} ${anio}.`);
+      return;
+    }
+
+    const zip = new JSZip();
+    let todosRecibos = [];
+
+    for (const p of periodos) {
+      const { data: recibos, error: errR } = await _sbREP().from('recibos_nomina')
+        .select('*, trabajadores(nombre,nss)')
+        .eq('periodo_id', p.id)
+        .order('trabajadores(nombre)');
+      if (errR) throw errR;
+      if (!recibos?.length) continue;
+      todosRecibos = todosRecibos.concat(recibos);
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, _hojaXLSXRecibos(recibos), 'Nómina');
+      const nombreArchivo = (p.nombre || 'periodo').replace(/[\\/:*?"<>|]/g, '-');
+      zip.file(`01-periodos/${nombreArchivo}.xlsx`, XLSX.write(wb, { type: 'array', bookType: 'xlsx' }));
+    }
+
+    if (!todosRecibos.length) {
+      alert(`Los períodos de ${nombreMes} ${anio} no tienen recibos generados todavía.`);
+      return;
+    }
+
+    // Acumulado del mes
+    const wbAcum = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbAcum, _hojaXLSXRecibos(todosRecibos), 'Acumulado del mes');
+    zip.file(`02-acumulado-${nombreMes}-${anio}.xlsx`.toLowerCase(), XLSX.write(wbAcum, { type: 'array', bookType: 'xlsx' }));
+
+    // Cuotas patronales / provisiones del mes, por trabajador (Fase 1: migración 32)
+    const porTrab = {};
+    todosRecibos.forEach(r => {
+      const key = r.trabajador_id;
+      if (!porTrab[key]) porTrab[key] = { nombre: r.trabajadores?.nombre || '—', percepciones:0, imssPat:0, infonavitPat:0, isn:0, ajusteAnual:0 };
+      porTrab[key].percepciones  += parseFloat(r.total_percepciones || 0);
+      porTrab[key].imssPat       += parseFloat(r.imss_patronal || 0);
+      porTrab[key].infonavitPat  += parseFloat(r.infonavit_patronal || 0);
+      porTrab[key].isn           += parseFloat(r.isn || 0);
+      porTrab[key].ajusteAnual   += parseFloat(r.ajuste_anual_isr || 0);
+    });
+    const filasCuotas = Object.values(porTrab);
+    const wsCuotas = XLSX.utils.json_to_sheet(filasCuotas.map(f => ({
+      'Trabajador': f.nombre, 'Percepciones': f.percepciones, 'IMSS patronal': f.imssPat,
+      'INFONAVIT patronal': f.infonavitPat, 'ISN': f.isn, 'Ajuste anual ISR': f.ajusteAnual,
+      'Costo patronal total': f.imssPat + f.infonavitPat + f.isn,
+    })));
+    const wbCuotas = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wbCuotas, wsCuotas, 'Cuotas patronales');
+    zip.file('03-cuotas-patronales.xlsx', XLSX.write(wbCuotas, { type: 'array', bookType: 'xlsx' }));
+
+    // CSV para el SUA (situación vigente de trabajadores activos, no del mes histórico)
+    const filasSUA = _calcularFilasSUA();
+    if (filasSUA.length) zip.file('04-SUA.csv', _textoSUAcsv(filasSUA));
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `paquete-contador-${anio}-${String(mes).padStart(2,'0')}.zip`;
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error al generar el paquete: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = '📦 Generar paquete (ZIP)'; btn.disabled = false; }
+  }
 }

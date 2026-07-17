@@ -459,7 +459,12 @@ function renderManual() {
       <p style="font-size:.88rem;">El botón <strong>"Kit de defensa"</strong> del perfil arma un ZIP con todo lo probatorio de ese trabajador: contrato, recibos de nómina del rango que elijas, historial de asistencia en Excel, actas, cartas responsivas y los archivos del expediente digital — con un PDF índice al frente.</p>
       <div style="border-left:4px solid #e74c3c;background:rgba(231,76,60,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
         <strong>⚖️ Para qué sirve:</strong> cuando llega un citatorio de conciliación tienes días, no semanas. El Art. 784 LFT invierte la carga de la prueba: <strong>le toca al patrón</strong> demostrar fecha de ingreso, salario, jornada y pagos. Lo que no esté documentado se presume a favor del trabajador. Este ZIP es lo que le entregas a tu abogado.
-      </div>`,
+      </div>
+
+      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">💳 Descuentos y préstamos</h4>
+      <p style="font-size:.88rem;">En el tab "Descuentos" del perfil se configuran INFONAVIT, FONACOT, pensión alimenticia, préstamos de la empresa y <strong>caja de ahorro</strong>. Cada descuento tiene su propia prioridad legal y tope (Art. 110 LFT) al aplicarse en nómina — la pensión alimenticia siempre va primero y sin tope, por ser orden judicial.</p>
+      <p style="font-size:.88rem;"><strong>Caja de ahorro:</strong> deja el "Monto total del crédito" vacío para una aportación recurrente sin fin — la pestaña te muestra el acumulado a la fecha. Si el trabajador pide un préstamo contra ese fondo, regístralo como <strong>"Préstamo de caja de ahorro"</strong> (distinto del préstamo de la empresa) y sí captura el monto, para que el sistema calcule cuándo queda liquidado.</p>
+      <p style="font-size:.88rem;"><strong>Pago mixto</strong> (sección ⚙️ Configuración de Nómina del alta): si una parte del sueldo se entrega en efectivo, actívalo y captura el monto por período. Es independiente de la "Forma de Pago" de arriba, que solo redacta el contrato. Con esto activo, el archivo de dispersión bancaria (SPEI) solo incluye la parte por transferencia, y puedes imprimir el listado <strong>"Nómina en efectivo"</strong> desde el detalle del período con línea de firma por trabajador.</p>`,
 
     contratos: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
@@ -511,6 +516,7 @@ function renderManual() {
       <p style="font-size:.88rem;">Muestra KPIs y la tabla de recibos. Edita cualquier recibo con ✏️ para capturar comisiones, deducciones especiales y extras. El ISR e IMSS se recalculan en tiempo real. Si el trabajador tiene vacaciones aprobadas dentro de este período, la prima vacacional (🏖, Art. 80 LFT) se calcula sola y aparece en la columna Extras.</p>
       <p style="font-size:.88rem;">El KPI <strong>"Costo total para la empresa"</strong> suma las percepciones brutas más lo que pagas encima: cuotas patronales IMSS, aportación INFONAVIT del 5% e ISN estatal. Es lo que la nómina te cuesta de verdad — configura tu prima de riesgo y tu tasa de ISN en <em>Mi Empresa</em> para que la cifra sea exacta.</p>
       <p style="font-size:.88rem;">Si el trabajador tiene teléfono capturado, el botón <strong>📱 WhatsApp</strong> de cada recibo abre un chat con el aviso ya escrito (período y neto a pagar). No envía nada solo ni adjunta el PDF — eso lo haces tú.</p>
+      <p style="font-size:.88rem;">Si algún trabajador tiene <strong>pago mixto</strong> configurado (ver sección Trabajadores), el archivo "Exportar SPEI" solo dispersa la parte por transferencia — la parte en efectivo queda fuera de ese archivo. Usa <strong>"💵 Nómina en efectivo"</strong> para imprimir el listado con línea de firma de quienes reciben todo o parte de su pago en efectivo.</p>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.3 Historial por Trabajador</h4>
       <p style="font-size:.88rem;">Acumulado anual por trabajador: percepciones, ISR retenido, IMSS obrero y neto. Descarga cualquier recibo individual en PDF.</p>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.4 Ajuste anual de ISR (Art. 97 LISR)</h4>
@@ -635,7 +641,8 @@ function renderManual() {
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🔄 <strong>Rotación de personal</strong></td><td style="padding:8px 12px;">Altas y bajas por mes, motivo de la baja y tasa de rotación mensual</td></tr>
           <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">🗓 <strong>Ausentismo por sucursal</strong></td><td style="padding:8px 12px;">Faltas, retardos, incapacidades y permisos agrupados por sucursal en un rango de fechas</td></tr>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🏢 <strong>Costo laboral por departamento</strong></td><td style="padding:8px 12px;">Percepciones más cuotas patronales (IMSS, INFONAVIT, ISN) agrupadas por departamento</td></tr>
-          <tr><td style="padding:8px 12px;">🎖 <strong>Antigüedades</strong></td><td style="padding:8px 12px;">Años de servicio, próximos aniversarios y prima de antigüedad potencial de cada trabajador activo</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🎖 <strong>Antigüedades</strong></td><td style="padding:8px 12px;">Años de servicio, próximos aniversarios y prima de antigüedad potencial de cada trabajador activo</td></tr>
+          <tr><td style="padding:8px 12px;">📦 <strong>Paquete para el contador</strong></td><td style="padding:8px 12px;">ZIP del mes: un Excel por período, el acumulado, las cuotas patronales por trabajador y el CSV para el SUA</td></tr>
         </tbody>
       </table>`,
 
