@@ -901,7 +901,7 @@ async function _tabDetalle() {
     .from('periodos_nomina').select('*').eq('id', _N.periodoActualId).single();
   const { data: recibos } = await _sbN()
     .from('recibos_nomina')
-    .select('*, trabajadores(nombre,puesto,rfc,sucursal_id,cuenta_bancaria,clabe_interbancaria)')
+    .select('*, trabajadores(nombre,puesto,rfc,sucursal_id,cuenta_bancaria,clabe_interbancaria,telefono)')
     .eq('periodo_id', _N.periodoActualId)
     .order('created_at');
 
@@ -1020,6 +1020,7 @@ async function _tabDetalle() {
                       ${r.estado === 'aprobado' ? '✅ PDF' : '📋 Ver'}
                     </button>
                     <button class="btn-secondary btn-sm" onclick="editarReciboInline('${r.id}')">✏️</button>
+                    ${htmlBotonWhatsApp(r.trabajadores?.telefono, `Hola ${r.trabajadores?.nombre||''}, tu recibo de nómina del período ${periodo?.nombre||''} (${formatDateShort(periodo?.fecha_inicio)} – ${formatDateShort(periodo?.fecha_fin)}) ya está listo. Neto a pagar: ${fmt(r.neto_pagar)}. Descárgalo desde la plataforma.`, { ocultarSiFalta: true })}
                   </div>
                 </td>
               </tr>`;

@@ -103,7 +103,7 @@ const db = {
 
   // Actas
   async getActas(filtros = {}) {
-    let q = _q().from('actas').select('*, trabajadores(nombre, puesto)').order('creado_en', { ascending:false });
+    let q = _q().from('actas').select('*, trabajadores(nombre, puesto, telefono)').order('creado_en', { ascending:false });
     if (filtros.trabajadorId) q = q.eq('trabajador_id', filtros.trabajadorId);
     if (filtros.tipo)         q = q.eq('tipo', filtros.tipo);
     const { data, error } = await q;

@@ -472,7 +472,10 @@ function renderManual() {
           <tr><td style="padding:8px 12px;"><strong>Por Comisión</strong></td><td style="padding:8px 12px;">Remuneración por comisiones (Art. 285 LFT)</td><td style="padding:8px 12px;">No aplica</td></tr>
         </tbody>
       </table>
-      <p style="font-size:.88rem;margin-top:10px;">El PDF del contrato se genera automáticamente al dar de alta al trabajador. Puedes regenerarlo desde el perfil del trabajador o desde el módulo Contratos.</p>`,
+      <p style="font-size:.88rem;margin-top:10px;">El PDF del contrato se genera automáticamente al dar de alta al trabajador. Puedes regenerarlo desde el perfil del trabajador o desde el módulo Contratos.</p>
+      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>📱 Botón WhatsApp:</strong> si el trabajador tiene teléfono capturado (tab Contactos del alta), aparece un botón que abre un chat de WhatsApp con un mensaje ya escrito avisando que su contrato está listo para firma. El botón <strong>solo abre el chat</strong> — tú decides si lo mandas y adjuntas el PDF a mano.
+      </div>`,
 
     asistencia: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
@@ -507,6 +510,7 @@ function renderManual() {
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.2 Detalle del Período</h4>
       <p style="font-size:.88rem;">Muestra KPIs y la tabla de recibos. Edita cualquier recibo con ✏️ para capturar comisiones, deducciones especiales y extras. El ISR e IMSS se recalculan en tiempo real.</p>
       <p style="font-size:.88rem;">El KPI <strong>"Costo total para la empresa"</strong> suma las percepciones brutas más lo que pagas encima: cuotas patronales IMSS, aportación INFONAVIT del 5% e ISN estatal. Es lo que la nómina te cuesta de verdad — configura tu prima de riesgo y tu tasa de ISN en <em>Mi Empresa</em> para que la cifra sea exacta.</p>
+      <p style="font-size:.88rem;">Si el trabajador tiene teléfono capturado, el botón <strong>📱 WhatsApp</strong> de cada recibo abre un chat con el aviso ya escrito (período y neto a pagar). No envía nada solo ni adjunta el PDF — eso lo haces tú.</p>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.3 Historial por Trabajador</h4>
       <p style="font-size:.88rem;">Acumulado anual por trabajador: percepciones, ISR retenido, IMSS obrero y neto. Descarga cualquier recibo individual en PDF.</p>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.4 Ajuste anual de ISR (Art. 97 LISR)</h4>
@@ -541,7 +545,8 @@ function renderManual() {
       </table>
       <ol style="padding-left:0;list-style:none;margin-top:12px;">
         ${['Ve a <strong>Actas Admin.</strong> → <strong>"+ Nueva Acta"</strong>.','Selecciona trabajador y tipo de acta.','Elige el tipo de falta y la causal legal del catálogo.','Captura descripción, lugar, hora y datos de testigos.','Indica si el trabajador acepta o niega firmar.','Clic en <strong>"Generar Acta"</strong> — se crea el PDF listo para firma.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
-      </ol>`,
+      </ol>
+      <p style="font-size:.88rem;margin-top:10px;">Si el trabajador tiene teléfono capturado, el botón <strong>📱 WhatsApp</strong> de cada acta abre un chat con el citatorio ya redactado (fecha, hora y lugar). Solo abre el chat — tú confirmas y envías.</p>`,
 
     bajas: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
@@ -560,7 +565,7 @@ function renderManual() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
           <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">🏖 Vacaciones</div>
-          <p style="font-size:.83rem;margin:0;">Cálculo automático por antigüedad (LFT reforma 2023: mín. 12 días el 1er año). Genera recibo de prima vacacional (25% mínimo, Art. 80 LFT).</p>
+          <p style="font-size:.83rem;margin:0;">Cálculo automático por antigüedad (LFT reforma 2023: mín. 12 días el 1er año). Genera recibo de prima vacacional (25% mínimo, Art. 80 LFT). Al aprobar una solicitud aparece un botón <strong>📱 WhatsApp</strong> (si el trabajador tiene teléfono) para avisarle con un mensaje ya escrito.</p>
         </div>
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
           <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">🏥 Incapacidades</div>

@@ -20,7 +20,7 @@ async function renderVacaciones() {
         .eq('estado', 'activo')
         .order('nombre'),
       _sbV().from('vacaciones')
-        .select('*,trabajadores(nombre)')
+        .select('*,trabajadores(nombre,telefono)')
         .eq('empresa_id', CTX.empresa.id)
         .order('creado_en', { ascending: false }),
     ]);
@@ -102,6 +102,9 @@ function _renderVACSolicitudes(c) {
                   ` : s.estado === 'pendiente' ? `
                     <span style="font-size:.75rem;color:var(--text-muted);" title="Solo un gerente o administrador puede aprobar">Pendiente de aprobación</span>
                   ` : ''}
+                  ${s.estado === 'aprobada' ? htmlBotonWhatsApp(s.trabajadores?.telefono,
+                      `Hola ${s.trabajadores?.nombre||''}, tus ${TIPO_LABEL[s.tipo]||'días'} del ${formatDateShort(s.fecha_inicio)} al ${formatDateShort(s.fecha_fin)} (${s.dias} día${s.dias!==1?'s':''}) fueron aprobados. ¡Que los disfrutes!`,
+                      { ocultarSiFalta: true }) : ''}
                   ${_vacPuedeAprobar() ? `<button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')">🗑</button>` : ''}
                 </div>
               </td>
