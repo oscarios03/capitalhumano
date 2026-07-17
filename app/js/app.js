@@ -230,7 +230,6 @@ async function renderDashboard() {
           <div class="view-title">Panel de Control</div>
           <div class="view-subtitle">Resumen de ${CTX.empresa.nombre}</div>
         </div>
-        <button class="btn-secondary btn-sm" onclick="renderDashboard()">Actualizar alertas</button>
       </div>
 
       ${nominaPendiente ? `
@@ -242,6 +241,15 @@ async function renderDashboard() {
 
       <!-- KPIs operativos -->
       <div class="kpi-grid animate-in">
+        ${kpis.nominaMes ? `
+        <div class="kpi-card kpi-clickable" onclick="navigate('nomina')"
+             style="border-color:var(--gold-border);"
+             title="Percepciones brutas del mes (${fmt(kpis.nominaMes.bruto)})${kpis.nominaMes.parcial ? '' : ` + cuotas patronales IMSS, INFONAVIT e ISN (${fmt(kpis.nominaMes.patronal)})`}. Neto pagado a trabajadores: ${fmt(kpis.nominaMes.neto)}">
+          <div class="kpi-icon" style="color:var(--gold-primary);"><svg class="ic"><use href="#i-pie"></use></svg></div>
+          <div class="kpi-num" style="font-size:1.3rem;color:var(--gold-primary);">${fmt(kpis.nominaMes.total)}</div>
+          <div class="kpi-label">Nómina del mes${kpis.nominaMes.parcial ? '' : ' (costo total)'}</div>
+          <div class="kpi-hint">${kpis.nominaMes.recibos} recibo${kpis.nominaMes.recibos !== 1 ? 's' : ''} → ver nómina</div>
+        </div>` : ''}
         <div class="kpi-card kpi-clickable" onclick="navigate('empleados')" title="Ver trabajadores">
           <div class="kpi-icon"><svg class="ic"><use href="#i-user"></use></svg></div>
           <div class="kpi-num">${kpis.empleadosActivos}</div>
@@ -275,13 +283,17 @@ async function renderDashboard() {
             <svg class="ic" style="color:var(--text-muted);"><use href="#i-alert"></use></svg> Alertas Legales
             ${urgentes > 0 ? `<span style="background:var(--red-warn);color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:100px;">${urgentes} urgentes</span>` : ''}
           </span>
-          <button class="btn-secondary btn-sm" onclick="cargarAlertas('${CTX.empresa.id}', true).then(()=>renderDashboard())">
-            Regenerar
+          <button class="btn-secondary btn-sm" onclick="cargarAlertas('${CTX.empresa.id}', true).then(()=>renderDashboard())"
+            title="Vuelve a revisar contratos, períodos de prueba, faltas y vencimientos para detectar riesgos nuevos">
+            Buscar nuevos riesgos
           </button>
         </div>
         <div id="alertas-resumen-wrap">${renderResumenAlertas(alertas)}</div>
         <div id="alertas-lista-wrap" style="margin-top:14px;">${renderListaAlertas(alertas)}</div>
       </div>
+
+      <!-- OBLIGACIONES DEL MES (obligaciones.js) -->
+      ${typeof renderObligacionesHTML === 'function' ? renderObligacionesHTML() : ''}
 
       <!-- CONTRATOS POR VENCER -->
       <div class="card animate-in" style="margin-top:16px;">
@@ -409,13 +421,18 @@ function renderManual() {
       <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Indicador</th><th style="padding:8px 12px;text-align:left;">Descripción</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">👤 Empleados activos</td><td style="padding:8px 12px;">Total de trabajadores en plantilla</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">🗓 Faltas este mes</td><td style="padding:8px 12px;">Incidencias de falta en el mes actual</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">⚠️ Actas este mes</td><td style="padding:8px 12px;">Actas administrativas emitidas en el mes</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">📊 Nómina del mes</td><td style="padding:8px 12px;"><strong>Lo que la nómina le cuesta a la empresa</strong>: percepciones brutas más cuotas patronales IMSS, INFONAVIT e ISN. Pasa el cursor encima para ver el desglose y el neto que reciben los trabajadores.</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">👤 Empleados activos</td><td style="padding:8px 12px;">Total de trabajadores en plantilla</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🗓 Faltas este mes</td><td style="padding:8px 12px;">Faltas injustificadas del mes actual</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">⚠️ Actas este mes</td><td style="padding:8px 12px;">Actas administrativas emitidas en el mes</td></tr>
           <tr><td style="padding:8px 12px;">🚪 Bajas este mes</td><td style="padding:8px 12px;">Trabajadores que causaron baja en el mes</td></tr>
         </tbody>
       </table>
-      <p style="margin-top:12px;font-size:.88rem;"><strong>🔔 Alertas Legales:</strong> el sistema genera automáticamente avisos sobre contratos por vencer, vacaciones pendientes y períodos de prueba. Usa <strong>"🔄 Regenerar"</strong> para actualizar en cualquier momento.</p>`,
+      <p style="margin-top:12px;font-size:.88rem;"><strong>🔔 Alertas Legales:</strong> el sistema genera automáticamente avisos sobre contratos por vencer, vacaciones pendientes y períodos de prueba. El botón <strong>"Buscar nuevos riesgos"</strong> vuelve a revisarlo todo en el momento.</p>
+      <p style="margin-top:10px;font-size:.88rem;"><strong>📅 Obligaciones del mes:</strong> el calendario de lo que hay que pagar o presentar — cuotas IMSS (día 17), el bimestral de RCV e INFONAVIT, la variabilidad del SBC, el ISN, la prima de riesgo de febrero, la PTU y el aguinaldo. Lo <span style="color:#e74c3c;font-weight:700;">vencido</span> se marca en rojo y lo <span style="color:#f39c12;font-weight:700;">por vencer</span> en naranja; haz clic para ir al módulo que corresponde.</p>
+      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>💡 Sobre las fechas:</strong> las que caen en sábado, domingo o día festivo se recorren solas al siguiente día hábil. La fecha de la PTU depende de si eres persona moral (30 de mayo) o física (29 de junio): el sistema lo deduce de tu RFC. El <strong>ISN es estatal</strong>, así que su vencimiento y su tasa cambian según tu entidad — confírmalos con tu contador.
+      </div>`,
 
     trabajadores: `
       <h4 style="margin:0 0 10px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">Alta de Trabajador</h4>
