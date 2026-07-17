@@ -619,13 +619,18 @@ function renderManual() {
       </ul>`,
 
     reportes: `
+      <p style="font-size:.88rem;margin-bottom:10px;">Selecciona el tipo de reporte con los botones de la parte superior. Todos se pueden ver en pantalla y exportar a Excel (o PDF/CSV en los que aplica).</p>
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Reporte</th><th style="padding:8px 12px;text-align:left;">Contenido</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Nómina</strong></td><td style="padding:8px 12px;">Percepciones, deducciones y neto por período y trabajador</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;"><strong>Asistencia</strong></td><td style="padding:8px 12px;">Faltas, retardos y permisos por rango de fechas</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Prestaciones</strong></td><td style="padding:8px 12px;">Vacaciones tomadas y pendientes, aguinaldo, PTU</td></tr>
-          <tr><td style="padding:8px 12px;"><strong>Movimientos de Personal</strong></td><td style="padding:8px 12px;">Altas, bajas, tipos de contrato, antigüedad</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">💰 <strong>Nómina por período</strong></td><td style="padding:8px 12px;">Percepciones, deducciones y neto de todos los trabajadores en un período específico</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">📅 <strong>Acumulado anual</strong></td><td style="padding:8px 12px;">Suma de percepciones, ISR e IMSS del año, por trabajador o de toda la empresa</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">📄 <strong>Constancia PDF</strong></td><td style="padding:8px 12px;">Constancia de percepciones y retenciones de un trabajador, lista para entregar</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">🏛 <strong>SUA / IMSS</strong></td><td style="padding:8px 12px;">Listado de trabajadores con SDI y cuotas para capturar en el SUA</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🔄 <strong>Rotación de personal</strong></td><td style="padding:8px 12px;">Altas y bajas por mes, motivo de la baja y tasa de rotación mensual</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">🗓 <strong>Ausentismo por sucursal</strong></td><td style="padding:8px 12px;">Faltas, retardos, incapacidades y permisos agrupados por sucursal en un rango de fechas</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🏢 <strong>Costo laboral por departamento</strong></td><td style="padding:8px 12px;">Percepciones más cuotas patronales (IMSS, INFONAVIT, ISN) agrupadas por departamento</td></tr>
+          <tr><td style="padding:8px 12px;">🎖 <strong>Antigüedades</strong></td><td style="padding:8px 12px;">Años de servicio, próximos aniversarios y prima de antigüedad potencial de cada trabajador activo</td></tr>
         </tbody>
       </table>`,
 
