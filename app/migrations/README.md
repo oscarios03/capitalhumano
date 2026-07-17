@@ -37,6 +37,7 @@ correr una migración dos veces no rompe nada.
 | 18 | `18_migration_prestaciones_fiscal.sql` | `prestaciones_trabajador` con desglose exento/gravado (previsión social) |
 | 19 | `19_migration_sbc_movimientos.sql` | `movimientos_imss`, `trabajadores.sbc` y factor de integración (Art. 27 LSS) |
 | 22 | `22_migration_nomina_programacion.sql` | `periodos_nomina.fecha_pago`, días de pago quincenal/mensual en `empresas`, función `generar_alertas_nomina()` |
+| 32 | `32_migration_fiscal_patronal.sql` | **Costo patronal**: `empresas.prima_riesgo_pct` / `entidad_federativa` / `isn_pct`; `recibos_nomina.imss_patronal` / `infonavit_patronal` / `isn` / `subsidio_empleo` / `ajuste_anual_isr`; subsidio al empleo 2026 en `config_valores` |
 
 ### 🔔 Alertas y notificaciones
 | # | Archivo | Qué hace |
@@ -86,3 +87,17 @@ funciones; para tablas, gana la primera `CREATE` y las posteriores agregan colum
   verdad es esta carpeta.
 - Edge Functions relacionadas: `send-emails/` (migración 10), `checador-kiosco` y
   `checador-webhook` (migración 13). Configurar sus variables de entorno antes de usarlas.
+
+## 📅 Valores que caducan cada año
+
+Estos datos tienen fecha de caducidad legal y hay que actualizarlos a mano. Ver
+`docs/casos-prueba-fiscal.md` para revalidar los cálculos después de cada cambio.
+
+| Valor | Dónde vive | Cuándo cambia |
+|-------|-----------|---------------|
+| UMA diaria | `config_valores` (migración 15) | INEGI la publica ~10 de enero; vigente el 1 de febrero |
+| Salario mínimo | `config_valores` (migración 15) | CONASAMI, vigente el 1 de enero |
+| Subsidio al empleo (% de UMA y límite) | `config_valores` (migración 32) | Decreto en el DOF, cada diciembre |
+| Tarifas ISR mensual y anual | `ISR_MENSUAL_2026` / `ISR_ANUAL_2026` en `app/js/nomina.js` | Anexo 8 de la RMF, cada diciembre. Solo cambian si la inflación acumulada rebasa 10% (Art. 152 LISR) — para 2026 sí cambiaron (13.21%) |
+| Tabla CEAV patronal | `CEAV_PATRONAL_2026` en `app/js/calculo.js` | Sube cada enero hasta 2030 (reforma de pensiones, DOF 16/12/2020) |
+| Prima de riesgo de la empresa | `empresas.prima_riesgo_pct` (la captura el usuario) | Declaración anual ante el IMSS de febrero |

@@ -26,6 +26,11 @@ async function renderAguinaldo() {
     const prest = prestacionesEmpresa();
     const diasAgEmpresa = prest.aguinaldoDias;
 
+    // Exención de ISR: 30 UMA (Art. 93 fr. XIV LISR); el excedente se grava
+    // con el procedimiento del Art. 174 RLISR (tasa efectiva, ver nomina.js)
+    const uma       = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    const exencionAg = 30 * uma;
+
     const rows = (trabajadores || []).map(t => {
       const ingreso      = new Date(t.fecha_ingreso + 'T00:00:00');
       const inicioAnio   = new Date(anioActual, 0, 1);
@@ -35,10 +40,18 @@ async function renderAguinaldo() {
       const diasAguinaldo = parseFloat(((diasTrab / 365) * diasAgEmpresa).toFixed(4));
       const sd           = calcSalarioDiario(t.salario_mensual, t.periodo_salario || 'mensual');
       const monto        = sd * diasAguinaldo;
-      return { ...t, sd, diasTrab, diasAguinaldo, monto };
+      const exento       = parseFloat(Math.min(monto, exencionAg).toFixed(2));
+      const gravado      = parseFloat(Math.max(0, monto - exento).toFixed(2));
+      const isr          = typeof calcISRArt174 === 'function'
+        ? calcISRArt174(gravado, sd * 30).isr
+        : 0;
+      const neto         = parseFloat((monto - isr).toFixed(2));
+      return { ...t, sd, diasTrab, diasAguinaldo, monto, exento, gravado, isr, neto };
     });
 
     const totalMonto = rows.reduce((a,r) => a + r.monto, 0);
+    const totalISR   = rows.reduce((a,r) => a + r.isr, 0);
+    const totalNeto  = rows.reduce((a,r) => a + r.neto, 0);
 
     main.innerHTML = `
       <div class="view-header animate-in">
@@ -58,7 +71,17 @@ async function renderAguinaldo() {
         <div class="kpi-card">
           <div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div>
           <div class="kpi-num">${fmt(totalMonto)}</div>
-          <div class="kpi-label">Total aguinaldo estimado ${anioActual}</div>
+          <div class="kpi-label">Total aguinaldo bruto ${anioActual}</div>
+        </div>
+        <div class="kpi-card" title="ISR del excedente de 30 UMA (${fmt(exencionAg)}) calculado con el procedimiento del Art. 174 RLISR">
+          <div class="kpi-icon"><svg class="ic"><use href="#i-bar"></use></svg></div>
+          <div class="kpi-num" style="color:var(--red-warn);">${fmt(totalISR)}</div>
+          <div class="kpi-label">ISR a retener (Art. 174 RLISR)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div>
+          <div class="kpi-num">${fmt(totalNeto)}</div>
+          <div class="kpi-label">Neto a pagar</div>
         </div>
         <div class="kpi-card ${diasParaLimite < 0 ? 'kpi-alert' : diasParaLimite < 30 ? '' : ''}">
           <div class="kpi-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div>
@@ -88,7 +111,7 @@ async function renderAguinaldo() {
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
             <thead>
-              <tr><th>Trabajador</th><th>Fecha ingreso</th><th>Días trabajados en ${anioActual}</th><th>Días aguinaldo</th><th>Salario diario</th><th>Monto aguinaldo</th></tr>
+              <tr><th>Trabajador</th><th>Fecha ingreso</th><th>Días ${anioActual}</th><th>Días aguinaldo</th><th>Salario diario</th><th>Bruto</th><th title="Exento hasta 30 UMA (Art. 93 fr. XIV LISR)">Exento</th><th>Gravado</th><th title="Art. 174 RLISR">ISR</th><th>Neto</th></tr>
             </thead>
             <tbody>
               ${rows.map(r => `
@@ -98,7 +121,11 @@ async function renderAguinaldo() {
                   <td>${r.diasTrab}</td>
                   <td>${r.diasAguinaldo.toFixed(2)}</td>
                   <td>${fmt(r.sd)}</td>
-                  <td><strong>${fmt(r.monto)}</strong></td>
+                  <td>${fmt(r.monto)}</td>
+                  <td style="color:var(--text-muted);">${fmt(r.exento)}</td>
+                  <td style="color:var(--text-muted);">${fmt(r.gravado)}</td>
+                  <td style="color:${r.isr > 0 ? 'var(--red-warn)' : 'var(--text-muted)'};">${fmt(r.isr)}</td>
+                  <td><strong>${fmt(r.neto)}</strong></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -106,6 +133,9 @@ async function renderAguinaldo() {
               <tr style="font-weight:700;border-top:2px solid var(--border);">
                 <td colspan="5" style="text-align:right;padding-right:16px;">TOTAL</td>
                 <td>${fmt(totalMonto)}</td>
+                <td colspan="2"></td>
+                <td>${fmt(totalISR)}</td>
+                <td>${fmt(totalNeto)}</td>
               </tr>
             </tfoot>
           </table>
@@ -136,25 +166,31 @@ async function _generarPeriodoAguinaldo() {
       nombre,
       fecha_inicio: `${anio}-12-01`,
       fecha_fin:    `${anio}-12-20`,
-      estado: 'borrador',
     }).select().single();
     if (pErr) throw pErr;
 
-    // Upsert recibos
+    // Upsert recibos: bruto en aguinaldo_prop, ISR (Art. 174 RLISR) retenido
     const recibos = rows.map(r => ({
       empresa_id:     CTX.empresa.id,
       periodo_id:     periodo.id,
       trabajador_id:  r.id,
-      dias_laborados: r.diasTrab,
-      salario_diario: r.sd,
-      sueldo_base:    0,
-      aguinaldo_prop: parseFloat(r.monto.toFixed(2)),
-      percepciones_totales: parseFloat(r.monto.toFixed(2)),
-      deducciones_totales:  0,
-      neto_pagar:           parseFloat(r.monto.toFixed(2)),
+      dias_laborados: 0, // no cubre salario ordinario: el período paga solo aguinaldo
+      salario_base:   0,
+      aguinaldo_prop:     parseFloat(r.monto.toFixed(2)),
+      total_percepciones: parseFloat(r.monto.toFixed(2)),
+      isr_retenido:       r.isr,
+      total_deducciones:  r.isr,
+      neto_pagar:         r.neto,
+      folio:              `AG-${anio}-${r.id.slice(-6)}`,
+      estado:             'borrador',
     }));
-    const { error: rErr } = await _sbAG().from('recibos_nomina').upsert(recibos, { onConflict: 'periodo_id,trabajador_id' });
+    const { error: rErr } = await _sbAG().from('recibos_nomina').upsert(recibos, { onConflict: 'trabajador_id,periodo_id' });
     if (rErr) throw rErr;
+
+    await _sbAG().from('periodos_nomina').update({
+      total_percepciones: parseFloat(recibos.reduce((s,x) => s + x.total_percepciones, 0).toFixed(2)),
+      total_neto:         parseFloat(recibos.reduce((s,x) => s + x.neto_pagar, 0).toFixed(2)),
+    }).eq('id', periodo.id);
 
     alert(`✅ Período "${nombre}" creado con ${rows.length} recibos.\nPuedes revisarlo en el módulo de Nómina.`);
     navigate('nomina');

@@ -9,58 +9,134 @@ function _labelPrestacion(tipo) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  TABLAS ISR 2026 — Art. 96 LISR / Anexo 8 RMF
+//  TABLAS ISR 2026 — Art. 96 LISR / Anexo 8 RMF (DOF 28/12/2025)
 // ═══════════════════════════════════════════════════════════════════════════
+// ⚠️ ACCIÓN REQUERIDA DEL ADMINISTRADOR: el SAT publica el Anexo 8 de la RMF
+// cada fin de año. Las tarifas se actualizan cuando la inflación acumulada
+// desde la última actualización rebasa el 10% (Art. 152 LISR, último párrafo).
+// Para 2026 la inflación acumulada nov-2022 → nov-2025 fue de 13.21%, así que
+// los límites y cuotas fijas SÍ cambiaron respecto a 2023-2025 (los
+// porcentajes no). Al publicarse la tarifa del siguiente ejercicio, sustituir
+// estas tres tablas (mensual y anual; semanal/quincenal se derivan solas).
 const ISR_MENSUAL_2026 = [
-  { limInf:       0.01, limSup:     746.04, cuota:       0.00, pct: 0.0192 },
-  { limInf:     746.05, limSup:   6332.05,  cuota:      14.32, pct: 0.0640 },
-  { limInf:    6332.06, limSup:  11128.01,  cuota:     372.83, pct: 0.1088 },
-  { limInf:   11128.02, limSup:  12935.82,  cuota:     895.63, pct: 0.1600 },
-  { limInf:   12935.83, limSup:  15487.71,  cuota:    1183.87, pct: 0.1792 },
-  { limInf:   15487.72, limSup:  31236.49,  cuota:    1633.11, pct: 0.2136 },
-  { limInf:   31236.50, limSup:  49233.00,  cuota:    4997.08, pct: 0.2352 },
-  { limInf:   49233.01, limSup:  93993.90,  cuota:    9232.78, pct: 0.3000 },
-  { limInf:   93993.91, limSup: 125325.20,  cuota:   22658.12, pct: 0.3200 },
-  { limInf:  125325.21, limSup: 375975.61,  cuota:   42681.37, pct: 0.3400 },
-  { limInf:  375975.62, limSup: Infinity,   cuota:  127856.24, pct: 0.3500 },
+  { limInf:       0.01, limSup:     844.59, cuota:       0.00, pct: 0.0192 },
+  { limInf:     844.60, limSup:    7168.51, cuota:      16.22, pct: 0.0640 },
+  { limInf:    7168.52, limSup:   12598.02, cuota:     420.95, pct: 0.1088 },
+  { limInf:   12598.03, limSup:   14644.64, cuota:    1011.68, pct: 0.1600 },
+  { limInf:   14644.65, limSup:   17533.64, cuota:    1339.14, pct: 0.1792 },
+  { limInf:   17533.65, limSup:   35362.83, cuota:    1856.84, pct: 0.2136 },
+  { limInf:   35362.84, limSup:   55736.68, cuota:    5665.16, pct: 0.2352 },
+  { limInf:   55736.69, limSup:  106410.50, cuota:   10457.09, pct: 0.3000 },
+  { limInf:  106410.51, limSup:  141880.66, cuota:   25659.23, pct: 0.3200 },
+  { limInf:  141880.67, limSup:  425641.99, cuota:   37009.69, pct: 0.3400 },
+  { limInf:  425642.00, limSup: Infinity,   cuota:  133488.54, pct: 0.3500 },
 ];
 
-const SUBSIDIO_MENSUAL_2026 = [
-  { limInf:     0.01, limSup:  1768.96, subsidio: 407.02 },
-  { limInf:  1768.97, limSup:  2653.38, subsidio: 406.83 },
-  { limInf:  2653.39, limSup:  3472.84, subsidio: 406.62 },
-  { limInf:  3472.85, limSup:  3537.87, subsidio: 392.77 },
-  { limInf:  3537.88, limSup:  4446.15, subsidio: 382.46 },
-  { limInf:  4446.16, limSup:  4717.18, subsidio: 354.23 },
-  { limInf:  4717.19, limSup:  5335.42, subsidio: 324.87 },
-  { limInf:  5335.43, limSup:  6224.67, subsidio: 294.63 },
-  { limInf:  6224.68, limSup:  7113.90, subsidio: 253.54 },
-  { limInf:  7113.91, limSup:  7382.33, subsidio: 230.59 },
-  { limInf:  7382.34, limSup: Infinity, subsidio:   0.00 },
+// Tarifa ANUAL (Art. 152 LISR) — la usa el ajuste anual del Art. 97
+// (ajuste_anual.js). No se deriva de la mensual: el SAT la publica aparte.
+const ISR_ANUAL_2026 = [
+  { limInf:        0.01, limSup:    10135.11, cuota:       0.00, pct: 0.0192 },
+  { limInf:    10135.12, limSup:    86022.11, cuota:     194.59, pct: 0.0640 },
+  { limInf:    86022.12, limSup:   151176.19, cuota:    5051.37, pct: 0.1088 },
+  { limInf:   151176.20, limSup:   175735.66, cuota:   12140.13, pct: 0.1600 },
+  { limInf:   175735.67, limSup:   210403.69, cuota:   16069.64, pct: 0.1792 },
+  { limInf:   210403.70, limSup:   424353.97, cuota:   22282.14, pct: 0.2136 },
+  { limInf:   424353.98, limSup:   668840.14, cuota:   67981.92, pct: 0.2352 },
+  { limInf:   668840.15, limSup:  1276925.98, cuota:  125485.07, pct: 0.3000 },
+  { limInf:  1276925.99, limSup:  1702567.97, cuota:  307910.81, pct: 0.3200 },
+  { limInf:  1702567.98, limSup:  5107703.92, cuota:  444116.23, pct: 0.3400 },
+  { limInf:  5107703.93, limSup: Infinity,    cuota: 1601862.46, pct: 0.3500 },
 ];
 
 /**
- * Calcula ISR retenido y subsidio al empleo para un salario y período.
- * Convierte a mensual, aplica tablas, devuelve el monto del período.
+ * Tarifas por periodicidad (Anexo 8 RMF). El SAT las construye desde la
+ * mensual: tarifa diaria = mensual / 30.4; semanal = diaria × 7;
+ * quincenal = diaria × 15. Derivarlas aquí con esos factores reproduce la
+ * construcción oficial (los límites publicados pueden variar ±$0.01 por el
+ * orden de redondeo). Así cada periodicidad retiene con SU tarifa, en vez
+ * de aproximar mensualizando.
+ */
+function _escalarTarifaISR(tabla, factor) {
+  return tabla.map((b, i) => ({
+    limInf: i === 0 ? 0.01 : parseFloat((b.limInf * factor).toFixed(2)),
+    limSup: b.limSup === Infinity ? Infinity : parseFloat((b.limSup * factor).toFixed(2)),
+    cuota:  parseFloat((b.cuota * factor).toFixed(2)),
+    pct:    b.pct,
+  }));
+}
+const ISR_SEMANAL_2026   = _escalarTarifaISR(ISR_MENSUAL_2026,  7 / 30.4);
+const ISR_QUINCENAL_2026 = _escalarTarifaISR(ISR_MENSUAL_2026, 15 / 30.4);
+
+/**
+ * Subsidio al empleo vigente (decreto DOF 31/12/2025, aplicable 2026):
+ * cuota FIJA = % de la UMA mensual (UMA diaria × 30.4), únicamente si la
+ * base mensualizada no excede el límite de ingresos. Ya no es entregable en
+ * efectivo: solo acredita hasta el monto del ISR. Sustituye a la tabla
+ * progresiva del régimen anterior.
+ * @param {number} basePeriodo  Base gravable del período
+ * @param {number} factorMes    Factor para mensualizar (30.4/7, 30.4/15, 1)
+ */
+function _subsidioEmpleoPeriodo(basePeriodo, factorMes) {
+  const uma = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+  const pct = typeof getConfigValor === 'function' ? getConfigValor('subsidio_pct_uma', 0.1502) : 0.1502;
+  const lim = typeof getConfigValor === 'function' ? getConfigValor('subsidio_limite_mensual', 11492.66) : 11492.66;
+  if (basePeriodo * factorMes > lim) return 0;
+  return parseFloat(((uma * 30.4 * pct) / factorMes).toFixed(2));
+}
+
+/**
+ * Calcula ISR retenido y subsidio al empleo para un salario y período,
+ * aplicando la tarifa de la periodicidad correspondiente.
+ * `subsidio` es el efectivamente ACREDITADO (topado al ISR del período).
  */
 function calcISR(salarioPeriodo, periodo) {
-  // Factor semanal: 52/12 = 4.3333… (exacto); quincenal: 2; mensual: 1
-  const factor   = periodo === 'quincenal' ? 2 : periodo === 'semanal' ? (52 / 12) : 1;
-  const salMens  = salarioPeriodo * factor;
+  const tabla = periodo === 'quincenal' ? ISR_QUINCENAL_2026
+              : periodo === 'semanal'   ? ISR_SEMANAL_2026
+              : ISR_MENSUAL_2026;
+  const factorMes = periodo === 'quincenal' ? 30.4 / 15
+                  : periodo === 'semanal'   ? 30.4 / 7
+                  : 1;
+  const base = salarioPeriodo;
+  if (base <= 0) return { isr: 0, subsidio: 0, isrNeto: 0 };
 
-  const bracket  = ISR_MENSUAL_2026.find(b => salMens >= b.limInf && salMens <= b.limSup);
-  if (!bracket || salMens <= 0) return { isr: 0, subsidio: 0, isrNeto: 0 };
-
-  const isrBruto = bracket.cuota + (salMens - bracket.limInf) * bracket.pct;
-  const subRow   = SUBSIDIO_MENSUAL_2026.find(s => salMens >= s.limInf && salMens <= s.limSup);
-  const subsidio = subRow?.subsidio || 0;
+  const bracket  = tabla.find(b => base >= b.limInf && base <= b.limSup) || tabla[tabla.length - 1];
+  const isrBruto = bracket.cuota + (base - bracket.limInf) * bracket.pct;
+  const subsidio = Math.min(isrBruto, _subsidioEmpleoPeriodo(base, factorMes));
   const isrNeto  = Math.max(0, isrBruto - subsidio);
 
   return {
-    isr:      parseFloat((isrBruto / factor).toFixed(2)),
-    subsidio: parseFloat((subsidio  / factor).toFixed(2)),
-    isrNeto:  parseFloat((isrNeto   / factor).toFixed(2)),
+    isr:      parseFloat(isrBruto.toFixed(2)),
+    subsidio: parseFloat(subsidio.toFixed(2)),
+    isrNeto:  parseFloat(isrNeto.toFixed(2)),
   };
+}
+
+/** ISR mensual bruto (tarifa Art. 96 LISR), sin subsidio. Auxiliar del Art. 174 RLISR. */
+function _isrMensualBruto(baseMensual) {
+  if (!(baseMensual > 0)) return 0;
+  const b = ISR_MENSUAL_2026.find(x => baseMensual >= x.limInf && baseMensual <= x.limSup)
+            || ISR_MENSUAL_2026[ISR_MENSUAL_2026.length - 1];
+  return b.cuota + (baseMensual - b.limInf) * b.pct;
+}
+
+/**
+ * ISR de percepciones extraordinarias (aguinaldo, PTU, prima vacacional)
+ * por el procedimiento OPCIONAL del Art. 174 RLISR — el estándar en la
+ * práctica porque suaviza la retención:
+ *   I.   Promedio mensual = gravado / 365 × 30.4
+ *   II.  ISR de (salario mensual ordinario + promedio)
+ *   III. ISR del salario mensual ordinario
+ *   IV.  Tasa = (II − III) / promedio; ISR = gravado × tasa
+ * @param {number} montoGravado             Percepción GRAVADA (ya sin exención)
+ * @param {number} salarioMensualOrdinario  Salario mensual ordinario del trabajador
+ */
+function calcISRArt174(montoGravado, salarioMensualOrdinario) {
+  if (!(montoGravado > 0)) return { isr: 0, tasa: 0 };
+  const promMensual = montoGravado / 365 * 30.4;
+  const dif  = Math.max(0, _isrMensualBruto((salarioMensualOrdinario || 0) + promMensual)
+                         - _isrMensualBruto(salarioMensualOrdinario || 0));
+  const tasa = promMensual > 0 ? dif / promMensual : 0;
+  return { isr: parseFloat((montoGravado * tasa).toFixed(2)), tasa };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -120,6 +196,7 @@ function _renderShellNomina() {
       <button class="tab-btn ${_N.tab===2?'active':''}" onclick="switchNominaTab(2)"
         ${!_N.periodoActualId?'disabled':''}>📋 Detalle del Período</button>
       <button class="tab-btn ${_N.tab===3?'active':''}" onclick="switchNominaTab(3)">👤 Historial por Trabajador</button>
+      <button class="tab-btn ${_N.tab===4?'active':''}" onclick="switchNominaTab(4)" title="Ajuste anual de ISR (Art. 97 LISR)">🧾 Ajuste anual ISR</button>
     </div>
     <div id="nomina-content" class="animate-in"></div>
   `;
@@ -139,6 +216,7 @@ async function _cargarTabNomina() {
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   if (_N.tab === 1) await _tabPeriodos();
   else if (_N.tab === 2) await _tabDetalle();
+  else if (_N.tab === 4 && typeof renderAjusteAnual === 'function') await renderAjusteAnual(el);
   else await _tabHistorial();
 }
 
@@ -834,10 +912,15 @@ async function _tabDetalle() {
   const totalNeto        = _N.recibos.reduce((s,r) => s + parseFloat(r.neto_pagar||0), 0);
   const totalInfPatronal = _N.recibos.reduce((s,r) => {
     // Si ya está guardado en BD lo usa; si no, lo calcula al vuelo
-    if (r.infonavit_patronal != null) return s + parseFloat(r.infonavit_patronal);
+    if (r.infonavit_patronal != null && parseFloat(r.infonavit_patronal) > 0) return s + parseFloat(r.infonavit_patronal);
     const d = r.dias_laborados > 0 ? parseFloat(r.salario_base) / r.dias_laborados : 0;
-    return s + parseFloat((Math.min(d, 25*113.14) * 0.05 * r.dias_laborados).toFixed(2));
+    const uma = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    return s + parseFloat((Math.min(d, 25*uma) * 0.05 * r.dias_laborados).toFixed(2));
   }, 0);
+  // Costo patronal IMSS + ISN (migración 32; 0 en recibos generados antes)
+  const totalImssPatronal = _N.recibos.reduce((s,r) => s + parseFloat(r.imss_patronal || 0), 0);
+  const totalISN          = _N.recibos.reduce((s,r) => s + parseFloat(r.isn || 0), 0);
+  const costoPatronal     = totalPerc + totalImssPatronal + totalInfPatronal + totalISN;
 
   el.innerHTML = `
     <!-- Resumen del período -->
@@ -859,6 +942,18 @@ async function _tabDetalle() {
         <div class="kpi-icon"><svg class="ic"><use href="#i-bank"></use></svg></div>
         <div class="kpi-num" style="font-size:1.1rem;color:var(--text-muted);">${fmt(totalInfPatronal)}</div>
         <div class="kpi-label">Aportación INFONAVIT patronal</div>
+      </div>
+      <div class="kpi-card" style="border-color:var(--border);opacity:.85;"
+           title="Cuotas patronales IMSS (con prima de riesgo ${parseFloat(CTX.empresa.prima_riesgo_pct || 0.54355)}%): cuota fija, excedente, prestaciones en dinero, GMP, riesgos de trabajo, invalidez y vida, guarderías, retiro y CEAV progresiva">
+        <div class="kpi-icon"><svg class="ic"><use href="#i-bank"></use></svg></div>
+        <div class="kpi-num" style="font-size:1.1rem;color:var(--text-muted);">${fmt(totalImssPatronal)}</div>
+        <div class="kpi-label">Cuotas IMSS patronales</div>
+      </div>
+      <div class="kpi-card" style="border-color:var(--gold-border);"
+           title="Lo que esta nómina cuesta realmente a la empresa: percepciones brutas + cuotas patronales IMSS + INFONAVIT 5% + ISN estatal (${((parseFloat(CTX.empresa.isn_pct)||0)*100).toFixed(2)}%: ${fmt(totalISN)})">
+        <div class="kpi-icon" style="color:var(--gold-primary);"><svg class="ic"><use href="#i-pie"></use></svg></div>
+        <div class="kpi-num" style="font-size:1.3rem;color:var(--gold-primary);">${fmt(costoPatronal)}</div>
+        <div class="kpi-label">Costo total para la empresa</div>
       </div>
     </div>
 
@@ -1637,7 +1732,16 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     const imss        = typeof calcIMSSObrero === 'function'
       ? calcIMSSObrero(sbcDiarioIMSS, diasPagados, UMA_DIARIA_2026)
       : parseFloat((salBase * IMSS_OBRERO_PCT).toFixed(2));
-    const { isrNeto } = calcISR(totalPerc, t.periodo_salario || 'mensual');
+    const { isrNeto, subsidio: subsidioEmpleo } = calcISR(totalPerc, t.periodo_salario || 'mensual');
+
+    // Costo patronal del período (migración 32) — informativo, no afecta el
+    // neto del trabajador: cuotas patronales IMSS (con la prima de riesgo de
+    // la empresa) e ISN estatal sobre las percepciones.
+    const imssPatronal = typeof calcIMSSPatronal === 'function'
+      ? calcIMSSPatronal(sbcDiarioIMSS, diasPagados, UMA_DIARIA_2026,
+                         CTX.empresa.prima_riesgo_pct, t.smg_zone || 'general').total
+      : 0;
+    const isnPeriodo   = parseFloat((totalPerc * (parseFloat(CTX.empresa.isn_pct) || 0)).toFixed(2));
 
     // ── Deducciones especiales según config del trabajador ──────────────────
 
@@ -1769,6 +1873,13 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       monto_permiso_sin:    montoPSin,
       cuota_imss:           imss,
       isr_retenido:         isrNeto,
+      subsidio_empleo:      subsidioEmpleo,
+      imss_patronal:        imssPatronal,
+      infonavit_patronal:   infonavitPatronal,
+      isn:                  isnPeriodo,
+      // Regenerar el período resetea el ajuste anual: el módulo de ajuste
+      // (Art. 97) debe volver a aplicarse para mantener el neto consistente.
+      ajuste_anual_isr:     0,
       fondo_ahorro_obrero:  fondoAhorroObrero,
       fondo_ahorro_patronal:fondoAhorroPatronal,
       infonavit_descuento:  infonavitDescuento,
@@ -1795,8 +1906,16 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     .from('recibos_nomina')
     .upsert(recibos, { onConflict: 'trabajador_id,periodo_id' });
   if (error) {
+    // Tolerancia: si la migración 32 no está aplicada, reintentar sin las columnas patronales
+    if (/imss_patronal|infonavit_patronal|subsidio_empleo|ajuste_anual_isr|"isn"|column .*isn/i.test(error.message || '')) {
+      console.warn('Columnas patronales de recibos_nomina no existen — aplica la migración 32_migration_fiscal_patronal.sql');
+      const sinPat = recibos.map(({ imss_patronal, infonavit_patronal, isn, subsidio_empleo, ajuste_anual_isr, ...resto }) => resto);
+      const { error: err32 } = await _sbN()
+        .from('recibos_nomina')
+        .upsert(sinPat, { onConflict: 'trabajador_id,periodo_id' });
+      if (err32) throw err32;
     // Tolerancia: si la migración 18 no está aplicada, reintentar sin las columnas de prestaciones fiscales
-    if (/prestaciones_(exento|gravado|detalle)/i.test(error.message || '')) {
+    } else if (/prestaciones_(exento|gravado|detalle)/i.test(error.message || '')) {
       console.warn('Columnas recibos_nomina.prestaciones_* no existen — aplica la migración 18_migration_prestaciones_fiscal.sql');
       const sinPrest = recibos.map(({ prestaciones_exento, prestaciones_gravado, prestaciones_detalle, ...resto }) => resto);
       const { error: err2 } = await _sbN()

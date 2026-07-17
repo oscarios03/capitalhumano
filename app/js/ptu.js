@@ -100,18 +100,23 @@ async function calcularPTU() {
 
     let recibos = [];
     if (periodoIds.length) {
-      const { data } = await _sbPTU().from('recibos_nomina')
-        .select('trabajador_id,dias_laborados,sueldo_base,percepciones_totales,trabajadores(nombre)')
+      const { data, error } = await _sbPTU().from('recibos_nomina')
+        .select('trabajador_id,dias_laborados,salario_base,trabajadores(nombre,salario_mensual,periodo_salario)')
         .in('periodo_id', periodoIds);
+      if (error) throw error;
       recibos = data || [];
     }
 
     // Agrupar por trabajador
     const map = {};
     for (const r of recibos) {
-      if (!map[r.trabajador_id]) map[r.trabajador_id] = { id: r.trabajador_id, nombre: r.trabajadores?.nombre || '—', dias: 0, salarioAcum: 0, periodos: 0 };
+      if (!map[r.trabajador_id]) map[r.trabajador_id] = {
+        id: r.trabajador_id, nombre: r.trabajadores?.nombre || '—', dias: 0, salarioAcum: 0, periodos: 0,
+        salarioMensualOrd: calcSalarioDiario(parseFloat(r.trabajadores?.salario_mensual) || 0,
+                                             r.trabajadores?.periodo_salario || 'mensual') * 30,
+      };
       map[r.trabajador_id].dias        += r.dias_laborados || 0;
-      map[r.trabajador_id].salarioAcum += r.sueldo_base || 0;
+      map[r.trabajador_id].salarioAcum += parseFloat(r.salario_base) || 0;
       map[r.trabajador_id].periodos++;
     }
     const trabajadores = Object.values(map);
@@ -128,14 +133,32 @@ async function calcularPTU() {
     const factorDias   = totalDias    > 0 ? parteDias    / totalDias    : 0;
     const factorSal    = totalSalario > 0 ? parteSalario / totalSalario : 0;
 
+    // Exención de ISR: 15 UMA (Art. 93 fr. XIV LISR); el excedente se grava
+    // con el procedimiento del Art. 174 RLISR. Tope individual: 3 meses de
+    // salario (Art. 127 fr. VIII LFT, reforma 2021) — el remanente no se paga.
+    const uma        = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    const exencionPTU = 15 * uma;
+
     const detalle = trabajadores.map(t => {
-      const sdProm = t.periodos > 0 ? t.salarioAcum / t.periodos : 0;
-      const pd     = t.dias      * factorDias;
-      const ps     = t.salarioAcum * factorSal;
-      return { ...t, sdProm, pd, ps, total: pd + ps };
+      const sdProm  = t.periodos > 0 ? t.salarioAcum / t.periodos : 0;
+      const pd      = t.dias      * factorDias;
+      const ps      = t.salarioAcum * factorSal;
+      const bruto   = pd + ps;
+      const tope3m  = t.salarioMensualOrd > 0 ? t.salarioMensualOrd * 3 : Infinity;
+      const topado  = bruto > tope3m;
+      const total   = parseFloat(Math.min(bruto, tope3m).toFixed(2));
+      const exento  = parseFloat(Math.min(total, exencionPTU).toFixed(2));
+      const gravado = parseFloat(Math.max(0, total - exento).toFixed(2));
+      const isr     = typeof calcISRArt174 === 'function'
+        ? calcISRArt174(gravado, t.salarioMensualOrd).isr : 0;
+      const neto    = parseFloat((total - isr).toFixed(2));
+      return { ...t, sdProm, pd, ps, bruto, topado, total, exento, gravado, isr, neto };
     });
 
-    const totalPTU = detalle.reduce((a,d) => a + d.total, 0);
+    const totalPTU  = detalle.reduce((a,d) => a + d.total, 0);
+    const totalISR  = detalle.reduce((a,d) => a + d.isr, 0);
+    const totalNeto = detalle.reduce((a,d) => a + d.neto, 0);
+    const remanente = detalle.reduce((a,d) => a + Math.max(0, d.bruto - d.total), 0);
 
     res.innerHTML = `
       <div class="card animate-in" style="margin-top:16px;">
@@ -146,12 +169,20 @@ async function calcularPTU() {
         <div class="kpi-grid" style="margin:12px 0 16px;">
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div><div class="kpi-num">${totalDias.toLocaleString()}</div><div class="kpi-label">Total días trabajados</div></div>
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="kpi-num">${fmt(totalSalario)}</div><div class="kpi-label">Masa salarial del año</div></div>
-          <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-pie"></use></svg></div><div class="kpi-num">${fmt(totalPTU)}</div><div class="kpi-label">Total PTU a repartir</div></div>
+          <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-pie"></use></svg></div><div class="kpi-num">${fmt(totalPTU)}</div><div class="kpi-label">PTU a repartir (con tope 3 meses)</div></div>
+          <div class="kpi-card" title="ISR del excedente de 15 UMA (${fmt(exencionPTU)}), procedimiento Art. 174 RLISR"><div class="kpi-icon"><svg class="ic"><use href="#i-bar"></use></svg></div><div class="kpi-num" style="color:var(--red-warn);">${fmt(totalISR)}</div><div class="kpi-label">ISR a retener</div></div>
+          <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="kpi-num">${fmt(totalNeto)}</div><div class="kpi-label">Neto a pagar</div></div>
         </div>
+        ${remanente > 0 ? `
+        <div class="alert alert-info" style="margin-bottom:12px;">
+          <span>ℹ️</span>
+          <span>Se aplicó el <strong>tope de 3 meses de salario</strong> (Art. 127 fr. VIII LFT) a los trabajadores marcados con ⚠.
+          Remanente no repartido por tope: <strong>${fmt(remanente)}</strong>. Verifica con tu contador si aplica el promedio de PTU de los últimos 3 años como tope alternativo más favorable.</span>
+        </div>` : ''}
         <div class="table-wrap">
           <table class="data-table" id="ptu-tabla-resultado">
             <thead>
-              <tr><th>Trabajador</th><th>Días trabajados</th><th>Salario acumulado</th><th>Parte días (50%)</th><th>Parte salario (50%)</th><th>Total PTU</th></tr>
+              <tr><th>Trabajador</th><th>Días</th><th>Salario acumulado</th><th>Parte días</th><th>Parte salario</th><th>Total PTU</th><th title="Exento hasta 15 UMA (Art. 93 fr. XIV LISR)">Exento</th><th title="Art. 174 RLISR">ISR</th><th>Neto</th></tr>
             </thead>
             <tbody>
               ${detalle.map(d => `
@@ -161,7 +192,10 @@ async function calcularPTU() {
                   <td>${fmt(d.salarioAcum)}</td>
                   <td>${fmt(d.pd)}</td>
                   <td>${fmt(d.ps)}</td>
-                  <td><strong>${fmt(d.total)}</strong></td>
+                  <td><strong>${fmt(d.total)}</strong>${d.topado ? ' <span title="Topado a 3 meses de salario (Art. 127 fr. VIII LFT)">⚠</span>' : ''}</td>
+                  <td style="color:var(--text-muted);">${fmt(d.exento)}</td>
+                  <td style="color:${d.isr > 0 ? 'var(--red-warn)' : 'var(--text-muted)'};">${fmt(d.isr)}</td>
+                  <td><strong>${fmt(d.neto)}</strong></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -173,6 +207,9 @@ async function calcularPTU() {
                 <td>${fmt(parteDias)}</td>
                 <td>${fmt(parteSalario)}</td>
                 <td>${fmt(totalPTU)}</td>
+                <td></td>
+                <td>${fmt(totalISR)}</td>
+                <td>${fmt(totalNeto)}</td>
               </tr>
             </tfoot>
           </table>
@@ -231,7 +268,13 @@ function _exportarPTU() {
     'Salario acumulado':  parseFloat(t.salarioAcum.toFixed(2)),
     'Parte días (50%)':   parseFloat(t.pd.toFixed(2)),
     'Parte salario (50%)': parseFloat(t.ps.toFixed(2)),
+    'PTU bruta':          parseFloat(t.bruto.toFixed(2)),
+    'Tope 3 meses aplicado': t.topado ? 'SÍ' : 'No',
     'Total PTU':          parseFloat(t.total.toFixed(2)),
+    'Exento (15 UMA)':    t.exento,
+    'Gravado':            t.gravado,
+    'ISR (Art. 174 RLISR)': t.isr,
+    'Neto a pagar':       t.neto,
   })));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `PTU ${d.anio}`);

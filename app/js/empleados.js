@@ -30,11 +30,25 @@ function _actualizarPreviewSalario() {
   const diario   = calcSalarioDiario(monto, periodo);
   const mensual  = diario * 30; // equivalente mensual (Art. 89 LFT: diario × 30)
   const perLabel = _labelPeriodoSalario(periodo).toLowerCase();
+
+  // Costo real mensual para la empresa (cuotas patronales + provisiones)
+  let costoHTML = '';
+  if (typeof costoTotalEmpleado === 'function') {
+    const ingreso = eid('n-ingreso')?.value || new Date().toISOString().split('T')[0];
+    const c = costoTotalEmpleado({ salario_mensual: monto, periodo_salario: periodo, fecha_ingreso: ingreso });
+    costoHTML = `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(245,166,35,.35);"
+        title="Salario + cuotas patronales IMSS (${fmt(c.imssPatronal)}) + INFONAVIT 5% (${fmt(c.infonavit)}) + ISN (${fmt(c.isn)}) + provisiones de aguinaldo, vacaciones y prima vacacional (${fmt(c.provAguinaldo + c.provVacaciones + c.provPrimaVac)})">
+      Costo real mensual para la empresa: <strong>${fmt(c.total)}</strong>
+      <span style="color:var(--text-secondary);">(× ${c.factorSobreSalario} del salario)</span>
+    </div>`;
+  }
+
   box.innerHTML = `
     Estás capturando <strong>${fmt(monto)}</strong> como salario <strong>${perLabel}</strong>.
     &nbsp;→&nbsp; Salario diario: <strong>${fmt(diario)}</strong>
     &nbsp;·&nbsp; Equivalente mensual: <strong>${fmt(mensual)}</strong>
     ${periodo !== 'mensual' ? `<div style="margin-top:4px;color:var(--text-secondary);">Verifica que ${fmt(monto)} sea lo que el trabajador cobra <strong>cada ${perLabel === 'quincenal' ? 'quincena' : 'semana'}</strong>, no su sueldo mensual.</div>` : ''}
+    ${costoHTML}
   `;
 }
 
@@ -1191,6 +1205,7 @@ async function renderPerfilEmpleado(id) {
             ${trab.estado === 'baja' ? filaInfo('Fecha de baja', formatDateShort(trab.fecha_baja)) + filaInfo('Tipo de baja', trab.tipo_baja) : ''}
           </div>
         </div>
+        ${trab.estado === 'activo' ? _cardCostoYSalida(trab) : ''}
         ${(trab.contacto_emergencia_nombre || trab.beneficiario1_nombre) ? `
         <div class="card">
           <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Contactos</div>
@@ -1269,6 +1284,61 @@ async function renderPerfilEmpleado(id) {
 
 function filaInfo(label, value) {
   return `<div class="form-group"><label class="form-label">${label}</label><div style="padding:10px 0;font-size:.95rem;font-weight:600;">${value || '—'}</div></div>`;
+}
+
+/**
+ * Card "Costo y escenarios de salida" del perfil:
+ * · Costo real mensual para la empresa (costoTotalEmpleado — migración 32)
+ * · Simulador de despido: liquidación (injustificado) vs finiquito (renuncia)
+ *   con el mismo motor que usa el módulo de Bajas. Todo informativo.
+ */
+function _cardCostoYSalida(trab) {
+  if (typeof costoTotalEmpleado !== 'function' || typeof calcLiquidacion !== 'function') return '';
+  let c, liq, fin;
+  try {
+    c = costoTotalEmpleado(trab);
+    const params = {
+      startDate:      new Date(trab.fecha_ingreso + 'T00:00:00'),
+      endDate:        new Date(),
+      salario:        parseFloat(trab.salario_mensual) || 0,
+      monthlySalary:  parseFloat(trab.salario_mensual) || 0,
+      periodoSalario: trab.periodo_salario || 'mensual',
+      smgZone:        trab.smg_zone || 'general',
+      diasPendientes: 0,
+    };
+    liq = calcLiquidacion(params);
+    fin = calcFiniquito(params);
+  } catch(e) { console.warn('costo/salida:', e.message); return ''; }
+
+  const filaEscenario = (titulo, sub, r, color) => `
+    <div style="flex:1;min-width:240px;border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;">
+      <div style="font-weight:700;">${titulo}</div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:8px;">${sub}</div>
+      <div style="font-size:1.35rem;font-weight:800;color:${color};">${fmt(r.total)}</div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px;">
+        ${r.items.filter(i => i.amount > 0).map(i => `${i.name.replace(/\s*\(Art[^)]*\)/,'')}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
+      </div>
+    </div>`;
+
+  return `
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">
+        💰 Costo y escenarios de salida <span style="font-weight:400;text-transform:none;letter-spacing:0;">(informativo — cifras de hoy)</span>
+      </div>
+      <div class="form-grid" style="margin-bottom:14px;">
+        ${filaInfo('Costo real mensual para la empresa', `${fmt(c.total)} <span style="font-size:.75rem;color:var(--text-muted);">(× ${c.factorSobreSalario} del salario)</span>`)}
+        ${filaInfo('Cuotas IMSS patronales / mes', fmt(c.imssPatronal))}
+        ${filaInfo('INFONAVIT 5% + ISN / mes', fmt(c.infonavit + c.isn))}
+        ${filaInfo('Provisiones aguinaldo + vacaciones + prima / mes', fmt(c.provAguinaldo + c.provVacaciones + c.provPrimaVac))}
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        ${filaEscenario('Despido injustificado', 'Liquidación — Art. 50 LFT (3 meses + 20 días/año + prima antigüedad + proporcionales)', liq, 'var(--red-warn)')}
+        ${filaEscenario('Renuncia voluntaria', 'Finiquito — proporcionales devengados', fin, 'var(--green-ok)')}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:10px;">
+        Mismo motor de cálculo que el módulo de Bajas (SDI ${fmt(liq.sdi)}, antigüedad ${liq.frac.toFixed(2)} años). No incluye salarios pendientes ni vacaciones de años anteriores no gozadas — captúralos al procesar la baja real.
+      </div>
+    </div>`;
 }
 
 function tablaAsistencia(items) {

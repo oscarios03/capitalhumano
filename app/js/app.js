@@ -444,17 +444,24 @@ function renderManual() {
       </div>`,
 
     nomina: `
-      <p style="font-size:.88rem;margin-bottom:12px;">Motor de cálculo con <strong>ISR 2026</strong> (Art. 96 LISR / Anexo 8 RMF) e <strong>IMSS 2.25% obrero</strong>. El módulo tiene tres pestañas:</p>
+      <p style="font-size:.88rem;margin-bottom:12px;">Motor de cálculo con <strong>ISR 2026</strong> (tarifas del Anexo 8 RMF por periodicidad: semanal, quincenal y mensual), <strong>subsidio al empleo</strong>, <strong>cuotas IMSS obrero y patronales</strong> e <strong>ISN estatal</strong>. El módulo tiene cuatro pestañas:</p>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin-bottom:8px;">7.1 Períodos — Crear un período</h4>
       <ol style="padding-left:0;list-style:none;">
         ${['Clic en <strong>"+ Nuevo Período"</strong>.','El sistema detecta el tipo dominante entre los trabajadores activos y pre-selecciona Semanal, Quincenal o Mensual.','Para nómina <strong>Semanal</strong>: las fechas se calculan según el día de pago configurado en <em>Mi Empresa</em>.','Elige modo <strong>Automático</strong> (genera todos los recibos) o <strong>Manual</strong> (período vacío).','Clic en <strong>"⚡ Crear y generar nómina"</strong>.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
       </ol>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.2 Detalle del Período</h4>
-      <p style="font-size:.88rem;">Muestra KPIs (percepciones, deducciones, neto, INFONAVIT patronal) y la tabla de recibos. Edita cualquier recibo con ✏️ para capturar comisiones, deducciones especiales y extras. El ISR e IMSS se recalculan en tiempo real.</p>
+      <p style="font-size:.88rem;">Muestra KPIs y la tabla de recibos. Edita cualquier recibo con ✏️ para capturar comisiones, deducciones especiales y extras. El ISR e IMSS se recalculan en tiempo real.</p>
+      <p style="font-size:.88rem;">El KPI <strong>"Costo total para la empresa"</strong> suma las percepciones brutas más lo que pagas encima: cuotas patronales IMSS, aportación INFONAVIT del 5% e ISN estatal. Es lo que la nómina te cuesta de verdad — configura tu prima de riesgo y tu tasa de ISN en <em>Mi Empresa</em> para que la cifra sea exacta.</p>
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.3 Historial por Trabajador</h4>
       <p style="font-size:.88rem;">Acumulado anual por trabajador: percepciones, ISR retenido, IMSS obrero y neto. Descarga cualquier recibo individual en PDF.</p>
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.4 Ajuste anual de ISR (Art. 97 LISR)</h4>
+      <p style="font-size:.88rem;">En diciembre estás obligado a comparar el ISR que retuviste durante el año contra el que realmente corresponde según la tarifa anual, y a cobrar o devolver la diferencia. Esta pestaña lo calcula por trabajador y aplica el resultado en el recibo de diciembre con un clic.</p>
+      <p style="font-size:.88rem;">La ley excluye del ajuste a quien ganó más de $400,000 en el año o a quien entró o salió durante el ejercicio: el sistema los detecta y los marca solo. Si alguien te avisa por escrito que presentará su declaración anual por su cuenta, desmárcalo a mano en la columna "Aplica".</p>
       <div style="border-left:4px solid #e74c3c;background:rgba(231,76,60,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
         <strong>⛔ Cerrar vs. Eliminar:</strong> <em>Cerrar</em> marca el período como pagado (irreversible, queda en historial). <em>Eliminar</em> borra el período y todos sus recibos de forma permanente.
+      </div>
+      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>💡 Si regeneras diciembre:</strong> el ajuste anual se borra al regenerar la nómina de ese período. Vuelve a aplicarlo desde la pestaña 7.4 después de regenerar.
       </div>`,
 
     actas: `
@@ -495,11 +502,11 @@ function renderManual() {
         </div>
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
           <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">🎄 Aguinaldo</div>
-          <p style="font-size:.83rem;margin:0;">Mínimo 15 días de salario (Art. 87 LFT). Proporcional para trabajadores con menos de un año. Plazo: <strong>20 de diciembre</strong>.</p>
+          <p style="font-size:.83rem;margin:0;">Mínimo 15 días de salario (Art. 87 LFT). Proporcional para trabajadores con menos de un año. Plazo: <strong>20 de diciembre</strong>. Los primeros 30 días de UMA están exentos de ISR; sobre el excedente se retiene con el procedimiento del Art. 174 RLISR.</p>
         </div>
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
           <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">📊 PTU</div>
-          <p style="font-size:.83rem;margin:0;">Distribución por días trabajados y salarios (Art. 117-131 LFT). Plazo: 60 días después de la declaración anual.</p>
+          <p style="font-size:.83rem;margin:0;">Distribución por días trabajados y salarios (Art. 117-131 LFT). Plazo: 60 días después de la declaración anual. Aplica el tope individual de 3 meses de salario (Art. 127 fr. VIII) y la exención de ISR de 15 días de UMA.</p>
         </div>
       </div>`,
 
@@ -512,7 +519,14 @@ function renderManual() {
       </ol>
       <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
         <strong>💡 ¿Cómo funciona?</strong> Al crear un período semanal, el sistema calcula el rango de 7 días que termina el día anterior al pago. Ej: pago el <strong>viernes</strong> → período sábado a viernes anterior.
-      </div>`,
+      </div>
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">Costo patronal — Prima de riesgo e ISN</h4>
+      <p style="font-size:.88rem;">En la misma sección de Configuración de Nómina captura dos datos que determinan cuánto te cuesta realmente tu nómina:</p>
+      <ul style="font-size:.88rem;margin-top:6px;padding-left:18px;">
+        <li><strong>Prima de riesgo de trabajo:</strong> la de tu declaración anual ante el IMSS de febrero. Si nunca la has presentado o apenas inicias, va la mínima de clase I (0.54355%).</li>
+        <li><strong>ISN (Impuesto Sobre Nómina):</strong> lo cobra tu estado, no la federación, y la tasa varía (típicamente entre 2% y 4%). Selecciona tu entidad y captura la tasa vigente; si no aplica en tu caso, deja 0.</li>
+      </ul>
+      <p style="font-size:.88rem;margin-top:8px;">Con estos datos, cada nómina te muestra su costo total real y cada trabajador su costo mensual completo (salario + cuotas patronales + provisiones de aguinaldo, vacaciones y prima).</p>`,
 
     organigrama: `
       <p style="font-size:.88rem;">El organigrama se genera automáticamente a partir de los <strong>departamentos y puestos</strong> registrados en los trabajadores activos. No requiere configuración adicional.</p>
