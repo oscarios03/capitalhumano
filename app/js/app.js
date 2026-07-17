@@ -482,6 +482,16 @@ function renderManual() {
       </table>
       <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.85rem;">
         <strong>💡 Vinculación automática:</strong> Al generar un período de nómina, el sistema consulta las incidencias del rango de fechas de cada trabajador y descuenta los días automáticamente.
+      </div>
+
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">📅 Vista del mes</h4>
+      <p style="font-size:.88rem;">El <strong>Registro Diario</strong> sirve para capturar; la <strong>Vista del mes</strong> sirve para <em>darte cuenta</em>. Es una cuadrícula de todos tus trabajadores contra todos los días del mes, con las columnas <strong>F</strong> (faltas), <strong>R</strong> (retardos) y <strong>HE</strong> (horas extra) al final de cada renglón.</p>
+      <p style="font-size:.88rem;">Ahí es donde se ven los patrones que día a día se pierden: quién falta siempre los lunes, quién viene acumulando retardos, quién carga con todas las horas extra. Haz clic en cualquier día para capturarlo o corregirlo. Los festivos salen en dorado y los fines de semana en gris.</p>
+
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">⏰ Retardo automático</h4>
+      <p style="font-size:.88rem;">Si capturas la <strong>hora de entrada</strong> y el trabajador tiene horario registrado, el sistema decide solo si fue retardo y cuántos minutos, usando <strong>exactamente la misma regla que el reloj checador</strong>: hay retardo cuando la entrada pasa de su hora más la tolerancia que configuraste en Mi Empresa (10 minutos por defecto), y los minutos se cuentan desde su hora de entrada.</p>
+      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.85rem;">
+        <strong>💡 Por qué la misma regla:</strong> si capturar a mano y checar en el kiosco clasificaran distinto, el mismo trabajador tendría retardo o no según cómo se registró ese día — y eso es justo lo que se cae en un juicio. Ojo: si el trabajador <strong>no tiene horario capturado</strong>, no hay contra qué comparar y el retardo debes marcarlo tú.
       </div>`,
 
     nomina: `
