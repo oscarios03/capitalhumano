@@ -54,6 +54,11 @@ correr una migración dos veces no rompe nada.
 | 12 | `12_migration_expediente_digital.sql` | `documentos_trabajador` (expediente digital) |
 | 20 | `20_migration_resguardos.sql` | `resguardos` (equipo/herramienta asignada) |
 
+### 🔐 Roles y permisos
+| # | Archivo | Qué hace |
+|---|---------|----------|
+| 33 | `33_migration_roles.sql` | **Roles** `admin`/`gerente`/`capturista`/`consulta`: `perfiles.sucursal_id`, CHECK de roles, helpers (`get_mi_rol`, `mi_empresa_id`, `puede_gestionar`, `es_admin`), `admin_set_rol()`, `listar_usuarios_empresa()`, tabla `invitaciones`, **supersede** `handle_new_user()` y `zz_perfiles_bloquear_cambio_empresa()`. Sustituye las políticas `FOR ALL` por SELECT/INSERT/UPDATE/DELETE con gate por rol. Cierra dos huecos: auto-vinculación a cualquier empresa vía `usuario_empresas` y la imposibilidad de que un admin viera a sus usuarios |
+
 ### 💳 Planes y suscripciones
 | # | Archivo | Qué hace |
 |---|---------|----------|
@@ -73,8 +78,16 @@ funciones; para tablas, gana la primera `CREATE` y las posteriores agregan colum
 | función `get_or_create_matriz()` | 00, 01 | **01** |
 | función `registrar_checada()` | 13, 15 | **15** |
 | función `generar_alertas()` | 07, 16 | **16** |
-| función `handle_new_user()` | 00, 21 | **21** |
+| función `handle_new_user()` | 00, 21, **33** | **33** ⚠️ |
 | función `setup_empresa()` | 21 | **21** |
+| función `zz_perfiles_bloquear_cambio_empresa()` | auditoría, **33** | **33** |
+
+> ⚠️ **`handle_new_user()` — cuidado con la 21.** La 33 la supersede para
+> consumir las invitaciones, e incluye el alta de suscripción de prueba de la
+> 21 condicionada a que la tabla `suscripciones` exista (para funcionar con o
+> sin la 21 aplicada). **Si algún día aplicas la 21 por separado, vuelve a
+> correr la 33 después**, o los usuarios invitados dejarán de entrar a la
+> empresa que los invitó.
 | tabla `sucursales` | 00, 01 | **01** (00 es la versión mínima) |
 | tabla `periodos_nomina` | 03, 04 | **04** (03 crea la versión mínima; 04 completa columnas por `ALTER`) |
 

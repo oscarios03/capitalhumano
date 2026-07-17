@@ -36,9 +36,16 @@ async function getContexto() {
   const user = await getUser();
   if (!user) return null;
   const { data: perfil } = await _sb()
-    .from('perfiles').select('empresa_id, nombre, rol, empresas(*)')
+    .from('perfiles').select('empresa_id, nombre, rol, sucursal_id, empresas(*)')
     .eq('id', user.id).single();
-  return { user, perfil, empresa: perfil?.empresas || null };
+  return {
+    user, perfil,
+    empresa: perfil?.empresas || null,
+    // Rol del usuario (migración 33). El gating de la UI que se apoya en esto
+    // es cosmético: el candado real son las políticas RLS de Postgres.
+    rol:        perfil?.rol || 'admin',
+    sucursalId: perfil?.sucursal_id || null,
+  };
 }
 
 // ─── AUTH ACTIONS ─────────────────────────────────────────────────────────────

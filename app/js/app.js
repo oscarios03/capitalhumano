@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   aplicarGatesUI();
   renderBannerPlan();
 
+  // Rol del usuario: candados de menú y badge (roles.js). Cosmético — el
+  // candado real son las políticas RLS (migración 33).
+  if (typeof aplicarGatesRol === 'function') aplicarGatesRol();
+
   // Multiempresa: mostrar switcher si tiene más de una empresa
   getEmpresasUsuario().then(list => {
     if (list.length > 1) {
@@ -75,6 +79,12 @@ function navigate(route, param) {
   // se muestra la vista bloqueada (el enforcement real son los triggers)
   const feat = ROUTE_FEATURE[route];
   if (feat && !puedeUsar(feat)) { main.innerHTML = htmlVistaBloqueada(feat); return; }
+
+  // Gate central de rol: idem, pero por rol del usuario (el enforcement real
+  // son las políticas RLS de la migración 33)
+  if (typeof puedeVerRuta === 'function' && !puedeVerRuta(route)) {
+    main.innerHTML = htmlRutaBloqueadaPorRol(route); return;
+  }
 
   const fn = views[route];
   if (fn) fn(); else main.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Vista no encontrada</p></div>`;
@@ -520,6 +530,22 @@ function renderManual() {
       <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
         <strong>💡 ¿Cómo funciona?</strong> Al crear un período semanal, el sistema calcula el rango de 7 días que termina el día anterior al pago. Ej: pago el <strong>viernes</strong> → período sábado a viernes anterior.
       </div>
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">👥 Usuarios y permisos</h4>
+      <p style="font-size:.88rem;">Puedes dar acceso a más personas sin darles el control total. Cada usuario tiene uno de cuatro roles:</p>
+      <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.85rem;">
+        <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Rol</th><th style="padding:8px 12px;text-align:left;">Qué puede hacer</th></tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Administrador</strong></td><td style="padding:8px 12px;">Todo, incluidos los datos de la empresa y la gestión de usuarios. Es tu rol.</td></tr>
+          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;"><strong>Gerente</strong></td><td style="padding:8px 12px;">Opera todo: nómina, altas, bajas, actas, y aprueba vacaciones. No toca la configuración de la empresa ni a los usuarios.</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Capturista</strong></td><td style="padding:8px 12px;">Captura asistencia y registra solicitudes de vacaciones. Puedes limitarlo a una sola sucursal. Lo demás lo ve, pero no lo edita.</td></tr>
+          <tr><td style="padding:8px 12px;"><strong>Solo consulta</strong></td><td style="padding:8px 12px;">Lee todo, no cambia nada. El rol para tu contador — o, si eres despacho, para tu cliente.</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:.88rem;margin-top:8px;">Para dar acceso: <strong>Invitar usuario</strong> → captura su correo y elige el rol → cópiale la liga. La persona crea su cuenta <strong>con ese mismo correo</strong> y entra directo a tu empresa con el rol que le diste. Las invitaciones vencen a los 14 días.</p>
+      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>🔒 Nadie puede cambiarse el rol a sí mismo</strong>, ni siquiera un administrador: es justo lo que impide que alguien se auto-promueva. Si necesitas cambiar el tuyo, pídeselo a otro admin. Por lo mismo, el sistema no te deja quitar el último administrador de la empresa.
+      </div>
+
       <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">Costo patronal — Prima de riesgo e ISN</h4>
       <p style="font-size:.88rem;">En la misma sección de Configuración de Nómina captura dos datos que determinan cuánto te cuesta realmente tu nómina:</p>
       <ul style="font-size:.88rem;margin-top:6px;padding-left:18px;">

@@ -382,10 +382,19 @@ async function renderEmpresa() {
       <div class="empty-state-title">Sin sucursales registradas</div>
       <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Usa el botón "+ Agregar Sucursal" para registrar centros de trabajo adicionales.</p>
     </div>`}
+
+    <div class="view-header animate-in" style="margin:32px 0 16px;">
+      <div>
+        <div class="view-title" style="font-size:1.2rem;">👥 Usuarios y permisos</div>
+        <div class="view-subtitle">Quién entra a la plataforma y qué puede hacer</div>
+      </div>
+    </div>
+    <div id="emp-tab-usuarios" class="animate-in"></div>
   `;
 
   _renderFestivosOficiales();
   _renderCostoPrestaciones();
+  if (typeof renderTabUsuarios === 'function') renderTabUsuarios();
 }
 
 async function _renderCostoPrestaciones() {

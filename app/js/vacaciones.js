@@ -63,6 +63,12 @@ function _renderVACTab() {
   else _renderVACSaldos(c);
 }
 
+/** Aprobar/rechazar/eliminar es de gerente o admin (RLS lo impone; esto solo
+ *  evita mostrar botones que van a fallar). Sin roles.js cargado, no restringe. */
+function _vacPuedeAprobar() {
+  return typeof puedeGestionar !== 'function' || puedeGestionar();
+}
+
 function _renderVACSolicitudes(c) {
   const TIPO_LABEL = { vacacion:'Vacaciones', permiso_goce:'Permiso c/goce', permiso_sin:'Permiso s/goce' };
   const ESTADO_BADGE = {
@@ -90,11 +96,13 @@ function _renderVACSolicitudes(c) {
               <td>${ESTADO_BADGE[s.estado] || s.estado}</td>
               <td>
                 <div class="actions">
-                  ${s.estado === 'pendiente' ? `
+                  ${s.estado === 'pendiente' && _vacPuedeAprobar() ? `
                     <button class="btn-sm" style="background:rgba(39,174,96,.12);color:var(--green-ok);border:1px solid rgba(39,174,96,.3);" onclick="aprobarVAC('${s.id}')">✅ Aprobar</button>
                     <button class="btn-sm" style="background:rgba(231,76,60,.12);color:var(--red-warn);border:1px solid rgba(231,76,60,.3);" onclick="rechazarVAC('${s.id}')">❌ Rechazar</button>
+                  ` : s.estado === 'pendiente' ? `
+                    <span style="font-size:.75rem;color:var(--text-muted);" title="Solo un gerente o administrador puede aprobar">Pendiente de aprobación</span>
                   ` : ''}
-                  <button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')">🗑</button>
+                  ${_vacPuedeAprobar() ? `<button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')">🗑</button>` : ''}
                 </div>
               </td>
             </tr>
@@ -238,11 +246,28 @@ async function aprobarVAC(id) {
   const s = _VAC.solicitudes.find(x => x.id === id);
   if (!s) return;
   try {
-    await _sbV().from('vacaciones').update({ estado: 'aprobada', aprobado_por: CTX.perfil?.nombre || CTX.user?.email }).eq('id', id);
+    // supabase-js no lanza: hay que revisar .error explícitamente. Si no, un
+    // rechazo de RLS (p. ej. un capturista intentando aprobar) pasaría
+    // desapercibido y el botón no haría nada sin explicar por qué.
+    const { error } = await _sbV().from('vacaciones')
+      .update({ estado: 'aprobada', aprobado_por: CTX.perfil?.nombre || CTX.user?.email })
+      .eq('id', id);
+    if (error) throw error;
     await _sbV().from('trabajadores').update({ ultima_vacacion: s.fecha_fin, ultima_fecha_vacaciones: s.fecha_fin }).eq('id', s.trabajador_id);
     await _sincronizarAsistenciaVAC(s);
     await renderVacaciones();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) {
+    _errorVAC(e, 'aprobar');
+  }
+}
+
+/** Muestra el error de una acción de vacaciones, distinguiendo falta de permisos. */
+function _errorVAC(e, accion) {
+  if (typeof esErrorDePermisos === 'function' && esErrorDePermisos(e)) {
+    showToast(`No puedes ${accion} solicitudes: ${mensajeErrorPermisos(e)}`, 'error', 7000);
+  } else {
+    showToast('Error al ' + accion + ': ' + (e.message || e), 'error');
+  }
 }
 
 // Genera un registro de asistencia por cada día del rango de la solicitud aprobada,
@@ -282,9 +307,10 @@ async function _limpiarAsistenciaVAC(s) {
 async function rechazarVAC(id) {
   if (!confirm('¿Rechazar esta solicitud?')) return;
   try {
-    await _sbV().from('vacaciones').update({ estado: 'rechazada' }).eq('id', id);
+    const { error } = await _sbV().from('vacaciones').update({ estado: 'rechazada' }).eq('id', id);
+    if (error) throw error;
     await renderVacaciones();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { _errorVAC(e, 'rechazar'); }
 }
 
 async function eliminarVAC(id) {
