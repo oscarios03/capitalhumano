@@ -217,6 +217,9 @@ async function renderDashboard() {
     if (typeof verificarMovimientosIMSSVencidos === 'function') {
       verificarMovimientosIMSSVencidos(CTX.empresa.id).catch(() => {});
     }
+    if (typeof verificarVariabilidadBimestralPendiente === 'function') {
+      verificarVariabilidadBimestralPendiente(CTX.empresa.id).catch(() => {});
+    }
 
     // Iniciar suscripción realtime (idempotente)
     suscribirseAlertas(CTX.empresa.id);
@@ -370,13 +373,14 @@ function renderManual() {
     { id:'contratos',    icon:'📄', num:'5',  titulo:'Contratos' },
     { id:'asistencia',   icon:'🗓', num:'6',  titulo:'Asistencia' },
     { id:'nomina',       icon:'💰', num:'7',  titulo:'Nómina' },
-    { id:'actas',        icon:'⚠️', num:'8',  titulo:'Actas Administrativas' },
-    { id:'bajas',        icon:'🚪', num:'9',  titulo:'Bajas' },
-    { id:'prestaciones', icon:'🎁', num:'10', titulo:'Prestaciones' },
-    { id:'empresa',      icon:'🏢', num:'11', titulo:'Mi Empresa' },
-    { id:'organigrama',  icon:'🏗', num:'12', titulo:'Organigrama' },
-    { id:'reportes',     icon:'📈', num:'13', titulo:'Reportes' },
-    { id:'faq',          icon:'❓', num:'14', titulo:'Preguntas Frecuentes' },
+    { id:'imss',         icon:'🏛', num:'8',  titulo:'IMSS / Movimientos' },
+    { id:'actas',        icon:'⚠️', num:'9',  titulo:'Actas Administrativas' },
+    { id:'bajas',        icon:'🚪', num:'10', titulo:'Bajas' },
+    { id:'prestaciones', icon:'🎁', num:'11', titulo:'Prestaciones' },
+    { id:'empresa',      icon:'🏢', num:'12', titulo:'Mi Empresa' },
+    { id:'organigrama',  icon:'🏗', num:'13', titulo:'Organigrama' },
+    { id:'reportes',     icon:'📈', num:'14', titulo:'Reportes' },
+    { id:'faq',          icon:'❓', num:'15', titulo:'Preguntas Frecuentes' },
   ];
 
   const contenido = {
@@ -513,6 +517,17 @@ function renderManual() {
       </div>
       <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
         <strong>💡 Si regeneras diciembre:</strong> el ajuste anual se borra al regenerar la nómina de ese período. Vuelve a aplicarlo desde la pestaña 7.4 después de regenerar.
+      </div>`,
+
+    imss: `
+      <p style="font-size:.88rem;">El módulo <strong>IMSS / Movimientos</strong> concentra los avisos afiliatorios (altas, bajas y modificaciones de salario) para importarlos en <strong>IDSE</strong> o capturarlos en el <strong>SUA</strong>. Tiene dos pestañas.</p>
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">📋 Movimientos</h4>
+      <p style="font-size:.88rem;">Bandeja de avisos pendientes: selecciona los que vas a presentar y usa <strong>"Exportar lote para IDSE"</strong> para descargar el archivo de ancho fijo y un Excel espejo. Los avisos con más de 3 días se marcan en rojo — el plazo legal es de 5 días hábiles (Art. 15 fr. I LSS).</p>
+      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">📈 Variabilidad bimestral del SBC</h4>
+      <p style="font-size:.88rem;">Los trabajadores con <strong>salario mixto</strong> (una parte fija más comisiones, primas o bonos) deben recalcular su Salario Base de Cotización al cierre de cada bimestre: la parte variable es el promedio diario de esas percepciones en el bimestre que terminó (Art. 30 fr. III LSS). El nuevo SBC rige el bimestre siguiente y el aviso se presenta en sus primeros 5 días hábiles.</p>
+      <p style="font-size:.88rem;">La pestaña toma automáticamente los recibos del <strong>bimestre anterior</strong>, calcula el SBC nuevo (salario diario × factor de integración + variables ÷ días devengados, topado a 25 UMA) y te muestra a quién le cambia. Selecciona a los trabajadores y usa <strong>"Generar modificaciones de salario"</strong>: cada uno se convierte en un aviso de modificación en la pestaña Movimientos, listo para exportar.</p>
+      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>💡 Horas extra:</strong> se muestran aparte y no se integran automáticamente, porque sólo cuentan para el SBC en la parte que excede los límites del Art. 66 LFT (hasta 9 horas a la semana). Si un trabajador rebasa ese límite con frecuencia, ajusta su SBC a mano.
       </div>`,
 
     actas: `
