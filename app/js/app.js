@@ -441,6 +441,20 @@ function renderManual() {
       </ol>
       <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
         <strong>⚙️ Campo clave:</strong> Si el trabajador cobra semanalmente, selecciona <em>Semanal</em>. El sistema lo incluirá en períodos semanales y calculará su salario correctamente.
+      </div>
+
+      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">RFC, CURP y NSS: revisión automática</h4>
+      <p style="font-size:.88rem;">Los tres traen un <strong>dígito verificador</strong> calculado a partir del resto de la clave, así que el sistema detecta los dedazos aunque el formato se vea bien. Si algo no cuadra te avisa, pero <strong>no te bloquea</strong>: si el dato viene así de un expediente viejo, puedes guardarlo igual.</p>
+      <p style="font-size:.88rem;">Vale la pena corregirlo en el momento: un RFC o un NSS mal capturado no molesta hoy, pero reaparece como <strong>rechazo del IDSE, del SUA o del timbrado</strong> justo cuando tienes prisa.</p>
+      <p style="font-size:.88rem;">Al capturar la CURP, la <strong>fecha de nacimiento y el sexo se llenan solos</strong> (van dentro de la propia CURP). Por eso ya no se pregunta la edad: se calcula. La edad caduca cada año; la fecha de nacimiento no.</p>
+
+      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">Semáforo del expediente</h4>
+      <p style="font-size:.88rem;">En el perfil de cada trabajador verás un porcentaje de qué tan completo está su expediente y exactamente qué falta. Los <strong>documentos pesan más que los datos</strong>, y no es un capricho: en un juicio el documento firmado es la prueba — lo que tienes capturado en el sistema es tu dicho, y el Art. 784 LFT no te lo concede. Un expediente con todos los datos pero sin un solo documento apenas llega al 46%.</p>
+
+      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">🛡️ Kit de expediente de defensa</h4>
+      <p style="font-size:.88rem;">El botón <strong>"Kit de defensa"</strong> del perfil arma un ZIP con todo lo probatorio de ese trabajador: contrato, recibos de nómina del rango que elijas, historial de asistencia en Excel, actas, cartas responsivas y los archivos del expediente digital — con un PDF índice al frente.</p>
+      <div style="border-left:4px solid #e74c3c;background:rgba(231,76,60,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>⚖️ Para qué sirve:</strong> cuando llega un citatorio de conciliación tienes días, no semanas. El Art. 784 LFT invierte la carga de la prueba: <strong>le toca al patrón</strong> demostrar fecha de ingreso, salario, jornada y pagos. Lo que no esté documentado se presume a favor del trabajador. Este ZIP es lo que le entregas a tu abogado.
       </div>`,
 
     contratos: `

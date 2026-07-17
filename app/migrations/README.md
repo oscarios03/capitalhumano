@@ -18,6 +18,7 @@ correr una migración dos veces no rompe nada.
 | 01 | `01_migration_sucursales.sql` | Redefine `sucursales` (centros de trabajo) y **supersede** `get_or_create_matriz()` |
 | 02 | `02_migration_trabajadores_v2.sql` | Campos adicionales en `trabajadores` (INFONAVIT/pensión planos, etc.) |
 | 11 | `11_migration_trabajadores_v3.sql` | **37 columnas** en `trabajadores` (personales, jornada, contrato, beneficiarios, contacto de emergencia). **Obligatoria en instalaciones nuevas**: sin ella el alta/edición de trabajadores falla |
+| 34 | `34_migration_trabajadores_v4.sql` | `fecha_nacimiento` (sustituye a `edad` como fuente de verdad), `sexo`, `telefono` (WhatsApp), `metodo_pago`/`monto_efectivo`; backfill desde la CURP; amplía `tipo_documento_enum` con `resguardo` y los tipos del semáforo de expediente |
 
 ### ⏱️ Asistencia y checador
 | # | Archivo | Qué hace |

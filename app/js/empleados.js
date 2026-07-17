@@ -255,15 +255,27 @@ async function showModalTrabajador(id = null) {
           </div>
           <div class="form-group">
             <label class="form-label">CURP</label>
-            <input id="n-curp" type="text" class="form-input" value="${v('curp')}" placeholder="LOHM900415MDFPRL09" maxlength="18" style="text-transform:uppercase;" />
+            <input id="n-curp" type="text" class="form-input" value="${v('curp')}" placeholder="LOHM900415MDFPRL09" maxlength="18"
+                   style="text-transform:uppercase;" oninput="_onCURPCapturada()" />
+            <div class="helper-text">Al capturarla se llenan solos la fecha de nacimiento y el sexo.</div>
+            <div id="n-curp-aviso" class="helper-text" style="display:none;color:#f39c12;"></div>
           </div>
           <div class="form-group">
             <label class="form-label">NSS (IMSS)</label>
             <input id="n-nss" type="text" class="form-input" value="${v('nss')}" placeholder="12345678901" maxlength="11" />
           </div>
           <div class="form-group">
-            <label class="form-label">Edad</label>
-            <input id="n-edad" type="number" class="form-input" value="${v('edad')}" min="14" max="99" placeholder="Años" />
+            <label class="form-label">Fecha de nacimiento</label>
+            <input id="n-fecha-nac" type="date" class="form-input" value="${v('fecha_nacimiento')}"
+                   max="${hoy}" onchange="_actualizarEdadCalculada()" />
+            <div class="helper-text" id="n-edad-calc"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sexo</label>
+            <select id="n-sexo" class="form-select">
+              <option value="">— Seleccionar —</option>
+              ${['Masculino','Femenino','No binario'].map(o=>`<option value="${o}" ${v('sexo')===o?'selected':''}>${o}</option>`).join('')}
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Estado Civil</label>
@@ -647,6 +659,15 @@ async function showModalTrabajador(id = null) {
 
       <!-- ── TAB 4: CONTACTOS ── -->
       <div id="mtab-contactos" class="modal-tab-content" style="display:none;">
+        <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">📱 Datos del trabajador</div>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label">Teléfono (WhatsApp)</label>
+            <input id="n-telefono" type="tel" class="form-input" value="${v('telefono')}" placeholder="33 1234 5678" />
+            <div class="helper-text">Sirve para mandarle su recibo o avisarle de sus vacaciones por WhatsApp. A 10 dígitos.</div>
+          </div>
+        </div>
+        <div style="height:1px;background:var(--border);margin:20px 0;"></div>
         <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">🚨 Contacto de Emergencia</div>
         <div class="form-grid">
           <div class="form-group">
@@ -834,14 +855,101 @@ function _toggleNominaConfig() {
   show('ng-pension-val',  pension);
 }
 
+/**
+ * Revisa RFC, CURP y NSS con su dígito verificador (validaciones_mx.js).
+ * Devuelve una lista de advertencias — NO bloquea: hay expedientes heredados
+ * con datos imperfectos y el patrón necesita poder guardarlos igual. El aviso
+ * importa porque un dedazo aquí reaparece después como rechazo del IDSE o del
+ * SUA, cuando ya cuesta más caro.
+ * @returns {Array<{campo:string, motivo:string}>}
+ */
 function validarCamposLegales({ rfc, curp, nss }) {
-  if (rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(rfc))
-    return 'RFC inválido. Formato esperado: 4 letras + 6 dígitos + 3 alfanuméricos (ej. GOEO801231AB1).';
-  if (curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(curp))
-    return 'CURP inválida. Debe tener 18 caracteres en el formato oficial (ej. LOHM900415MDFPRL09).';
-  if (nss && !/^\d{11}$/.test(nss))
-    return 'NSS inválido. Debe contener exactamente 11 dígitos numéricos.';
-  return null;
+  if (typeof validarRFC !== 'function') return [];   // sin validaciones_mx.js
+  const avisos = [];
+  const r = validarRFC(rfc);   if (!r.valido) avisos.push({ campo:'RFC',  motivo:r.motivo });
+  const c = validarCURP(curp); if (!c.valido) avisos.push({ campo:'CURP', motivo:c.motivo });
+  const n = validarNSS(nss);   if (!n.valido) avisos.push({ campo:'NSS',  motivo:n.motivo });
+  return avisos;
+}
+
+/**
+ * Al capturar la CURP, autollena fecha de nacimiento y sexo (van dentro de la
+ * propia CURP) y avisa si el dígito verificador no cuadra.
+ */
+function _onCURPCapturada() {
+  const el = eid('n-curp');
+  if (!el || typeof datosDesdeCURP !== 'function') return;
+  const curp = el.value.trim().toUpperCase();
+
+  const aviso = eid('n-curp-aviso');
+  if (aviso) {
+    const r = validarCURP(curp);
+    aviso.style.display = curp && !r.valido ? '' : 'none';
+    aviso.textContent   = r.motivo || '';
+  }
+
+  const d = datosDesdeCURP(curp);
+  if (!d) return;
+  // Solo se llena lo que esté vacío: no pisar lo que el usuario ya capturó
+  const fn = eid('n-fecha-nac');
+  if (fn && !fn.value) { fn.value = d.fechaNacimiento; _actualizarEdadCalculada(); }
+  const sx = eid('n-sexo');
+  if (sx && !sx.value && d.sexo) sx.value = d.sexo;
+}
+
+/**
+ * Modal de advertencia por dígitos verificadores que no cuadran. No bloquea:
+ * ofrece corregir (lo normal) o guardar igual (datos heredados).
+ */
+function _mostrarAvisosLegales(avisos, trabId) {
+  const cont = document.createElement('div');
+  cont.id = 'aviso-legal-overlay';
+  cont.style.cssText = 'position:fixed;inset:0;z-index:950;background:rgba(15,25,35,.6);display:flex;align-items:center;justify-content:center;padding:18px;';
+  cont.innerHTML = `
+    <div class="modal animate-in" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Revisa estos datos</div>
+      </div>
+      <div style="padding:18px 24px;">
+        <p style="font-size:.88rem;color:var(--text-secondary);margin-bottom:14px;">
+          El dígito verificador no coincide. Casi siempre es un dedazo — y si se guarda así,
+          el error reaparece más adelante como rechazo del IDSE, del SUA o del timbrado.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${avisos.map(a => `
+            <div style="border-left:3px solid #f39c12;background:rgba(243,156,18,.08);padding:10px 12px;border-radius:0 6px 6px 0;">
+              <div style="font-weight:700;font-size:.82rem;">${a.campo}</div>
+              <div style="font-size:.8rem;color:var(--text-muted);margin-top:2px;">${a.motivo}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="_cerrarAvisosLegales()">Corregir</button>
+        <button class="btn-primary" onclick="_guardarDeTodosModos('${trabId || ''}')">Guardar de todos modos</button>
+      </div>
+    </div>`;
+  document.body.appendChild(cont);
+}
+
+function _cerrarAvisosLegales() {
+  document.getElementById('aviso-legal-overlay')?.remove();
+  switchModalTab(document.querySelector('.modal-tab'), 'mtab-personal');
+}
+
+function _guardarDeTodosModos(trabId) {
+  document.getElementById('aviso-legal-overlay')?.remove();
+  window._forzarGuardado = true;
+  handleGuardarTrabajador(trabId || '');
+}
+
+/** Muestra la edad derivada de la fecha de nacimiento (ya no se captura). */
+function _actualizarEdadCalculada() {
+  const fn  = eid('n-fecha-nac')?.value;
+  const out = eid('n-edad-calc');
+  if (!out) return;
+  const edad = typeof edadDesdeFecha === 'function' ? edadDesdeFecha(fn) : null;
+  if (edad == null) { out.textContent = ''; return; }
+  out.innerHTML = `${edad} años${edad < 18 ? ' — <strong style="color:#f39c12;">menor de edad: requiere autorización (Art. 23 LFT) y jornada máxima de 6 h</strong>' : ''}`;
 }
 
 // ── Puestos dentro del alta: cache, autollenado y creación inline ───────────
@@ -943,17 +1051,19 @@ async function handleGuardarTrabajador(id = '') {
     return;
   }
 
-  const errLegal = validarCamposLegales({
+  // Dígitos verificadores: se avisa una vez y se deja guardar de todos modos
+  // (hay expedientes heredados con datos imperfectos). _forzarGuardado lo pone
+  // el botón "Guardar de todos modos" del modal de advertencia.
+  const avisosLegales = validarCamposLegales({
     rfc:  eid('n-rfc')?.value.trim().toUpperCase() || '',
     curp: eid('n-curp')?.value.trim().toUpperCase() || '',
     nss:  eid('n-nss')?.value.trim() || '',
   });
-  if (errLegal) {
-    err.textContent = errLegal;
-    err.style.display = '';
-    switchModalTab(document.querySelector('.modal-tab'), 'mtab-personal');
+  if (avisosLegales.length && !window._forzarGuardado) {
+    _mostrarAvisosLegales(avisosLegales, id);
     return;
   }
+  window._forzarGuardado = false;
 
   const esPuestoDireccion = eid('n-es-direccion')?.checked || false;
   const errPeriodos = _validarPeriodosContrato(
@@ -996,7 +1106,11 @@ async function handleGuardarTrabajador(id = '') {
     tipo_contrato:          nv('n-contrato') || 'indeterminado',
     smg_zone:               nv('n-smg') || 'general',
     sucursal_id:            nv('n-sucursal') || null,
-    edad:                   parseInt(eid('n-edad')?.value) || null,
+    fecha_nacimiento:       nv('n-fecha-nac'),
+    sexo:                   nv('n-sexo'),
+    // `edad` se conserva porque los contratos PDF la imprimen, pero ya no se
+    // captura: se deriva de la fecha de nacimiento (la edad caduca, la fecha no)
+    edad:                   (typeof edadDesdeFecha === 'function' ? edadDesdeFecha(nv('n-fecha-nac')) : null),
     estado_civil:           nv('n-civil'),
     nacionalidad:           eid('n-nacionalidad')?.value.trim() || 'Mexicana',
     domicilio:              eid('n-domicilio-part')?.value.trim() || null,
@@ -1037,6 +1151,7 @@ async function handleGuardarTrabajador(id = '') {
     pension_valor:        parseFloat(eid('n-pension-valor')?.value || 0) || 0,
     contacto_emergencia_nombre:     eid('n-em-nombre')?.value.trim() || null,
     contacto_emergencia_parentesco: eid('n-em-parent')?.value.trim() || null,
+    telefono:                       eid('n-telefono')?.value.trim() || null,
     contacto_emergencia_telefono:   eid('n-em-tel')?.value.trim() || null,
     beneficiario1_nombre:     eid('n-b1-nombre')?.value.trim() || null,
     beneficiario1_parentesco: eid('n-b1-parent')?.value.trim() || null,
@@ -1096,12 +1211,14 @@ async function handleGuardarTrabajador(id = '') {
 async function renderPerfilEmpleado(id) {
   if (!id) { navigate('empleados'); return; }
   try {
-    const [trab, actas, contratos, asistencia, histSalarios] = await Promise.all([
+    const [trab, actas, contratos, asistencia, histSalarios, docsExp] = await Promise.all([
       db.getTrabajador(id),
       db.getActas({ trabajadorId: id }),
       db.getContratos(id),
       db.getAsistencia(id, mesActual()),
       db.getHistorialSalarios(id).catch(() => []),
+      window.supabase.from('documentos_trabajador').select('tipo_documento')
+        .eq('trabajador_id', id).then(r => r.data || []).catch(() => []),
     ]);
     const sucursal = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
     if (!trab) { navigate('empleados'); return; }
@@ -1135,6 +1252,10 @@ async function renderPerfilEmpleado(id) {
         </div>
         <div class="perfil-actions">
           <button class="btn-secondary" onclick="showModalTrabajador('${id}')">✏️ Editar datos</button>
+          <button class="btn-secondary" onclick="showModalKitDefensa('${id}')"
+                  title="Arma un ZIP con contrato, recibos, asistencia, actas y expediente — la documentación con la que te defiendes (Art. 784 LFT)">
+            🛡️ Kit de defensa
+          </button>
           ${necesitaRenovar ? `
             <button class="btn-secondary" style="border-color:var(--green-ok);color:var(--green-ok);"
               onclick="renovarAPlanta('${id}')">🏭 Renovar a Planta</button>
@@ -1147,6 +1268,7 @@ async function renderPerfilEmpleado(id) {
       </div>
 
       ${alertaVencHTML(dias, trab.tipo_contrato)}
+      ${_semaforoExpedienteHTML(trab, docsExp)}
 
       ${faltas30.length >= 3 ? `
         <div class="alert alert-danger animate-in">
@@ -1284,6 +1406,47 @@ async function renderPerfilEmpleado(id) {
 
 function filaInfo(label, value) {
   return `<div class="form-group"><label class="form-label">${label}</label><div style="padding:10px 0;font-size:.95rem;font-weight:600;">${value || '—'}</div></div>`;
+}
+
+/**
+ * Semáforo de completitud del expediente. No es cosmético: lo que falte aquí
+ * es lo que no vas a poder probar si el trabajador demanda (Art. 784 LFT).
+ */
+function _semaforoExpedienteHTML(trab, docs) {
+  if (typeof completitudExpediente !== 'function') return '';
+  const r = completitudExpediente(trab, docs);
+  if (r.nivel === 'completo') {
+    return `<div class="alert alert-success animate-in" style="margin-bottom:14px;">
+      <span>✅</span><span>Expediente completo (${r.pct}%). Tienes con qué defenderte.</span>
+    </div>`;
+  }
+
+  const color = r.nivel === 'incompleto' ? 'var(--red-warn)' : '#f39c12';
+  const bg    = r.nivel === 'incompleto' ? 'rgba(231,76,60,.08)' : 'rgba(243,156,18,.08)';
+  const datos = r.faltantes.filter(f => f.grupo === 'datos');
+  const docsF = r.faltantes.filter(f => f.grupo === 'docs');
+
+  return `
+    <div class="card animate-in" style="margin-bottom:14px;border-color:${color};background:${bg};">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="min-width:96px;">
+          <div style="font-size:1.6rem;font-weight:800;color:${color};line-height:1;">${r.pct}%</div>
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:2px;">Expediente</div>
+        </div>
+        <div style="flex:1;min-width:240px;">
+          <div style="height:6px;background:var(--border);border-radius:100px;overflow:hidden;margin-bottom:8px;">
+            <div style="height:100%;width:${r.pct}%;background:${color};border-radius:100px;"></div>
+          </div>
+          <div style="font-size:.82rem;">
+            ${datos.length ? `<div style="margin-bottom:4px;"><strong>Faltan datos:</strong> <span style="color:var(--text-muted);">${datos.map(f=>f.label).join(', ')}</span></div>` : ''}
+            ${docsF.length ? `<div><strong>Faltan documentos:</strong> <span style="color:var(--text-muted);">${docsF.map(f=>f.label).join(', ')}</span></div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-top:10px;">
+        En un juicio, la carga de la prueba es del patrón (Art. 784 LFT): lo que no esté en el expediente se presume a favor del trabajador.
+      </div>
+    </div>`;
 }
 
 /**
