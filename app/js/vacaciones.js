@@ -21,7 +21,7 @@ async function renderVacaciones() {
         .eq('estado', 'activo')
         .order('nombre'),
       _sbV().from('vacaciones')
-        .select('*,trabajadores(nombre)')
+        .select('*,trabajadores(nombre,telefono)')
         .eq('empresa_id', CTX.empresa.id)
         .order('creado_en', { ascending: false }),
     ]);
@@ -65,6 +65,12 @@ function _renderVACTab() {
   else _renderVACSaldos(c);
 }
 
+/** Aprobar/rechazar/eliminar es de gerente o admin (RLS lo impone; esto solo
+ *  evita mostrar botones que van a fallar). Sin roles.js cargado, no restringe. */
+function _vacPuedeAprobar() {
+  return typeof puedeGestionar !== 'function' || puedeGestionar();
+}
+
 function _renderVACSolicitudes(c) {
   const TIPO_LABEL = { vacacion:'Vacaciones', permiso_goce:'Permiso c/goce', permiso_sin:'Permiso s/goce' };
   const ESTADO_BADGE = {
@@ -92,11 +98,17 @@ function _renderVACSolicitudes(c) {
               <td>${ESTADO_BADGE[s.estado] || s.estado}</td>
               <td>
                 <div class="actions">
-                  ${s.estado === 'pendiente' ? `
+                  ${s.estado === 'pendiente' && _vacPuedeAprobar() ? `
                     <button class="btn-sm" style="background:rgba(39,174,96,.12);color:var(--green-ok);border:1px solid rgba(39,174,96,.3);" onclick="aprobarVAC('${s.id}')">✅ Aprobar</button>
                     <button class="btn-sm" style="background:rgba(231,76,60,.12);color:var(--red-warn);border:1px solid rgba(231,76,60,.3);" onclick="rechazarVAC('${s.id}')">❌ Rechazar</button>
+                  ` : s.estado === 'pendiente' ? `
+                    <span style="font-size:.75rem;color:var(--text-muted);" title="Solo un gerente o administrador puede aprobar">Pendiente de aprobación</span>
                   ` : ''}
-                  <button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')">🗑</button>
+                  ${s.estado === 'aprobada' && s.tipo === 'vacacion' ? `<button class="btn-secondary btn-sm" onclick="generarConstanciaVacaciones('${s.id}')" title="Constancia de vacaciones (Art. 81 LFT)">📄 Constancia</button>` : ''}
+                  ${s.estado === 'aprobada' ? htmlBotonWhatsApp(s.trabajadores?.telefono,
+                      `Hola ${s.trabajadores?.nombre||''}, tus ${TIPO_LABEL[s.tipo]||'días'} del ${formatDateShort(s.fecha_inicio)} al ${formatDateShort(s.fecha_fin)} (${s.dias} día${s.dias!==1?'s':''}) fueron aprobados. ¡Que los disfrutes!`,
+                      { ocultarSiFalta: true }) : ''}
+                  ${_vacPuedeAprobar() ? `<button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')">🗑</button>` : ''}
                 </div>
               </td>
             </tr>
@@ -240,11 +252,28 @@ async function aprobarVAC(id) {
   const s = _VAC.solicitudes.find(x => x.id === id);
   if (!s) return;
   try {
-    await _sbV().from('vacaciones').update({ estado: 'aprobada', aprobado_por: CTX.perfil?.nombre || CTX.user?.email }).eq('id', id);
+    // supabase-js no lanza: hay que revisar .error explícitamente. Si no, un
+    // rechazo de RLS (p. ej. un capturista intentando aprobar) pasaría
+    // desapercibido y el botón no haría nada sin explicar por qué.
+    const { error } = await _sbV().from('vacaciones')
+      .update({ estado: 'aprobada', aprobado_por: CTX.perfil?.nombre || CTX.user?.email })
+      .eq('id', id);
+    if (error) throw error;
     await _sbV().from('trabajadores').update({ ultima_vacacion: s.fecha_fin, ultima_fecha_vacaciones: s.fecha_fin }).eq('id', s.trabajador_id);
     await _sincronizarAsistenciaVAC(s);
     await renderVacaciones();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) {
+    _errorVAC(e, 'aprobar');
+  }
+}
+
+/** Muestra el error de una acción de vacaciones, distinguiendo falta de permisos. */
+function _errorVAC(e, accion) {
+  if (typeof esErrorDePermisos === 'function' && esErrorDePermisos(e)) {
+    showToast(`No puedes ${accion} solicitudes: ${mensajeErrorPermisos(e)}`, 'error', 7000);
+  } else {
+    showToast('Error al ' + accion + ': ' + (e.message || e), 'error');
+  }
 }
 
 // Genera un registro de asistencia por cada día del rango de la solicitud aprobada,
@@ -284,9 +313,55 @@ async function _limpiarAsistenciaVAC(s) {
 async function rechazarVAC(id) {
   if (!confirm('¿Rechazar esta solicitud?')) return;
   try {
-    await _sbV().from('vacaciones').update({ estado: 'rechazada' }).eq('id', id);
+    const { error } = await _sbV().from('vacaciones').update({ estado: 'rechazada' }).eq('id', id);
+    if (error) throw error;
     await renderVacaciones();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { _errorVAC(e, 'rechazar'); }
+}
+
+/**
+ * Constancia de vacaciones (Art. 81 LFT): antigüedad, días que corresponden
+ * según la tabla legal, días ya gozados en el ciclo vigente y saldo.
+ * El "ciclo vigente" es el año de aniversario (ingreso + N años) al que
+ * pertenece la fecha de inicio de esta solicitud — no el año calendario.
+ */
+async function generarConstanciaVacaciones(solicitudId) {
+  const s = _VAC.solicitudes.find(x => x.id === solicitudId);
+  if (!s) return;
+  if (s.estado !== 'aprobada') { alert('Solo se puede generar la constancia de una solicitud aprobada.'); return; }
+  try {
+    const trab = await db.getTrabajador(s.trabajador_id);
+    const prest = prestacionesEmpresa();
+
+    const ingreso  = new Date(trab.fecha_ingreso + 'T00:00:00');
+    const inicioSol = new Date(s.fecha_inicio + 'T00:00:00');
+    // Años completos cumplidos justo antes/al momento de esta solicitud →
+    // mismo criterio que calcularFactorIntegracion() para "año en curso".
+    const ciclosCumplidos = fullYears(ingreso, inicioSol);
+    const antiguedadAnios = ciclosCumplidos + 1;
+
+    const vigenciaIni = new Date(ingreso); vigenciaIni.setFullYear(ingreso.getFullYear() + ciclosCumplidos);
+    const vigenciaFin = new Date(ingreso); vigenciaFin.setFullYear(ingreso.getFullYear() + ciclosCumplidos + 1); vigenciaFin.setDate(vigenciaFin.getDate() - 1);
+    const iso = d => d.toISOString().split('T')[0];
+
+    const diasCorresponden = vacDaysForYear(antiguedadAnios, prest.vacDiasExtra);
+
+    const { data: solsVigencia, error } = await _sbV().from('vacaciones')
+      .select('dias')
+      .eq('trabajador_id', trab.id)
+      .eq('tipo', 'vacacion')
+      .eq('estado', 'aprobada')
+      .gte('fecha_inicio', iso(vigenciaIni))
+      .lte('fecha_inicio', iso(vigenciaFin));
+    if (error) throw error;
+    const diasGozados = (solsVigencia || []).reduce((acc, x) => acc + (parseInt(x.dias) || 0), 0);
+    const saldo = Math.max(0, diasCorresponden - diasGozados);
+
+    generateConstanciaVacacionesPDF(CTX.empresa, trab, {
+      solicitud: s, antiguedadAnios, diasCorresponden, diasGozados, saldo,
+      vigenciaIni: iso(vigenciaIni), vigenciaFin: iso(vigenciaFin),
+    });
+  } catch(e) { alert('No se pudo generar la constancia: ' + e.message); }
 }
 
 async function eliminarVAC(id) {

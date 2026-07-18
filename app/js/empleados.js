@@ -30,18 +30,53 @@ function _actualizarPreviewSalario() {
   const diario   = calcSalarioDiario(monto, periodo);
   const mensual  = diario * 30; // equivalente mensual (Art. 89 LFT: diario × 30)
   const perLabel = _labelPeriodoSalario(periodo).toLowerCase();
+
+  // Costo real mensual para la empresa (cuotas patronales + provisiones)
+  let costoHTML = '';
+  if (typeof costoTotalEmpleado === 'function') {
+    const ingreso = eid('n-ingreso')?.value || new Date().toISOString().split('T')[0];
+    const c = costoTotalEmpleado({ salario_mensual: monto, periodo_salario: periodo, fecha_ingreso: ingreso });
+    costoHTML = `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(245,166,35,.35);"
+        title="Salario + cuotas patronales IMSS (${fmt(c.imssPatronal)}) + INFONAVIT 5% (${fmt(c.infonavit)}) + ISN (${fmt(c.isn)}) + provisiones de aguinaldo, vacaciones y prima vacacional (${fmt(c.provAguinaldo + c.provVacaciones + c.provPrimaVac)})">
+      Costo real mensual para la empresa: <strong>${fmt(c.total)}</strong>
+      <span style="color:var(--text-secondary);">(× ${c.factorSobreSalario} del salario)</span>
+    </div>`;
+  }
+
   box.innerHTML = `
     Estás capturando <strong>${fmt(monto)}</strong> como salario <strong>${perLabel}</strong>.
     &nbsp;→&nbsp; Salario diario: <strong>${fmt(diario)}</strong>
     &nbsp;·&nbsp; Equivalente mensual: <strong>${fmt(mensual)}</strong>
     ${periodo !== 'mensual' ? `<div style="margin-top:4px;color:var(--text-secondary);">Verifica que ${fmt(monto)} sea lo que el trabajador cobra <strong>cada ${perLabel === 'quincenal' ? 'quincena' : 'semana'}</strong>, no su sueldo mensual.</div>` : ''}
+    ${costoHTML}
   `;
 }
 
 // ═══════════════════════════════════════════════════════
 //  EMPLEADOS
 // ═══════════════════════════════════════════════════════
+// Subvista activa dentro del área de Trabajadores: 'trabajadores' | 'puestos'
+let _empleadosSubvista = 'trabajadores';
+
+function switchEmpleadosTab(sub) {
+  _empleadosSubvista = sub;
+  renderEmpleados();
+}
+
 async function renderEmpleados() {
+  const sub = _empleadosSubvista;
+  const seg = `
+    <div class="seg-control animate-in" style="display:inline-flex;gap:4px;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:16px;">
+      <button class="btn-sm" style="border:none;border-radius:7px;padding:7px 16px;font-weight:700;cursor:pointer;background:${sub==='trabajadores'?'var(--gold-primary)':'transparent'};color:${sub==='trabajadores'?'#1a1a1a':'var(--text-secondary)'};" onclick="switchEmpleadosTab('trabajadores')">👤 Trabajadores</button>
+      <button class="btn-sm" style="border:none;border-radius:7px;padding:7px 16px;font-weight:700;cursor:pointer;background:${sub==='puestos'?'var(--gold-primary)':'transparent'};color:${sub==='puestos'?'#1a1a1a':'var(--text-secondary)'};" onclick="switchEmpleadosTab('puestos')">💼 Puestos</button>
+    </div>`;
+  const main = eid('main-view');
+  main.innerHTML = `${seg}<div id="empleados-sub"></div>`;
+  if (sub === 'puestos') return renderPuestosCatalogo();
+  return renderTrabajadoresLista();
+}
+
+async function renderTrabajadoresLista() {
   const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const [trabajadores, sucursales] = await Promise.all([
@@ -81,7 +116,7 @@ async function renderEmpleados() {
         </table>
       </div>`;
 
-    const main = eid('main-view');
+    const main = eid('empleados-sub') || eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
         <div><div class="view-title">Trabajadores</div></div>
@@ -160,11 +195,16 @@ async function showModalAltaEmpleado() {
 }
 
 async function showModalTrabajador(id = null) {
-  const [sucursales, trab] = await Promise.all([
+  const [sucursales, puestos, trab] = await Promise.all([
     db.getSucursales(true),
+    db.getPuestos(true),
     id ? db.getTrabajador(id) : Promise.resolve(null),
   ]);
   const sucBranch = sucursales.filter(s => s.tipo !== 'matriz');
+  _puestosCache = puestos;
+  const puestoActualId  = trab?.puesto_id || '';
+  const puestoActualTxt = trab?.puesto || '';
+  const puestoEnCatalogo = puestos.some(p => p.id === puestoActualId);
   const esEdicion = !!trab;
   const hoy = new Date().toISOString().split('T')[0];
   const v = (k, fb = '') => { const val = trab?.[k]; return val === null || val === undefined ? fb : val; };
@@ -218,15 +258,27 @@ async function showModalTrabajador(id = null) {
           </div>
           <div class="form-group">
             <label class="form-label" for="n-curp">CURP</label>
-            <input id="n-curp" type="text" class="form-input" value="${escapeHtml(v('curp'))}" placeholder="LOHM900415MDFPRL09" maxlength="18" style="text-transform:uppercase;" />
+            <input id="n-curp" type="text" class="form-input" value="${escapeHtml(v('curp'))}" placeholder="LOHM900415MDFPRL09" maxlength="18"
+                   style="text-transform:uppercase;" oninput="_onCURPCapturada()" />
+            <div class="helper-text">Al capturarla se llenan solos la fecha de nacimiento y el sexo.</div>
+            <div id="n-curp-aviso" class="helper-text" style="display:none;color:#f39c12;"></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-nss">NSS (IMSS)</label>
             <input id="n-nss" type="text" class="form-input" value="${escapeHtml(v('nss'))}" placeholder="12345678901" maxlength="11" />
           </div>
           <div class="form-group">
-            <label class="form-label" for="n-edad">Edad</label>
-            <input id="n-edad" type="number" class="form-input" value="${v('edad')}" min="14" max="99" placeholder="Años" />
+            <label class="form-label" for="n-fecha-nac">Fecha de nacimiento</label>
+            <input id="n-fecha-nac" type="date" class="form-input" value="${escapeHtml(v('fecha_nacimiento'))}"
+                   max="${hoy}" onchange="_actualizarEdadCalculada()" />
+            <div class="helper-text" id="n-edad-calc"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="n-sexo">Sexo</label>
+            <select id="n-sexo" class="form-select">
+              <option value="">— Seleccionar —</option>
+              ${['Masculino','Femenino','No binario'].map(o=>`<option value="${o}" ${v('sexo')===o?'selected':''}>${o}</option>`).join('')}
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-civil">Estado Civil</label>
@@ -273,7 +325,49 @@ async function showModalTrabajador(id = null) {
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="n-puesto">Puesto / Cargo <span class="req">*</span></label>
-            <input id="n-puesto" type="text" class="form-input" value="${escapeHtml(v('puesto'))}" placeholder="Ej. Coordinador de Ventas" required aria-required="true" />
+            <div style="display:flex;gap:6px;">
+              <select id="n-puesto" class="form-select" style="flex:1;" onchange="_onPuestoSeleccionado()">
+                <option value="" ${!puestoActualId && !puestoActualTxt ? 'selected' : ''} disabled>— Selecciona un puesto —</option>
+                ${(puestoActualTxt && !puestoEnCatalogo) ? `<option value="__keep__" selected>${escapeHtml(puestoActualTxt)} (actual)</option>` : ''}
+                ${puestos.map(p => `<option value="${p.id}" ${puestoActualId === p.id ? 'selected' : ''}>${escapeHtml(p.nombre)}</option>`).join('')}
+              </select>
+              <button type="button" class="btn-secondary btn-sm" title="Crear un puesto nuevo" onclick="_toggleNuevoPuestoPanel(true)">＋ Nuevo</button>
+            </div>
+            <div class="helper-text">Elige una plantilla de puesto o crea una nueva.</div>
+          </div>
+          <div class="form-group span-2" id="n-nuevo-puesto-panel" style="display:none;background:rgba(245,166,35,.05);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);padding:14px 16px;">
+            <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-primary);margin-bottom:10px;">＋ Nuevo puesto</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="np-nombre">Nombre del puesto <span class="req">*</span></label>
+                <input id="np-nombre" type="text" class="form-input" placeholder="Ej. Coordinador de Ventas" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="np-dept">Departamento / Área</label>
+                <input id="np-dept" type="text" class="form-input" placeholder="Ej. Comercial" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="np-salario">Salario sugerido</label>
+                <input id="np-salario" type="number" class="form-input" min="0" step="0.01" placeholder="20000" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="np-periodo">Periodo de pago</label>
+                <select id="np-periodo" class="form-select">
+                  <option value="mensual">Mensual</option>
+                  <option value="quincenal">Quincenal</option>
+                  <option value="semanal">Semanal</option>
+                </select>
+              </div>
+              <div class="form-group span-2">
+                <label class="form-label" for="np-funciones">Funciones del puesto</label>
+                <textarea id="np-funciones" class="form-textarea" rows="2" placeholder="Funciones principales del puesto."></textarea>
+              </div>
+            </div>
+            <div id="np-error" class="error-msg" style="display:none;margin:6px 0;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button type="button" class="btn-secondary btn-sm" onclick="_toggleNuevoPuestoPanel(false)">Cancelar</button>
+              <button type="button" class="btn-primary btn-sm" onclick="_guardarNuevoPuestoInline()">💾 Guardar puesto</button>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-dept">Departamento / Área</label>
@@ -458,6 +552,22 @@ async function showModalTrabajador(id = null) {
                 value="${v('pension_valor')||0}"
                 placeholder="ej. 0.30 para 30% / 1500 fijo" />
             </div>
+
+            <!-- Pago mixto (parte en efectivo) -->
+            <div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:12px;margin-top:2px;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;">
+                <input type="checkbox" id="n-pago-mixto" style="width:16px;height:16px;accent-color:var(--gold-primary);"
+                  ${v('metodo_pago')==='mixto'?'checked':''} onchange="_toggleNominaConfig()" />
+                <span><strong>Pago mixto</strong> <span style="font-size:.72rem;color:var(--text-muted);">(parte por transferencia, parte en efectivo)</span></span>
+              </label>
+              <div class="helper-text">Independiente de la "Forma de Pago" de arriba (esa solo redacta el contrato). Esto le dice a Nómina cuánto entregar en efectivo cada período — el resto se incluye en el archivo de dispersión bancaria.</div>
+            </div>
+            <div class="form-group" id="ng-pago-mixto-val" style="display:${v('metodo_pago')==='mixto'?'':'none'};">
+              <label class="form-label">Monto en efectivo por período</label>
+              <input id="n-monto-efectivo" type="number" class="form-input" min="0" step="0.01"
+                value="${v('monto_efectivo')||0}"
+                placeholder="ej. 1000" />
+            </div>
           </div>
         </div>
       </div>
@@ -568,6 +678,15 @@ async function showModalTrabajador(id = null) {
 
       <!-- ── TAB 4: CONTACTOS ── -->
       <div id="mtab-contactos" class="modal-tab-content" style="display:none;">
+        <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">📱 Datos del trabajador</div>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label">Teléfono (WhatsApp)</label>
+            <input id="n-telefono" type="tel" class="form-input" value="${v('telefono')}" placeholder="33 1234 5678" />
+            <div class="helper-text">Sirve para mandarle su recibo o avisarle de sus vacaciones por WhatsApp. A 10 dígitos.</div>
+          </div>
+        </div>
+        <div style="height:1px;background:var(--border);margin:20px 0;"></div>
         <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">🚨 Contacto de Emergencia</div>
         <div class="form-grid">
           <div class="form-group">
@@ -746,6 +865,7 @@ function _toggleNominaConfig() {
   const fondo   = document.getElementById('n-fondo-activo')?.checked;
   const info    = document.getElementById('n-info-activo')?.checked;
   const pension = document.getElementById('n-pension-activa')?.checked;
+  const pagoMixto = document.getElementById('n-pago-mixto')?.checked;
   const show = (id, vis) => { const el = document.getElementById(id); if (el) el.style.display = vis ? '' : 'none'; };
   show('ng-pct-com',      ['comision','mixto'].includes(tipo));
   show('ng-fondo-pct',    fondo);
@@ -753,16 +873,175 @@ function _toggleNominaConfig() {
   show('ng-info-val',     info);
   show('ng-pension-tipo', pension);
   show('ng-pension-val',  pension);
+  show('ng-pago-mixto-val', pagoMixto);
 }
 
+/**
+ * Revisa RFC, CURP y NSS con su dígito verificador (validaciones_mx.js).
+ * Devuelve una lista de advertencias — NO bloquea: hay expedientes heredados
+ * con datos imperfectos y el patrón necesita poder guardarlos igual. El aviso
+ * importa porque un dedazo aquí reaparece después como rechazo del IDSE o del
+ * SUA, cuando ya cuesta más caro.
+ * @returns {Array<{campo:string, motivo:string}>}
+ */
 function validarCamposLegales({ rfc, curp, nss }) {
-  if (rfc && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(rfc))
-    return 'RFC inválido. Formato esperado: 4 letras + 6 dígitos + 3 alfanuméricos (ej. GOEO801231AB1).';
-  if (curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(curp))
-    return 'CURP inválida. Debe tener 18 caracteres en el formato oficial (ej. LOHM900415MDFPRL09).';
-  if (nss && !/^\d{11}$/.test(nss))
-    return 'NSS inválido. Debe contener exactamente 11 dígitos numéricos.';
-  return null;
+  if (typeof validarRFC !== 'function') return [];   // sin validaciones_mx.js
+  const avisos = [];
+  const r = validarRFC(rfc);   if (!r.valido) avisos.push({ campo:'RFC',  motivo:r.motivo });
+  const c = validarCURP(curp); if (!c.valido) avisos.push({ campo:'CURP', motivo:c.motivo });
+  const n = validarNSS(nss);   if (!n.valido) avisos.push({ campo:'NSS',  motivo:n.motivo });
+  return avisos;
+}
+
+/**
+ * Al capturar la CURP, autollena fecha de nacimiento y sexo (van dentro de la
+ * propia CURP) y avisa si el dígito verificador no cuadra.
+ */
+function _onCURPCapturada() {
+  const el = eid('n-curp');
+  if (!el || typeof datosDesdeCURP !== 'function') return;
+  const curp = el.value.trim().toUpperCase();
+
+  const aviso = eid('n-curp-aviso');
+  if (aviso) {
+    const r = validarCURP(curp);
+    aviso.style.display = curp && !r.valido ? '' : 'none';
+    aviso.textContent   = r.motivo || '';
+  }
+
+  const d = datosDesdeCURP(curp);
+  if (!d) return;
+  // Solo se llena lo que esté vacío: no pisar lo que el usuario ya capturó
+  const fn = eid('n-fecha-nac');
+  if (fn && !fn.value) { fn.value = d.fechaNacimiento; _actualizarEdadCalculada(); }
+  const sx = eid('n-sexo');
+  if (sx && !sx.value && d.sexo) sx.value = d.sexo;
+}
+
+/**
+ * Modal de advertencia por dígitos verificadores que no cuadran. No bloquea:
+ * ofrece corregir (lo normal) o guardar igual (datos heredados).
+ */
+function _mostrarAvisosLegales(avisos, trabId) {
+  const cont = document.createElement('div');
+  cont.id = 'aviso-legal-overlay';
+  cont.style.cssText = 'position:fixed;inset:0;z-index:950;background:rgba(15,25,35,.6);display:flex;align-items:center;justify-content:center;padding:18px;';
+  cont.innerHTML = `
+    <div class="modal animate-in" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Revisa estos datos</div>
+      </div>
+      <div style="padding:18px 24px;">
+        <p style="font-size:.88rem;color:var(--text-secondary);margin-bottom:14px;">
+          El dígito verificador no coincide. Casi siempre es un dedazo — y si se guarda así,
+          el error reaparece más adelante como rechazo del IDSE, del SUA o del timbrado.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${avisos.map(a => `
+            <div style="border-left:3px solid #f39c12;background:rgba(243,156,18,.08);padding:10px 12px;border-radius:0 6px 6px 0;">
+              <div style="font-weight:700;font-size:.82rem;">${a.campo}</div>
+              <div style="font-size:.8rem;color:var(--text-muted);margin-top:2px;">${a.motivo}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="_cerrarAvisosLegales()">Corregir</button>
+        <button class="btn-primary" onclick="_guardarDeTodosModos('${trabId || ''}')">Guardar de todos modos</button>
+      </div>
+    </div>`;
+  document.body.appendChild(cont);
+}
+
+function _cerrarAvisosLegales() {
+  document.getElementById('aviso-legal-overlay')?.remove();
+  switchModalTab(document.querySelector('.modal-tab'), 'mtab-personal');
+}
+
+function _guardarDeTodosModos(trabId) {
+  document.getElementById('aviso-legal-overlay')?.remove();
+  window._forzarGuardado = true;
+  handleGuardarTrabajador(trabId || '');
+}
+
+/** Muestra la edad derivada de la fecha de nacimiento (ya no se captura). */
+function _actualizarEdadCalculada() {
+  const fn  = eid('n-fecha-nac')?.value;
+  const out = eid('n-edad-calc');
+  if (!out) return;
+  const edad = typeof edadDesdeFecha === 'function' ? edadDesdeFecha(fn) : null;
+  if (edad == null) { out.textContent = ''; return; }
+  out.innerHTML = `${edad} años${edad < 18 ? ' — <strong style="color:#f39c12;">menor de edad: requiere autorización (Art. 23 LFT) y jornada máxima de 6 h</strong>' : ''}`;
+}
+
+// ── Puestos dentro del alta: cache, autollenado y creación inline ───────────
+let _puestosCache = [];
+
+// Al elegir un puesto del catálogo, prellena el tab Laboral. Los campos de texto
+// (departamento, funciones, salario) solo se llenan si están vacíos, para no
+// pisar lo que el usuario ya haya capturado; los selects toman el valor de la
+// plantilla si ésta lo define.
+function _onPuestoSeleccionado() {
+  const id = eid('n-puesto')?.value;
+  if (!id || id === '__keep__') return;
+  const p = _puestosCache.find(x => x.id === id);
+  if (!p) return;
+  const setIfEmpty = (elId, val) => { const el = eid(elId); if (el && !el.value && val != null && val !== '') el.value = val; };
+  const setSel     = (elId, val) => { const el = eid(elId); if (el && val) el.value = val; };
+  setIfEmpty('n-dept', p.departamento);
+  setIfEmpty('n-funciones', p.funciones);
+  setIfEmpty('n-salario', p.salario_sugerido);
+  setSel('n-periodo', p.periodo_salario);
+  setSel('n-smg', p.smg_zone);
+  if (p.tipo_contrato) { const c = eid('n-contrato'); if (c) { c.value = p.tipo_contrato; if (typeof onTipoContratoChange === 'function') onTipoContratoChange(); } }
+  if (p.tipo_salario) { const ts = eid('n-tipo-salario'); if (ts) { ts.value = p.tipo_salario; if (typeof _toggleNominaConfig === 'function') _toggleNominaConfig(); } }
+  if (p.pct_comision) { const pc = eid('n-pct-comision'); if (pc && !pc.value) pc.value = parseFloat(p.pct_comision) * 100; }
+  if (p.es_puesto_direccion) { const dir = eid('n-es-direccion'); if (dir) { dir.checked = true; if (typeof _actualizarLimitesPrueba === 'function') _actualizarLimitesPrueba(); } }
+  if (typeof _actualizarPreviewSalario === 'function') _actualizarPreviewSalario();
+}
+
+function _toggleNuevoPuestoPanel(mostrar) {
+  const panel = eid('n-nuevo-puesto-panel');
+  if (panel) panel.style.display = mostrar ? '' : 'none';
+  if (mostrar) {
+    // Semilla: reusar lo ya capturado en el tab Laboral
+    const np = eid('np-nombre'); if (np && !np.value) np.value = '';
+    const nd = eid('np-dept'); if (nd && !nd.value) nd.value = eid('n-dept')?.value || '';
+    const nf = eid('np-funciones'); if (nf && !nf.value) nf.value = eid('n-funciones')?.value || '';
+    const ns = eid('np-salario'); if (ns && !ns.value) ns.value = eid('n-salario')?.value || '';
+    eid('np-nombre')?.focus();
+  }
+}
+
+// Crea el puesto en el catálogo, lo añade al select, lo selecciona y autollena.
+async function _guardarNuevoPuestoInline() {
+  const err = eid('np-error');
+  if (err) err.style.display = 'none';
+  const nombre = eid('np-nombre')?.value.trim();
+  if (!nombre) { if (err) { err.textContent = 'El nombre del puesto es obligatorio.'; err.style.display = ''; } return; }
+  const salario = parseFloat(eid('np-salario')?.value);
+  const datos = {
+    nombre,
+    departamento:     eid('np-dept')?.value.trim() || null,
+    funciones:        eid('np-funciones')?.value.trim() || null,
+    salario_sugerido: isNaN(salario) ? null : salario,
+    periodo_salario:  eid('np-periodo')?.value || 'mensual',
+  };
+  try {
+    const nuevo = await db.createPuesto(datos, CTX.empresa.id);
+    _puestosCache.push(nuevo);
+    const sel = eid('n-puesto');
+    if (sel) {
+      const opt = document.createElement('option');
+      opt.value = nuevo.id; opt.textContent = nuevo.nombre;
+      sel.appendChild(opt);
+      sel.value = nuevo.id;
+    }
+    _toggleNuevoPuestoPanel(false);
+    _onPuestoSeleccionado();
+    if (typeof showToast === 'function') showToast('✅ Puesto creado y guardado en el catálogo.', 'success', 3500);
+  } catch (e) {
+    if (err) { err.textContent = e.message; err.style.display = ''; }
+  }
 }
 
 async function handleGuardarTrabajador(id = '') {
@@ -770,7 +1049,14 @@ async function handleGuardarTrabajador(id = '') {
   err.style.display = 'none';
 
   const nombre  = eid('n-nombre')?.value.trim();
-  const puesto  = eid('n-puesto')?.value.trim();
+  // El puesto se elige del catálogo: el value del select es el puesto_id
+  // (o '__keep__' para conservar el texto de un trabajador legado).
+  const puestoSel = eid('n-puesto');
+  const puestoId  = puestoSel && puestoSel.value && puestoSel.value !== '__keep__' ? puestoSel.value : null;
+  const puestoTxt = puestoSel && puestoSel.value
+    ? (puestoSel.options[puestoSel.selectedIndex]?.textContent || '').replace(/\s*\(actual\)\s*$/, '').trim()
+    : '';
+  const puesto  = puestoTxt;
   const ingreso = eid('n-ingreso')?.value;
   const salario = parseFloat(eid('n-salario')?.value);
 
@@ -786,17 +1072,19 @@ async function handleGuardarTrabajador(id = '') {
     return;
   }
 
-  const errLegal = validarCamposLegales({
+  // Dígitos verificadores: se avisa una vez y se deja guardar de todos modos
+  // (hay expedientes heredados con datos imperfectos). _forzarGuardado lo pone
+  // el botón "Guardar de todos modos" del modal de advertencia.
+  const avisosLegales = validarCamposLegales({
     rfc:  eid('n-rfc')?.value.trim().toUpperCase() || '',
     curp: eid('n-curp')?.value.trim().toUpperCase() || '',
     nss:  eid('n-nss')?.value.trim() || '',
   });
-  if (errLegal) {
-    err.textContent = errLegal;
-    err.style.display = '';
-    switchModalTab(document.querySelector('.modal-tab'), 'mtab-personal');
+  if (avisosLegales.length && !window._forzarGuardado) {
+    _mostrarAvisosLegales(avisosLegales, id);
     return;
   }
+  window._forzarGuardado = false;
 
   const esPuestoDireccion = eid('n-es-direccion')?.checked || false;
   const errPeriodos = _validarPeriodosContrato(
@@ -828,6 +1116,7 @@ async function handleGuardarTrabajador(id = '') {
 
   const datos = {
     nombre, puesto,
+    puesto_id:      puestoId,
     rfc:            eid('n-rfc')?.value.trim().toUpperCase() || null,
     curp:           eid('n-curp')?.value.trim().toUpperCase() || null,
     nss:            eid('n-nss')?.value.trim() || null,
@@ -838,7 +1127,11 @@ async function handleGuardarTrabajador(id = '') {
     tipo_contrato:          nv('n-contrato') || 'indeterminado',
     smg_zone:               nv('n-smg') || 'general',
     sucursal_id:            nv('n-sucursal') || null,
-    edad:                   parseInt(eid('n-edad')?.value) || null,
+    fecha_nacimiento:       nv('n-fecha-nac'),
+    sexo:                   nv('n-sexo'),
+    // `edad` se conserva porque los contratos PDF la imprimen, pero ya no se
+    // captura: se deriva de la fecha de nacimiento (la edad caduca, la fecha no)
+    edad:                   (typeof edadDesdeFecha === 'function' ? edadDesdeFecha(nv('n-fecha-nac')) : null),
     estado_civil:           nv('n-civil'),
     nacionalidad:           eid('n-nacionalidad')?.value.trim() || 'Mexicana',
     domicilio:              eid('n-domicilio-part')?.value.trim() || null,
@@ -852,6 +1145,13 @@ async function handleGuardarTrabajador(id = '') {
     capacitacion_inicial_dias: parseInt(nv('n-capacitacion')) || null,
     funciones:              eid('n-funciones')?.value.trim() || null,
     forma_pago:             nv('n-forma-pago') || 'deposito',
+    // metodo_pago/monto_efectivo son independientes de forma_pago (esa solo
+    // redacta el contrato): si el pago mixto no está activo, metodo_pago se
+    // deriva de forma_pago para que el corte de nómina en efectivo/SPEI
+    // (Fase 6.4) siga siendo correcto sin que el usuario tenga que capturar
+    // lo mismo dos veces.
+    metodo_pago:            eid('n-pago-mixto')?.checked ? 'mixto' : (nv('n-forma-pago') === 'efectivo' ? 'efectivo' : 'transferencia'),
+    monto_efectivo:         eid('n-pago-mixto')?.checked ? (parseFloat(nv('n-monto-efectivo')) || 0) : 0,
     dias_pago:              eid('n-dias-pago')?.value.trim() || null,
     hora_inicio:            nv('n-hora-ini'),
     hora_fin:               nv('n-hora-fin'),
@@ -879,6 +1179,7 @@ async function handleGuardarTrabajador(id = '') {
     pension_valor:        parseFloat(eid('n-pension-valor')?.value || 0) || 0,
     contacto_emergencia_nombre:     eid('n-em-nombre')?.value.trim() || null,
     contacto_emergencia_parentesco: eid('n-em-parent')?.value.trim() || null,
+    telefono:                       eid('n-telefono')?.value.trim() || null,
     contacto_emergencia_telefono:   eid('n-em-tel')?.value.trim() || null,
     beneficiario1_nombre:     eid('n-b1-nombre')?.value.trim() || null,
     beneficiario1_parentesco: eid('n-b1-parent')?.value.trim() || null,
@@ -959,12 +1260,14 @@ async function renderPerfilEmpleado(id) {
   const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   if (!id) { navigate('empleados'); return; }
   try {
-    const [trab, actas, contratos, asistencia, histSalarios] = await Promise.all([
+    const [trab, actas, contratos, asistencia, histSalarios, docsExp] = await Promise.all([
       db.getTrabajador(id),
       db.getActas({ trabajadorId: id }),
       db.getContratos(id),
       db.getAsistencia(id, mesActual()),
       db.getHistorialSalarios(id).catch(() => []),
+      window.supabase.from('documentos_trabajador').select('tipo_documento')
+        .eq('trabajador_id', id).then(r => r.data || []).catch(() => []),
     ]);
     const sucursal = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
     if (!trab) { navigate('empleados'); return; }
@@ -999,6 +1302,10 @@ async function renderPerfilEmpleado(id) {
         </div>
         <div class="perfil-actions">
           <button class="btn-secondary" onclick="showModalTrabajador('${id}')">✏️ Editar datos</button>
+          <button class="btn-secondary" onclick="showModalKitDefensa('${id}')"
+                  title="Arma un ZIP con contrato, recibos, asistencia, actas y expediente — la documentación con la que te defiendes (Art. 784 LFT)">
+            🛡️ Kit de defensa
+          </button>
           ${necesitaRenovar ? `
             <button class="btn-secondary" style="border-color:var(--green-ok);color:var(--green-ok);"
               onclick="renovarAPlanta('${id}')">🏭 Renovar a Planta</button>
@@ -1011,6 +1318,7 @@ async function renderPerfilEmpleado(id) {
       </div>
 
       ${alertaVencHTML(dias, trab.tipo_contrato)}
+      ${_semaforoExpedienteHTML(trab, docsExp)}
 
       ${faltas30.length >= 3 ? `
         <div class="alert alert-danger animate-in">
@@ -1062,6 +1370,7 @@ async function renderPerfilEmpleado(id) {
             ${filaInfo('Zona SMG', trab.smg_zone === 'frontera' ? 'Frontera Norte' : 'Área General')}
             ${filaInfo('Centro de Trabajo', sucursal ? `${escapeHtml(sucursal.nombre)}${sucursal.ciudad ? ' — ' + escapeHtml(sucursal.ciudad) : ''}` : 'Matriz')}
             ${filaInfo('Forma de pago', trab.forma_pago === 'efectivo' ? 'Efectivo' : 'Depósito bancario')}
+            ${trab.metodo_pago === 'mixto' ? filaInfo('Pago mixto', `${fmt(trab.monto_efectivo||0)} en efectivo por período, resto por transferencia`) : ''}
             ${trab.dias_pago ? filaInfo('Días de pago', escapeHtml(trab.dias_pago)) : ''}
             ${trab.funciones ? filaInfo('Funciones', escapeHtml(trab.funciones)) : ''}
             ${trab.hora_inicio ? filaInfo('Horario', `${escapeHtml(trab.hora_inicio)} – ${escapeHtml(trab.hora_fin)||''}${trab.hora_descanso_inicio ? '  |  Comida: '+escapeHtml(trab.hora_descanso_inicio)+' – '+(escapeHtml(trab.hora_descanso_fin)||'') : ''}`) : ''}
@@ -1069,6 +1378,7 @@ async function renderPerfilEmpleado(id) {
             ${trab.estado === 'baja' ? filaInfo('Fecha de baja', formatDateShort(trab.fecha_baja)) + filaInfo('Tipo de baja', escapeHtml(trab.tipo_baja)) : ''}
           </div>
         </div>
+        ${trab.estado === 'activo' ? _cardCostoYSalida(trab) : ''}
         ${(trab.contacto_emergencia_nombre || trab.beneficiario1_nombre) ? `
         <div class="card">
           <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Contactos</div>
@@ -1147,6 +1457,102 @@ async function renderPerfilEmpleado(id) {
 
 function filaInfo(label, value) {
   return `<div class="form-group"><label class="form-label">${label}</label><div style="padding:10px 0;font-size:.95rem;font-weight:600;">${value || '—'}</div></div>`;
+}
+
+/**
+ * Semáforo de completitud del expediente. No es cosmético: lo que falte aquí
+ * es lo que no vas a poder probar si el trabajador demanda (Art. 784 LFT).
+ */
+function _semaforoExpedienteHTML(trab, docs) {
+  if (typeof completitudExpediente !== 'function') return '';
+  const r = completitudExpediente(trab, docs);
+  if (r.nivel === 'completo') {
+    return `<div class="alert alert-success animate-in" style="margin-bottom:14px;">
+      <span>✅</span><span>Expediente completo (${r.pct}%). Tienes con qué defenderte.</span>
+    </div>`;
+  }
+
+  const color = r.nivel === 'incompleto' ? 'var(--red-warn)' : '#f39c12';
+  const bg    = r.nivel === 'incompleto' ? 'rgba(231,76,60,.08)' : 'rgba(243,156,18,.08)';
+  const datos = r.faltantes.filter(f => f.grupo === 'datos');
+  const docsF = r.faltantes.filter(f => f.grupo === 'docs');
+
+  return `
+    <div class="card animate-in" style="margin-bottom:14px;border-color:${color};background:${bg};">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="min-width:96px;">
+          <div style="font-size:1.6rem;font-weight:800;color:${color};line-height:1;">${r.pct}%</div>
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:2px;">Expediente</div>
+        </div>
+        <div style="flex:1;min-width:240px;">
+          <div style="height:6px;background:var(--border);border-radius:100px;overflow:hidden;margin-bottom:8px;">
+            <div style="height:100%;width:${r.pct}%;background:${color};border-radius:100px;"></div>
+          </div>
+          <div style="font-size:.82rem;">
+            ${datos.length ? `<div style="margin-bottom:4px;"><strong>Faltan datos:</strong> <span style="color:var(--text-muted);">${datos.map(f=>f.label).join(', ')}</span></div>` : ''}
+            ${docsF.length ? `<div><strong>Faltan documentos:</strong> <span style="color:var(--text-muted);">${docsF.map(f=>f.label).join(', ')}</span></div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-top:10px;">
+        En un juicio, la carga de la prueba es del patrón (Art. 784 LFT): lo que no esté en el expediente se presume a favor del trabajador.
+      </div>
+    </div>`;
+}
+
+/**
+ * Card "Costo y escenarios de salida" del perfil:
+ * · Costo real mensual para la empresa (costoTotalEmpleado — migración 32)
+ * · Simulador de despido: liquidación (injustificado) vs finiquito (renuncia)
+ *   con el mismo motor que usa el módulo de Bajas. Todo informativo.
+ */
+function _cardCostoYSalida(trab) {
+  if (typeof costoTotalEmpleado !== 'function' || typeof calcLiquidacion !== 'function') return '';
+  let c, liq, fin;
+  try {
+    c = costoTotalEmpleado(trab);
+    const params = {
+      startDate:      new Date(trab.fecha_ingreso + 'T00:00:00'),
+      endDate:        new Date(),
+      salario:        parseFloat(trab.salario_mensual) || 0,
+      monthlySalary:  parseFloat(trab.salario_mensual) || 0,
+      periodoSalario: trab.periodo_salario || 'mensual',
+      smgZone:        trab.smg_zone || 'general',
+      diasPendientes: 0,
+    };
+    liq = calcLiquidacion(params);
+    fin = calcFiniquito(params);
+  } catch(e) { console.warn('costo/salida:', e.message); return ''; }
+
+  const filaEscenario = (titulo, sub, r, color) => `
+    <div style="flex:1;min-width:240px;border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;">
+      <div style="font-weight:700;">${titulo}</div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:8px;">${sub}</div>
+      <div style="font-size:1.35rem;font-weight:800;color:${color};">${fmt(r.total)}</div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px;">
+        ${r.items.filter(i => i.amount > 0).map(i => `${i.name.replace(/\s*\(Art[^)]*\)/,'')}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
+      </div>
+    </div>`;
+
+  return `
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">
+        💰 Costo y escenarios de salida <span style="font-weight:400;text-transform:none;letter-spacing:0;">(informativo — cifras de hoy)</span>
+      </div>
+      <div class="form-grid" style="margin-bottom:14px;">
+        ${filaInfo('Costo real mensual para la empresa', `${fmt(c.total)} <span style="font-size:.75rem;color:var(--text-muted);">(× ${c.factorSobreSalario} del salario)</span>`)}
+        ${filaInfo('Cuotas IMSS patronales / mes', fmt(c.imssPatronal))}
+        ${filaInfo('INFONAVIT 5% + ISN / mes', fmt(c.infonavit + c.isn))}
+        ${filaInfo('Provisiones aguinaldo + vacaciones + prima / mes', fmt(c.provAguinaldo + c.provVacaciones + c.provPrimaVac))}
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        ${filaEscenario('Despido injustificado', 'Liquidación — Art. 50 LFT (3 meses + 20 días/año + prima antigüedad + proporcionales)', liq, 'var(--red-warn)')}
+        ${filaEscenario('Renuncia voluntaria', 'Finiquito — proporcionales devengados', fin, 'var(--green-ok)')}
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:10px;">
+        Mismo motor de cálculo que el módulo de Bajas (SDI ${fmt(liq.sdi)}, antigüedad ${liq.frac.toFixed(2)} años). No incluye salarios pendientes ni vacaciones de años anteriores no gozadas — captúralos al procesar la baja real.
+      </div>
+    </div>`;
 }
 
 function tablaAsistencia(items) {

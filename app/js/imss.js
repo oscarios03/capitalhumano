@@ -61,10 +61,39 @@ async function recalcularSBC(trabajadorId) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  BANDEJA DE MOVIMIENTOS
 // ═══════════════════════════════════════════════════════════════════════════
+let _imssTab = 'movimientos';
+
 async function renderIMSS() {
   const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   const main = eid('main-view');
-  main.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  main.innerHTML = `
+    <div class="view-header animate-in">
+      <div><div class="view-title">🏛 IMSS / Movimientos</div><div class="view-subtitle">Avisos afiliatorios para importar en IDSE, o capturar en SUA</div></div>
+    </div>
+    <div class="tabs animate-in" style="margin-bottom:16px;">
+      <button class="tab-btn ${_imssTab==='movimientos'?'active':''}" data-imss-tab="movimientos" onclick="switchIMSSTab('movimientos')">📋 Movimientos</button>
+      <button class="tab-btn ${_imssTab==='variabilidad'?'active':''}" data-imss-tab="variabilidad" onclick="switchIMSSTab('variabilidad')">📈 Variabilidad bimestral</button>
+    </div>
+    <div id="imss-tab-body" class="animate-in"><div class="loading"><div class="spinner"></div></div></div>
+  `;
+  await _renderIMSSTabBody();
+}
+
+async function switchIMSSTab(tab) {
+  _imssTab = tab;
+  document.querySelectorAll('.tab-btn[data-imss-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.imssTab === tab));
+  const body = eid('imss-tab-body');
+  if (body) body.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  await _renderIMSSTabBody();
+}
+
+async function _renderIMSSTabBody() {
+  return _imssTab === 'variabilidad' ? _tabVariabilidadIMSS() : _tabMovimientosIMSS();
+}
+
+async function _tabMovimientosIMSS() {
+  const main = eid('imss-tab-body');
 
   const { data: movimientos, error } = await window.supabase
     .from('movimientos_imss')
@@ -87,10 +116,6 @@ async function renderIMSS() {
   const TIPO_LABEL = { alta:'🟢 Alta', baja:'🔴 Baja', modificacion_salario:'💵 Modificación salario', reingreso:'🔁 Reingreso' };
 
   main.innerHTML = `
-    <div class="view-header animate-in">
-      <div><div class="view-title">🏛 IMSS / Movimientos</div><div class="view-subtitle">Avisos afiliatorios para importar en IDSE, o capturar en SUA</div></div>
-    </div>
-
     <div class="card animate-in" style="margin-bottom:16px;">
       <div class="card-header" style="margin-bottom:10px;">
         <span class="card-title">📋 Movimientos pendientes (${pendientes.length})</span>
@@ -282,4 +307,221 @@ async function verificarMovimientosIMSSVencidos(empresaId) {
     accion_sugerida: 'Ir al módulo IMSS / Movimientos y exportar el lote pendiente.',
   });
   if (errAlerta) console.warn('No se pudo generar la alerta de movimientos IMSS:', errAlerta.message);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  VARIABILIDAD BIMESTRAL DEL SBC (Art. 30 fr. II-III LSS)
+// ═══════════════════════════════════════════════════════════════════════════
+// Los trabajadores con salario mixto (parte fija + parte variable: comisiones,
+// primas, bonos) recalculan su SBC cada bimestre: la parte variable es el
+// promedio diario de las percepciones variables del bimestre inmediato anterior
+// (suma de variables ÷ días de salario devengado). El nuevo SBC rige el bimestre
+// siguiente y el aviso se presenta dentro de sus primeros 5 días hábiles.
+
+const _BIM_NOMBRES = ['Ene–Feb', 'Mar–Abr', 'May–Jun', 'Jul–Ago', 'Sep–Oct', 'Nov–Dic'];
+
+function _rangoBimestre(anio, bim) {
+  const mesIni = (bim - 1) * 2;               // 0, 2, 4, 6, 8, 10
+  const ini = new Date(anio, mesIni, 1);
+  const fin = new Date(anio, mesIni + 2, 0);  // último día del 2º mes del bimestre
+  const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return {
+    anio, bim, ini: iso(ini), fin: iso(fin),
+    dias: Math.round((fin - ini) / 86400000) + 1,
+    label: `${_BIM_NOMBRES[bim - 1]} ${anio}`,
+  };
+}
+
+function _bimestreDe(fecha) {
+  const esDate = fecha && typeof fecha.getFullYear === 'function';
+  const d = esDate ? fecha : new Date(String(fecha).slice(0, 10) + 'T00:00:00');
+  return _rangoBimestre(d.getFullYear(), Math.floor(d.getMonth() / 2) + 1);
+}
+
+function _bimestreAnterior(hoy) {
+  const actual = _bimestreDe(hoy || new Date());
+  let a = actual.anio, b = actual.bim - 1;
+  if (b < 1) { b = 6; a -= 1; }
+  return _rangoBimestre(a, b);
+}
+
+// Percepciones variables que integran al SBC (Art. 27 LSS): comisiones, primas
+// dominical/festiva y bonos variables. Las horas extra integran sólo en la parte
+// que excede los límites del Art. 66 LFT (9 h/sem); como eso depende del detalle
+// semanal se reportan aparte y NO se integran automáticamente aquí — verificar.
+function _percVariablesIntegraSBC(r) {
+  return parseFloat((
+      parseFloat(r.comisiones_ventas || 0)
+    + parseFloat(r.comisiones_recuperacion || 0)
+    + parseFloat(r.bono_meta || 0)
+    + parseFloat(r.prima_dominical || 0)
+    + parseFloat(r.prima_festivo || 0)
+    + parseFloat(r.bonos || 0)
+  ).toFixed(2));
+}
+
+// Calcula el nuevo SBC de un trabajador con salario mixto a partir de sus
+// recibos del bimestre. Reutiliza calcularSBC(): parte fija = salario diario ×
+// factor de integración; parte variable = promedio diario del bimestre.
+function _calcularSBCVariable(trab, recibos) {
+  const variableTotal  = recibos.reduce((s, r) => s + _percVariablesIntegraSBC(r), 0);
+  const diasDevengados = recibos.reduce((s, r) => s + (parseFloat(r.dias_laborados) || 0), 0);
+  const heTotal        = recibos.reduce((s, r) => s + (parseFloat(r.monto_horas_extra) || 0), 0);
+  const variableDiario = diasDevengados > 0 ? variableTotal / diasDevengados : 0;
+  const sbcFijo        = calcularSBC(trab, 0);
+  const sbcNuevo       = calcularSBC(trab, variableDiario);
+  const sbcAnterior    = parseFloat(trab.sbc) || sbcFijo;
+  return {
+    variableTotal:  parseFloat(variableTotal.toFixed(2)),
+    diasDevengados,
+    variableDiario: parseFloat(variableDiario.toFixed(4)),
+    heTotal:        parseFloat(heTotal.toFixed(2)),
+    sbcFijo, sbcNuevo, sbcAnterior,
+    cambia: Math.abs(sbcNuevo - sbcAnterior) >= 0.01,
+  };
+}
+
+async function _tabVariabilidadIMSS() {
+  const body = eid('imss-tab-body');
+  const bim = _bimestreAnterior(new Date());
+
+  // Periodos de nómina cuyo inicio cae en el bimestre anterior → sus recibos.
+  const { data: periodos, error: errP } = await window.supabase
+    .from('periodos_nomina')
+    .select('id')
+    .eq('empresa_id', CTX.empresa.id)
+    .gte('fecha_inicio', bim.ini)
+    .lte('fecha_inicio', bim.fin);
+  if (errP) { body.innerHTML = `<div class="alert alert-danger">Error al cargar periodos: ${errP.message}</div>`; return; }
+
+  const periodoIds = (periodos || []).map(p => p.id);
+  const recibosPorTrab = {};
+  if (periodoIds.length) {
+    const { data: recibos, error: errR } = await window.supabase
+      .from('recibos_nomina').select('*').in('periodo_id', periodoIds);
+    if (errR) { body.innerHTML = `<div class="alert alert-danger">Error al cargar recibos: ${errR.message}</div>`; return; }
+    (recibos || []).forEach(r => { (recibosPorTrab[r.trabajador_id] ||= []).push(r); });
+  }
+
+  const trabajadores = await db.getTrabajadores({ estado: 'activo' });
+  const filas = trabajadores
+    .map(t => ({ t, c: _calcularSBCVariable(t, recibosPorTrab[t.id] || []) }))
+    .filter(x => x.c.variableTotal > 0)
+    .sort((a, b) => b.c.variableTotal - a.c.variableTotal);
+  const conCambio = filas.filter(x => x.c.cambia);
+
+  body.innerHTML = `
+    <div class="alert alert-info" style="margin-bottom:14px;">
+      <span>ℹ️</span><span>Bimestre medido: <strong>${bim.label}</strong>. La parte variable del SBC es el promedio diario de comisiones, primas y bonos de ese bimestre (Art. 30 fr. III LSS). El nuevo SBC rige el bimestre en curso; presenta las modificaciones en IDSE dentro de sus primeros 5 días hábiles.</span>
+    </div>
+
+    <div class="card animate-in">
+      <div class="card-header" style="margin-bottom:10px;">
+        <span class="card-title">📈 Recálculo de SBC — ${bim.label} (${conCambio.length} con cambio)</span>
+        <button class="btn-primary btn-sm" ${!conCambio.length ? 'disabled' : ''} onclick="_generarMovimientosVariabilidad()">💵 Generar modificaciones de salario</button>
+      </div>
+      ${filas.length === 0
+        ? `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin percepciones variables en ${bim.label}</div><div class="empty-state-subtitle">Ningún trabajador tuvo comisiones, primas ni bonos que modifiquen el SBC.</div></div>`
+        : `<div class="table-wrap"><table class="data-table">
+            <thead><tr>
+              <th><input type="checkbox" onchange="document.querySelectorAll('.var-check:not(:disabled)').forEach(c=>c.checked=this.checked)" /></th>
+              <th>Trabajador</th><th>Variables del bimestre</th><th>Días</th><th>Var. diario</th>
+              <th>SBC actual</th><th>SBC nuevo</th><th>Δ</th>
+            </tr></thead>
+            <tbody>${filas.map(({ t, c }) => {
+              const delta = c.sbcNuevo - c.sbcAnterior;
+              const val = `${t.id}|${c.sbcNuevo}|${c.sbcAnterior}`;
+              return `<tr${c.cambia ? '' : ' style="opacity:.55;"'}>
+                <td><input type="checkbox" class="var-check" value="${val}" ${c.cambia ? '' : 'disabled'} /></td>
+                <td>${t.nombre}${c.heTotal > 0 ? `<br><span style="font-size:.7rem;color:var(--text-muted);">+ ${fmt(c.heTotal)} horas extra (verificar integración Art. 66 LFT)</span>` : ''}</td>
+                <td>${fmt(c.variableTotal)}</td>
+                <td>${c.diasDevengados}</td>
+                <td>${fmt(c.variableDiario)}</td>
+                <td>${fmt(c.sbcAnterior)}</td>
+                <td><strong>${fmt(c.sbcNuevo)}</strong></td>
+                <td>${c.cambia
+                    ? `<span style="color:${delta >= 0 ? 'var(--green-ok)' : 'var(--red-warn)'};font-weight:700;">${delta >= 0 ? '▲' : '▼'} ${fmt(Math.abs(delta))}</span>`
+                    : '<span style="color:var(--text-muted);">sin cambio</span>'}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table></div>
+          <div style="font-size:.74rem;color:var(--text-muted);margin-top:10px;">
+            SBC nuevo = salario diario × factor de integración + (variables del bimestre ÷ días devengados), topado a 25 UMA (Art. 28 LSS). Las horas extra se muestran aparte porque sólo integran en la parte que excede los límites del Art. 66 LFT.
+          </div>`
+      }
+    </div>
+  `;
+}
+
+async function _generarMovimientosVariabilidad() {
+  const seleccion = [...document.querySelectorAll('.var-check:checked')].map(c => c.value);
+  if (!seleccion.length) { alert('Selecciona al menos un trabajador con cambio de SBC.'); return; }
+
+  // El nuevo SBC rige a partir del bimestre en curso (el aviso se presenta en sus
+  // primeros días, tras cerrar el bimestre medido).
+  const fechaMov = _bimestreDe(new Date()).ini;
+
+  let ok = 0;
+  for (const item of seleccion) {
+    const [trabId, sbcNuevoStr, sbcAntStr] = item.split('|');
+    const sbcNuevo = parseFloat(sbcNuevoStr), sbcAnterior = parseFloat(sbcAntStr);
+    const { error: errU } = await window.supabase.from('trabajadores')
+      .update({ sbc: sbcNuevo, fecha_ultimo_sbc: fechaMov })
+      .eq('id', trabId);
+    if (errU) { console.warn('No se pudo actualizar SBC de', trabId, errU.message); continue; }
+    await registrarMovimientoIMSS(CTX.empresa.id, trabId, 'modificacion_salario', { sbcAnterior, sbcNuevo, fecha: fechaMov });
+    ok++;
+  }
+
+  alert(`${ok} movimiento(s) de modificación de salario generados.\nRevisa la pestaña "Movimientos" para exportarlos a IDSE.`);
+  _imssTab = 'movimientos';
+  await renderIMSS();
+}
+
+/**
+ * Alerta en los primeros 5 días de un mes impar (inicio de bimestre) si hubo
+ * percepciones variables en el bimestre anterior y aún no se han presentado
+ * modificaciones de salario en el bimestre en curso (Art. 30 fr. III LSS).
+ */
+async function verificarVariabilidadBimestralPendiente(empresaId) {
+  const hoy = new Date();
+  const mes = hoy.getMonth() + 1;                       // 1..12
+  if (mes % 2 === 0 || hoy.getDate() > 5) return;       // sólo primeros 5 días de mes impar
+
+  const bim = _bimestreAnterior(hoy);
+  const { data: periodos } = await window.supabase
+    .from('periodos_nomina').select('id')
+    .eq('empresa_id', empresaId)
+    .gte('fecha_inicio', bim.ini).lte('fecha_inicio', bim.fin);
+  const periodoIds = (periodos || []).map(p => p.id);
+  if (!periodoIds.length) return;
+
+  const { data: recibos } = await window.supabase
+    .from('recibos_nomina').select('*').in('periodo_id', periodoIds);
+  if (!(recibos || []).some(r => _percVariablesIntegraSBC(r) > 0)) return;
+
+  // ¿Ya hay modificaciones de salario presentadas en el bimestre en curso?
+  const bimActual = _bimestreDe(hoy);
+  const { data: mods } = await window.supabase
+    .from('movimientos_imss').select('id')
+    .eq('empresa_id', empresaId).eq('tipo', 'modificacion_salario')
+    .gte('fecha_movimiento', bimActual.ini).limit(1);
+  if (mods && mods.length) return;
+
+  const { data: yaExiste } = await window.supabase
+    .from('alertas').select('id')
+    .eq('empresa_id', empresaId).eq('tipo', 'variabilidad_sbc_pendiente')
+    .eq('resuelta', false).limit(1);
+  if (yaExiste && yaExiste.length) return;
+
+  const { error } = await window.supabase.from('alertas').insert({
+    empresa_id: empresaId,
+    tipo: 'variabilidad_sbc_pendiente',
+    titulo: 'Recalcular SBC variable del bimestre',
+    descripcion: `Hubo percepciones variables en ${bim.label}. Recalcula el SBC de los trabajadores con salario mixto y presenta las modificaciones dentro de los primeros días hábiles del bimestre (Art. 30 fr. III LSS).`,
+    prioridad: 'alta',
+    articulo_lft: 'Art. 30 fr. III LSS',
+    accion_sugerida: 'Ir a IMSS / Variabilidad bimestral y generar los movimientos.',
+  });
+  if (error) console.warn('No se pudo generar la alerta de variabilidad SBC:', error.message);
 }

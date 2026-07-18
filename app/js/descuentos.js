@@ -10,6 +10,7 @@ const TIPOS_DESCUENTO = {
   pension_alimenticia: { icono: '⚖️', label: 'Pensión alimenticia' },
   prestamo_empresa:    { icono: '💵', label: 'Préstamo de la empresa' },
   caja_ahorro:         { icono: '🐷', label: 'Caja de ahorro' },
+  prestamo_caja:       { icono: '🏦', label: 'Préstamo de caja de ahorro' },
   otro:                { icono: '📎', label: 'Otro' },
 };
 
@@ -53,6 +54,19 @@ async function renderTabDescuentos(trabajadorId) {
   const activos   = descuentos.filter(d => d.activo);
   const inactivos = descuentos.filter(d => !d.activo);
 
+  // Saldo acumulado en caja de ahorro (suma de lo aplicado en nómina hasta
+  // hoy — no es "saldo restante": la caja de ahorro no es una deuda, es un
+  // fondo que crece cada periodo).
+  const cajasAhorro = descuentos.filter(d => d.tipo === 'caja_ahorro');
+  let acumuladoCajaAhorro = 0;
+  if (cajasAhorro.length) {
+    const { data: aplicaciones } = await window.supabase
+      .from('descuentos_aplicados')
+      .select('monto_aplicado')
+      .in('descuento_id', cajasAhorro.map(d => d.id));
+    acumuladoCajaAhorro = (aplicaciones || []).reduce((s, a) => s + (parseFloat(a.monto_aplicado) || 0), 0);
+  }
+
   const filaDescuento = d => {
     const cfg = TIPOS_DESCUENTO[d.tipo] || TIPOS_DESCUENTO.otro;
     const valorLabel = d.modalidad === 'porcentaje' ? `${d.valor}%`
@@ -88,6 +102,10 @@ async function renderTabDescuentos(trabajadorId) {
       <strong>Descuentos y préstamos <span style="font-size:.8rem;font-weight:400;color:var(--text-muted);">(${activos.length} activo${activos.length !== 1 ? 's' : ''})</span></strong>
       <button class="btn-primary btn-sm" onclick="_mostrarFormDescuento('${trabajadorId}')">+ Nuevo descuento</button>
     </div>
+    ${cajasAhorro.length ? `
+      <div class="alert alert-info" style="margin-bottom:14px;">
+        <span>🐷</span><span>Acumulado en caja de ahorro a la fecha: <strong>${fmt(acumuladoCajaAhorro)}</strong> (suma de lo descontado en nómina).</span>
+      </div>` : ''}
     ${tabla(activos, 'Sin descuentos activos')}
     ${inactivos.length ? `
       <div style="margin-top:20px;">
@@ -157,7 +175,8 @@ function _ayudaTipoDescuento() {
     fonacot: 'Captura el número de crédito FONACOT. Normalmente es una cuota fija mensual/quincenal.',
     pension_alimenticia: '⚖️ Tiene prioridad absoluta sobre cualquier otro descuento y NO le aplican los topes del Art. 110 LFT (deriva de una orden judicial, Art. 110 fr. V LFT). Captura el número de expediente judicial.',
     prestamo_empresa: 'Sujeto al tope del Art. 110 fr. I LFT: no puede exceder el 30% del excedente del salario sobre el salario mínimo del periodo. El sistema recorta automáticamente si se excede.',
-    caja_ahorro: 'Descuento recurrente para una caja de ahorro (distinto del fondo de ahorro configurado en el expediente del trabajador).',
+    caja_ahorro: 'Descuento recurrente para una caja de ahorro (distinto del fondo de ahorro configurado en el expediente del trabajador). Deja el "Monto total del crédito" vacío para una aportación sin fin — así nunca se marca como "liquidado" ni se desactiva sola.',
+    prestamo_caja: 'Préstamo que el trabajador toma contra su propia caja de ahorro (no lo presta la empresa). Captura el monto prestado en "Monto total del crédito" para que el sistema calcule cuándo queda liquidado.',
     otro: 'Descuento recurrente de otro tipo.',
   };
   ayuda.textContent = textos[tipo] || '';

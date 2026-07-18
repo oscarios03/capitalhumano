@@ -117,7 +117,7 @@ const db = {
 
   // Actas
   async getActas(filtros = {}) {
-    let q = _q().from('actas').select('*, trabajadores(nombre, puesto)').order('creado_en', { ascending:false });
+    let q = _q().from('actas').select('*, trabajadores(nombre, puesto, telefono)').order('creado_en', { ascending:false });
     if (filtros.trabajadorId) q = q.eq('trabajador_id', filtros.trabajadorId);
     if (filtros.tipo)         q = q.eq('tipo', filtros.tipo);
     const { data, error } = await q;
@@ -221,20 +221,65 @@ const db = {
     return data;
   },
 
+  // ─── Puestos (plantillas de puesto) ───────────────────────────────────────
+  async getPuestos(soloActivos = true) {
+    let q = _q().from('puestos').select('*').order('nombre');
+    if (soloActivos) q = q.eq('activo', true);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getPuesto(id) {
+    if (!id) return null;
+    const { data, error } = await _q().from('puestos').select('*').eq('id', id).single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
+  },
+
+  async createPuesto(datos, empresaId) {
+    const { data, error } = await _q().from('puestos')
+      .insert({ ...datos, empresa_id: empresaId }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePuesto(id, datos) {
+    const { error } = await _q().from('puestos').update(datos).eq('id', id);
+    if (error) throw error;
+  },
+
+  async togglePuesto(id, activo) {
+    const { error } = await _q().from('puestos').update({ activo }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async countTrabajadoresByPuesto(puestoId) {
+    const { count } = await _q().from('trabajadores')
+      .select('id', { count:'exact', head:true })
+      .eq('puesto_id', puestoId).eq('estado','activo');
+    return count || 0;
+  },
+
   // ─── Dashboard KPIs ───────────────────────────────────────────────────────
   async getKPIs() {
     const empresaId = CTX?.empresa?.id;
-    if (!empresaId) return { empleadosActivos: 0, faltasMes: 0, actasMes: 0, bajasMes: 0 };
+    if (!empresaId) return { empleadosActivos: 0, faltasMes: 0, actasMes: 0, bajasMes: 0, nominaMes: null };
 
     const now = new Date();
     const mesStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     const inicio = `${mesStr}-01`;
+    const fin    = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    const [tActivos, fMes, aMes, bMes] = await Promise.all([
+    const [tActivos, fMes, aMes, bMes, nomina] = await Promise.all([
       _q().from('trabajadores').select('id', { count:'exact', head:true }).eq('empresa_id', empresaId).eq('estado','activo'),
-      _q().from('asistencia').select('id', { count:'exact', head:true }).eq('empresa_id', empresaId).gte('fecha', inicio),
+      // Solo faltas: antes contaba TODOS los registros de asistencia del mes
+      // (asistencias, retardos, vacaciones…), así que el KPI "Faltas este mes"
+      // mostraba el total de incidencias capturadas, no las faltas.
+      _q().from('asistencia').select('id', { count:'exact', head:true }).eq('empresa_id', empresaId).eq('tipo','falta').gte('fecha', inicio),
       _q().from('actas').select('id', { count:'exact', head:true }).eq('empresa_id', empresaId).gte('creado_en', inicio),
       _q().from('trabajadores').select('id', { count:'exact', head:true }).eq('empresa_id', empresaId).eq('estado','baja').gte('fecha_baja', inicio),
+      this.getCostoNominaMes(empresaId, inicio, fin).catch(() => null),
     ]);
 
     return {
@@ -242,6 +287,48 @@ const db = {
       faltasMes:        fMes.count || 0,
       actasMes:         aMes.count || 0,
       bajasMes:         bMes.count || 0,
+      nominaMes:        nomina,
+    };
+  },
+
+  /**
+   * Costo de la nómina del mes: neto pagado + lo que la empresa paga encima
+   * (cuotas patronales IMSS, INFONAVIT 5% e ISN — migración 32).
+   * Devuelve null si no hay períodos del mes.
+   */
+  async getCostoNominaMes(empresaId, inicio, fin) {
+    const { data: periodos } = await _q().from('periodos_nomina')
+      .select('id').eq('empresa_id', empresaId)
+      .gte('fecha_fin', inicio).lte('fecha_fin', fin);
+    if (!periodos?.length) return null;
+
+    const { data: recibos, error } = await _q().from('recibos_nomina')
+      .select('total_percepciones, neto_pagar, imss_patronal, infonavit_patronal, isn')
+      .in('periodo_id', periodos.map(p => p.id));
+    // Tolerancia: sin la migración 32 no existen las columnas patronales
+    if (error) {
+      if (!/imss_patronal|infonavit_patronal|isn/i.test(error.message || '')) throw error;
+      console.warn('Columnas patronales no disponibles — aplica la migración 32_migration_fiscal_patronal.sql');
+      const { data: base } = await _q().from('recibos_nomina')
+        .select('total_percepciones, neto_pagar').in('periodo_id', periodos.map(p => p.id));
+      const bruto = (base || []).reduce((s, r) => s + parseFloat(r.total_percepciones || 0), 0);
+      return { neto: (base || []).reduce((s, r) => s + parseFloat(r.neto_pagar || 0), 0),
+               bruto, patronal: 0, total: bruto, recibos: (base || []).length, parcial: true };
+    }
+
+    const num = (r, k) => parseFloat(r[k] || 0);
+    const bruto    = (recibos || []).reduce((s, r) => s + num(r, 'total_percepciones'), 0);
+    const neto     = (recibos || []).reduce((s, r) => s + num(r, 'neto_pagar'), 0);
+    const patronal = (recibos || []).reduce((s, r) =>
+      s + num(r, 'imss_patronal') + num(r, 'infonavit_patronal') + num(r, 'isn'), 0);
+
+    return {
+      neto:     parseFloat(neto.toFixed(2)),
+      bruto:    parseFloat(bruto.toFixed(2)),
+      patronal: parseFloat(patronal.toFixed(2)),
+      total:    parseFloat((bruto + patronal).toFixed(2)),
+      recibos:  (recibos || []).length,
+      parcial:  false,
     };
   },
 

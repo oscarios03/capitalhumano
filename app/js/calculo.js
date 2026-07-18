@@ -149,6 +149,134 @@ function calcIMSSObrero(sbcDiario, diasCotiz, umaDiaria) {
 }
 
 /**
+ * Cuota PATRONAL de Cesantía en Edad Avanzada y Vejez (CEAV) vigente en 2026.
+ * Reforma de pensiones (DOF 16/12/2020): esquema progresivo 2023-2030 por
+ * rango de SBC. El primer renglón (1 SM) se compara contra el salario mínimo;
+ * los demás contra múltiplos de UMA. Cuando se publique la tabla del año
+ * siguiente, actualizar estas constantes (los porcentajes crecen cada enero
+ * hasta llegar a los definitivos de 2030).
+ */
+const CEAV_PATRONAL_2026 = [
+  { hastaUMA: 1.50, pct: 0.03676 },  // de 1.01 SM a 1.50 UMA
+  { hastaUMA: 2.00, pct: 0.04851 },
+  { hastaUMA: 2.50, pct: 0.05556 },
+  { hastaUMA: 3.00, pct: 0.06026 },
+  { hastaUMA: 3.50, pct: 0.06361 },
+  { hastaUMA: 4.00, pct: 0.06613 },
+  { hastaUMA: Infinity, pct: 0.07513 },
+];
+const CEAV_PATRONAL_1SM = 0.03150;   // SBC de exactamente 1 salario mínimo
+
+function _ceavPatronalPct(sbcDiario, umaDiaria, smgDiario) {
+  // Con SBC ≤ 1 SM aplica la cuota mínima sin progresión (el SBC nunca puede
+  // ser menor al SM, pero se tolera por datos capturados a mano).
+  if (sbcDiario <= (smgDiario || SMG_GENERAL) * 1.005) return CEAV_PATRONAL_1SM;
+  const enUMA = sbcDiario / umaDiaria;
+  return (CEAV_PATRONAL_2026.find(r => enUMA <= r.hastaUMA) || CEAV_PATRONAL_2026.at(-1)).pct;
+}
+
+/**
+ * Cuotas PATRONALES del IMSS por ramos (LSS), sobre el SBC diario topado a
+ * 25 UMA. NO incluye INFONAVIT (5%, se calcula aparte) ni el ISN estatal.
+ * Ramos a cargo del patrón (2026):
+ *   · EyM cuota fija: 20.40% de una UMA por día cotizado (Art. 106 fr. I)
+ *   · EyM excedente 3 UMA: 1.10% sobre el excedente (Art. 106 fr. II)
+ *   · EyM prestaciones en dinero: 0.70% del SBC (Art. 107)
+ *   · Gastos médicos pensionados: 1.05% del SBC (Art. 25)
+ *   · Riesgos de trabajo: prima de la empresa % del SBC (Arts. 71-74;
+ *     la de la declaración anual de febrero; default clase I = 0.54355%)
+ *   · Invalidez y Vida: 1.75% del SBC (Art. 147)
+ *   · Guarderías y prest. sociales: 1.00% del SBC (Art. 211)
+ *   · Retiro: 2.00% del SBC (Art. 168 fr. I)
+ *   · CEAV patronal: progresiva por rango de SBC (tabla 2026, ver arriba)
+ *
+ * @param {number} sbcDiario       SBC diario (fallback: salario diario)
+ * @param {number} diasCotiz       Días cotizados en el período
+ * @param {number} umaDiaria       UMA diaria vigente
+ * @param {number} primaRiesgoPct  Prima de riesgo de la empresa en % (ej. 0.54355)
+ * @param {string} [smgZone]       'general' | 'frontera' (para el renglón 1 SM de CEAV)
+ * @returns {{total:number, desglose:Object}} Cuota patronal del período
+ */
+function calcIMSSPatronal(sbcDiario, diasCotiz, umaDiaria, primaRiesgoPct, smgZone = 'general') {
+  const dias      = Math.max(0, diasCotiz || 0);
+  const base      = Math.min(Math.max(0, sbcDiario || 0), 25 * umaDiaria); // tope 25 UMA (Art. 28 LSS)
+  const excedente = Math.max(0, base - 3 * umaDiaria);
+  const primaRT   = Math.max(0, parseFloat(primaRiesgoPct) || 0.54355) / 100;
+  const smgDiario = typeof _smgVigente === 'function' ? _smgVigente(smgZone) : SMG_GENERAL;
+
+  const d = {
+    cuotaFija:     umaDiaria * 0.2040,
+    excedente:     excedente * 0.0110,
+    prestDinero:   base * 0.0070,
+    gastosMedicos: base * 0.0105,
+    riesgoTrabajo: base * primaRT,
+    invalidezVida: base * 0.0175,
+    guarderias:    base * 0.0100,
+    retiro:        base * 0.0200,
+    ceav:          base * _ceavPatronalPct(base, umaDiaria, smgDiario),
+  };
+  const desglose = {};
+  let total = 0;
+  for (const [k, v] of Object.entries(d)) {
+    desglose[k] = parseFloat((v * dias).toFixed(2));
+    total += desglose[k];
+  }
+  return { total: parseFloat(total.toFixed(2)), desglose };
+}
+
+/**
+ * Costo total mensual de un trabajador para el patrón:
+ * salario + cuotas patronales IMSS + INFONAVIT 5% + ISN estatal +
+ * provisiones mensuales de aguinaldo, vacaciones y prima vacacional.
+ * Todo informativo — no toca la nómina; alimenta el simulador del perfil
+ * y el preview del alta.
+ *
+ * @param {Object} trab  Trabajador ({ salario_mensual, periodo_salario, sbc,
+ *                       fecha_ingreso, smg_zone })
+ * @param {Object} [emp] Empresa (default CTX.empresa) — usa prima_riesgo_pct
+ *                       e isn_pct de la migración 32
+ * @returns {Object} desglose mensual con total
+ */
+function costoTotalEmpleado(trab, emp) {
+  const e     = emp || (typeof CTX !== 'undefined' && CTX?.empresa) || {};
+  const prest = prestacionesEmpresa(e);
+  const uma   = typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK;
+
+  const daily    = calcSalarioDiario(parseFloat(trab.salario_mensual) || 0, trab.periodo_salario || 'mensual');
+  const salMens  = daily * 30;
+  const sbcDiario = parseFloat(trab.sbc) > 0 ? parseFloat(trab.sbc) : daily;
+
+  // Cuotas patronales sobre 30.4 días promedio/mes (convención IMSS)
+  const imssPat  = calcIMSSPatronal(sbcDiario, 30.4, uma, e.prima_riesgo_pct, trab.smg_zone || 'general');
+  const sbcTope  = Math.min(sbcDiario, 25 * uma);
+  const infonavit = parseFloat((sbcTope * 0.05 * 30.4).toFixed(2));
+  const isn       = parseFloat((salMens * (parseFloat(e.isn_pct) || 0)).toFixed(2));
+
+  // Provisiones mensuales (lo que se devenga aunque se pague después)
+  const ingreso   = trab.fecha_ingreso ? new Date(trab.fecha_ingreso + 'T00:00:00') : new Date();
+  const yrs       = Math.max(1, fullYears(ingreso, new Date()) + 1); // año de servicio en curso
+  const vacDias   = vacDaysForYear(yrs, prest.vacDiasExtra);
+  const provAguinaldo = parseFloat((daily * prest.aguinaldoDias / 12).toFixed(2));
+  const provVacaciones = parseFloat((daily * vacDias / 12).toFixed(2));
+  const provPrimaVac   = parseFloat((provVacaciones * prest.primaVacPct).toFixed(2));
+
+  const total = parseFloat((salMens + imssPat.total + infonavit + isn +
+                            provAguinaldo + provVacaciones + provPrimaVac).toFixed(2));
+  return {
+    salarioMensual: parseFloat(salMens.toFixed(2)),
+    imssPatronal:   imssPat.total,
+    imssDesglose:   imssPat.desglose,
+    infonavit,
+    isn,
+    provAguinaldo,
+    provVacaciones,
+    provPrimaVac,
+    total,
+    factorSobreSalario: salMens > 0 ? parseFloat((total / salMens).toFixed(3)) : 0,
+  };
+}
+
+/**
  * Convierte el salario al periodo indicado a salario DIARIO.
  * Art. 89 LFT: mensual / 30; quincenal / 15; semanal / 7.
  */

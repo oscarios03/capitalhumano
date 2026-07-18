@@ -60,6 +60,7 @@ async function renderContratos() {
                         <button class="btn-secondary btn-sm" style="border-color:var(--gold-border);color:var(--gold-primary);"
                           onclick="abrirAgenteIA('${t.id}','${tipo}')">🤖 IA</button>
                         <button class="btn-secondary btn-sm" onclick="navigate('empleado','${t.id}')">Ver perfil</button>
+                        ${htmlBotonWhatsApp(t.telefono, `Hola ${t.nombre}, tu contrato (${tipoLabel}) ya está listo para firma. Pasa a RH o contesta este mensaje para coordinar cuándo firmarlo.`, { ocultarSiFalta: true })}
                       </div>
                     </td>
                   </tr>`;

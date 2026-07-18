@@ -50,6 +50,7 @@ async function renderDisciplinario() {
                     <button class="btn-secondary btn-sm" style="border-color:var(--gold-border);color:var(--gold-primary);"
                       onclick="abrirAgenteIA('${a.trabajador_id}','acta_${a.tipo}')">🤖 IA</button>
                     <button class="btn-secondary btn-sm" onclick="navigate('empleado','${a.trabajador_id}')">Ver perfil</button>
+                    ${htmlBotonWhatsApp(a.trabajadores?.telefono, `Hola ${a.trabajadores?.nombre||''}, se te cita para el levantamiento de un acta administrativa (${a.tipo_falta_label||a.tipo_falta||''}) el ${formatDateShort(a.fecha)}${a.hora_falta?` a las ${a.hora_falta}`:''}${a.lugar?` en ${a.lugar}`:''}. Favor de confirmar tu asistencia.`, { ocultarSiFalta: true })}
                   </div></td>
                 </tr>`).join('')
             }
