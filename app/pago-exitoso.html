@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pago exitoso — Capital Humano MX</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2315803d'/><text x='16' y='23' font-family='Georgia,serif' font-size='19' font-weight='600' fill='white' text-anchor='middle'>C</text></svg>" />
+  <style>
+    /* Vista de éxito del checkout de Stripe (success_url) */
+    .exito-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .exito-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+      max-width: 460px; width: 100%; padding: 40px 34px; text-align: center;
+    }
+    .exito-icono { font-size: 3.4rem; margin-bottom: 16px; }
+    .exito-titulo {
+      font-family: var(--font-serif); font-size: 1.45rem; font-weight: 700;
+      color: var(--text-primary); margin-bottom: 12px;
+    }
+    .exito-texto { color: var(--text-secondary); line-height: 1.6; margin-bottom: 26px; }
+    .exito-plan { color: var(--accent); font-weight: 700; }
+    .exito-btn {
+      display: inline-block; padding: 13px 30px; font-weight: 700;
+      background: var(--accent); color: #fff !important;
+      border-radius: var(--radius-md); transition: var(--transition);
+    }
+    .exito-btn:hover { background: var(--accent-hover); }
+  </style>
+</head>
+<body>
+
+<div class="exito-wrap">
+  <div class="exito-card">
+    <div class="exito-icono">✅</div>
+    <div class="exito-titulo">¡Pago recibido!</div>
+    <p class="exito-texto">
+      Tu suscripción <span class="exito-plan" id="plan-nombre"></span>
+      quedó activada. Ya puedes usar todas las funciones de tu plan.
+    </p>
+    <a class="exito-btn" href="app.html">Ir a la plataforma →</a>
+  </div>
+</div>
+
+<script src="js/config.js?v=4"></script>
+<script src="js/tracking.js?v=1"></script>
+<script>
+// Página de éxito del checkout de Stripe. Configurar en Stripe el success_url:
+//   https://tudominio.com/pago-exitoso.html?plan=Pyme&valor=499&session_id={CHECKOUT_SESSION_ID}
+// El session_id (cs_...) es el MISMO event_id que envía la Edge Function
+// webhook-stripe a la Meta Conversions API → Meta deduplica ambos eventos.
+document.addEventListener('DOMContentLoaded', async () => {
+  const params  = new URLSearchParams(window.location.search);
+  const plan    = params.get('plan')  || 'de pago';
+  const valor   = parseFloat(params.get('valor')) || 0;
+  const eventId = params.get('session_id') || params.get('event_id') || '';
+
+  const planEl = document.getElementById('plan-nombre');
+  if (planEl) planEl.textContent = plan;
+
+  // Conversión de pago (Google Ads + Meta Pixel). Best-effort: un fallo de
+  // tracking jamás afecta la vista de éxito.
+  try {
+    initTracking();
+    await trackPago(valor, plan, eventId);
+  } catch (e) {
+    console.warn('trackPago:', e);
+  }
+});
+</script>
+</body>
+</html>
