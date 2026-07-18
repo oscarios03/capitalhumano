@@ -7,11 +7,13 @@
 //  ACTAS ADMINISTRATIVAS
 // ═══════════════════════════════════════════════════════
 async function renderDisciplinario() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const [actas, trabajadores] = await Promise.all([
       db.getActas(),
       db.getTrabajadores({ estado:'activo' }),
     ]);
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     window._trabListActas = trabajadores;
     const main = eid('main-view');
     main.innerHTML = `
@@ -22,7 +24,7 @@ async function renderDisciplinario() {
       <div class="search-bar animate-in">
         <select class="form-select" style="max-width:220px;" id="filtro-acta-trab" onchange="filtrarActas()">
           <option value="">Todos los trabajadores</option>
-          ${trabajadores.map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('')}
+          ${trabajadores.map(t=>`<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('')}
         </select>
         <select class="form-select" style="max-width:180px;" id="filtro-acta-tipo" onchange="filtrarActas()">
           <option value="">Todos los tipos</option>
@@ -38,9 +40,9 @@ async function renderDisciplinario() {
             ${actas.length === 0
               ? `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin actas registradas</div></div></td></tr>`
               : actas.map(a=>`<tr data-trab="${a.trabajador_id}" data-tipo="${a.tipo}">
-                  <td><strong>${a.trabajadores?.nombre||'—'}</strong></td>
+                  <td><strong>${escapeHtml(a.trabajadores?.nombre)||'—'}</strong></td>
                   <td>${badgeActa(a.tipo)}</td>
-                  <td style="font-size:.82rem;color:var(--text-muted);">${a.tipo_falta_label||a.tipo_falta||'—'}</td>
+                  <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(a.tipo_falta_label||a.tipo_falta)||'—'}</td>
                   <td>${formatDateShort(a.fecha)}</td>
                   <td>${a.reincidente?'<span style="color:var(--red-warn)">Sí</span>':'No'}</td>
                   <td><div class="actions">
@@ -79,45 +81,45 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
       </div>
       <div class="form-grid">
         <div class="form-group span-2">
-          <label class="form-label">Trabajador <span class="req">*</span></label>
-          <select id="ac-trab" class="form-select">
+          <label class="form-label" for="ac-trab">Trabajador <span class="req">*</span></label>
+          <select id="ac-trab" class="form-select" required aria-required="true">
             <option value="">— Seleccionar —</option>
-            ${trabList.map(t=>`<option value="${t.id}" ${t.id===trabId?'selected':''}>${t.nombre} — ${t.puesto||''}</option>`).join('')}
+            ${trabList.map(t=>`<option value="${t.id}" ${t.id===trabId?'selected':''}>${escapeHtml(t.nombre)} — ${escapeHtml(t.puesto)||''}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo de acta <span class="req">*</span></label>
-          <select id="ac-tipo" class="form-select" onchange="actualizarCatalogoFaltas()">
+          <label class="form-label" for="ac-tipo">Tipo de acta <span class="req">*</span></label>
+          <select id="ac-tipo" class="form-select" onchange="actualizarCatalogoFaltas()" required aria-required="true">
             <option value="amonestacion" ${tipoPresel==='amonestacion'?'selected':''}>📝 Amonestación</option>
             <option value="formal" ${tipoPresel==='formal'?'selected':''}>⚠️ Acta Formal</option>
             <option value="rescisoria" ${tipoPresel==='rescisoria'?'selected':''}>🚫 Rescisoria</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">¿Es reincidente?</label>
+          <label class="form-label" for="ac-reincidente">¿Es reincidente?</label>
           <select id="ac-reincidente" class="form-select">
             <option value="no">No — primer incidente</option>
             <option value="si">Sí — ha reincidido</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha de la falta <span class="req">*</span></label>
-          <input id="ac-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" />
+          <label class="form-label" for="ac-fecha">Fecha de la falta <span class="req">*</span></label>
+          <input id="ac-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Hora (aprox.)</label>
+          <label class="form-label" for="ac-hora">Hora (aprox.)</label>
           <input id="ac-hora" type="time" class="form-input" />
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Lugar</label>
+          <label class="form-label" for="ac-lugar">Lugar</label>
           <input id="ac-lugar" type="text" class="form-input" placeholder="Ej. Piso de producción, instalaciones de la empresa" />
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo de falta <span class="req">*</span></label>
-          <select id="ac-tipo-falta" class="form-select" onchange="autoRellenarCausal()"></select>
+          <label class="form-label" for="ac-tipo-falta">Tipo de falta <span class="req">*</span></label>
+          <select id="ac-tipo-falta" class="form-select" onchange="autoRellenarCausal()" required aria-required="true"></select>
         </div>
         <div class="form-group">
-          <label class="form-label">Posición del trabajador</label>
+          <label class="form-label" for="ac-aceptacion">Posición del trabajador</label>
           <select id="ac-aceptacion" class="form-select">
             <option value="acepta">Acepta y firma</option>
             <option value="no_acepta">No acepta pero firma</option>
@@ -125,31 +127,31 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
           </select>
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Causal legal <span class="req">*</span></label>
-          <input id="ac-causal" type="text" class="form-input" placeholder="Auto-completado al elegir tipo de falta" />
+          <label class="form-label" for="ac-causal">Causal legal <span class="req">*</span></label>
+          <input id="ac-causal" type="text" class="form-input" placeholder="Auto-completado al elegir tipo de falta" required aria-required="true" />
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Descripción de los hechos <span class="req">*</span></label>
-          <textarea id="ac-descripcion" class="form-textarea" placeholder="Describe con precisión los hechos…"></textarea>
+          <label class="form-label" for="ac-descripcion">Descripción de los hechos <span class="req">*</span></label>
+          <textarea id="ac-descripcion" class="form-textarea" placeholder="Describe con precisión los hechos…" required aria-required="true"></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Testigo 1 — Nombre</label>
+          <label class="form-label" for="ac-t1">Testigo 1 — Nombre</label>
           <input id="ac-t1" type="text" class="form-input" placeholder="Nombre del testigo" />
         </div>
         <div class="form-group">
-          <label class="form-label">Testigo 1 — Puesto</label>
+          <label class="form-label" for="ac-t1p">Testigo 1 — Puesto</label>
           <input id="ac-t1p" type="text" class="form-input" placeholder="Ej. Supervisor" />
         </div>
         <div class="form-group">
-          <label class="form-label">Testigo 2 — Nombre</label>
+          <label class="form-label" for="ac-t2">Testigo 2 — Nombre</label>
           <input id="ac-t2" type="text" class="form-input" placeholder="Nombre del testigo (opcional)" />
         </div>
         <div class="form-group">
-          <label class="form-label">Testigo 2 — Puesto</label>
+          <label class="form-label" for="ac-t2p">Testigo 2 — Puesto</label>
           <input id="ac-t2p" type="text" class="form-input" placeholder="Ej. Jefe de área" />
         </div>
       </div>
-      <div id="ac-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="ac-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="handleGuardarActa()">💾 Guardar y generar PDF</button>
@@ -224,5 +226,5 @@ async function handleGuardarActa() {
     generateActaPDF(acta, CTX.empresa, trab, sucursal);
     closeModal();
     navigate('disciplinario');
-  } catch(e) { err.textContent = e.message; err.style.display=''; }
+  } catch(e) { err.textContent = friendlyError(e); err.style.display=''; }
 }

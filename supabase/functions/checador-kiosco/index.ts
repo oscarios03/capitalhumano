@@ -11,8 +11,13 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// M-7: el proyecto todavía no tiene dominio de producción propio (2026-07),
+// así que se acepta cualquier origen por ahora. En cuanto exista un dominio
+// fijo, configurar el secret `ALLOWED_ORIGIN` (Supabase Dashboard → Edge
+// Functions → Secrets) con ese dominio exacto (ej. https://app.midominio.mx)
+// para restringir esta cabecera.
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -53,6 +58,25 @@ Deno.serve(async (req: Request) => {
 
   if (!sucursal) return json({ error: 'Kiosco no reconocido' }, 401);
 
+  // Rate limit (A-4): el PIN es de solo 4 dígitos (9,000 combinaciones) y el
+  // kiosco_token está pensado para difundirse (QR/URL en recepción), así que
+  // sin este freno cualquiera con el token puede automatizar fuerza bruta
+  // remota del PIN. Solo se cuentan intentos FALLIDOS — nunca se bloquean
+  // los exitosos, para no frenar horas pico reales con varios trabajadores
+  // checando casi al mismo tiempo.
+  const VENTANA_SEGUNDOS      = 60;
+  const MAX_INTENTOS_FALLIDOS = 8;
+  const desde = new Date(Date.now() - VENTANA_SEGUNDOS * 1000).toISOString();
+  const { count: fallidosRecientes } = await supabase
+    .from('checador_intentos_fallidos')
+    .select('id', { count: 'exact', head: true })
+    .eq('kiosco_token', kiosco_token)
+    .gte('creado_en', desde);
+
+  if ((fallidosRecientes || 0) >= MAX_INTENTOS_FALLIDOS) {
+    return json({ error: 'Demasiados intentos fallidos. Espera un minuto e inténtalo de nuevo.' }, 429);
+  }
+
   const columna = credencial_tipo === 'pin' ? 'pin_checador' : 'codigo_checador';
   const { data: trabajador } = await supabase
     .from('trabajadores')
@@ -62,7 +86,10 @@ Deno.serve(async (req: Request) => {
     .eq(columna, credencial_valor)
     .maybeSingle();
 
-  if (!trabajador) return json({ error: 'Credencial no reconocida' }, 404);
+  if (!trabajador) {
+    await supabase.from('checador_intentos_fallidos').insert({ kiosco_token });
+    return json({ error: 'Credencial no reconocida' }, 404);
+  }
 
   const { data: resultado, error } = await supabase.rpc('registrar_checada', {
     p_empresa_id:    sucursal.empresa_id,

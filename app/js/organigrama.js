@@ -13,6 +13,7 @@ function _deptColor(dept) {
 }
 
 async function renderOrganigrama() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const main = document.getElementById('main-view');
     main.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando…</div>`;
@@ -29,6 +30,7 @@ async function renderOrganigrama() {
     ]);
     _ORG.trabajadores = trabRes.data || [];
     _ORG.sucursales   = sucRes.data || [];
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     _renderOrgHTML();
   } catch(e) { showError(e); }
 }
@@ -49,7 +51,7 @@ function _renderOrgHTML() {
           <select class="form-select" style="max-width:180px;" onchange="_ORG.sucursalFiltro=this.value;_renderOrgVista()">
             <option value="">Todas las sucursales</option>
             <option value="matriz">Matriz</option>
-            ${suc.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')}
+            ${suc.map(s => `<option value="${s.id}">${escapeHtml(s.nombre)}</option>`).join('')}
           </select>
         ` : ''}
         <button class="btn-secondary btn-sm" onclick="_switchOrgVista('cards')" id="org-btn-cards">🃏 Tarjetas</button>
@@ -105,18 +107,18 @@ function _renderOrgCards(c, trabajadores) {
     return `
       <div class="card animate-in" style="margin-bottom:16px;overflow:hidden;">
         <div style="background:${color};padding:12px 16px;margin:-20px -20px 16px;display:flex;align-items:center;justify-content:space-between;">
-          <span style="color:#fff;font-weight:800;font-size:.95rem;text-shadow:0 1px 3px rgba(0,0,0,.2);">🏢 ${dept}</span>
+          <span style="color:#fff;font-weight:800;font-size:.95rem;text-shadow:0 1px 3px rgba(0,0,0,.2);">🏢 ${escapeHtml(dept)}</span>
           <span style="background:rgba(255,255,255,.2);color:#fff;border-radius:100px;padding:2px 10px;font-size:.78rem;font-weight:700;">${trabs.length} trabajador${trabs.length!==1?'es':''}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
           ${trabs.map(t => {
             const ini = (t.nombre||'?').split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();
             return `
-              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);cursor:pointer;transition:background .15s;" onclick="navigate('empleado','${t.id}')">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);cursor:pointer;transition:background .15s;" onclick="navigate('empleado','${t.id}')" role="button" tabindex="0">
                 <div style="width:38px;height:38px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.88rem;flex-shrink:0;">${ini}</div>
                 <div style="overflow:hidden;">
-                  <div style="font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.nombre}</div>
-                  <div style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.puesto || '—'}</div>
+                  <div style="font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(t.nombre)}">${escapeHtml(t.nombre)}</div>
+                  <div style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(t.puesto) || ''}">${escapeHtml(t.puesto) || '—'}</div>
                 </div>
               </div>
             `;
@@ -184,10 +186,10 @@ function _renderOrgTree(c, trabajadores) {
     ).join('');
     return `
       ${lineas}
-      <g onclick="navigate('empleado','${n.id}')" style="cursor:pointer;">
+      <g onclick="navigate('empleado','${n.id}')" style="cursor:pointer;" role="button" tabindex="0" aria-label="Ver perfil de ${escapeHtml(n.nombre||'')}">
         <rect x="${n._x}" y="${n._y}" width="${NODE_W}" height="${NODE_H}" rx="8" ry="8" fill="var(--bg-secondary)" stroke="${color}" stroke-width="2"/>
-        <text x="${n._x + NODE_W/2}" y="${n._y + 20}" text-anchor="middle" fill="var(--text-primary)" font-size="12" font-weight="700">${(n.nombre||'').split(' ').slice(0,2).join(' ')}</text>
-        <text x="${n._x + NODE_W/2}" y="${n._y + 36}" text-anchor="middle" fill="var(--text-muted)" font-size="10">${(n.puesto||'').substring(0,22)}</text>
+        <text x="${n._x + NODE_W/2}" y="${n._y + 20}" text-anchor="middle" fill="var(--text-primary)" font-size="12" font-weight="700">${escapeHtml((n.nombre||'').split(' ').slice(0,2).join(' '))}</text>
+        <text x="${n._x + NODE_W/2}" y="${n._y + 36}" text-anchor="middle" fill="var(--text-muted)" font-size="10">${escapeHtml((n.puesto||'').substring(0,22))}</text>
       </g>
     `;
   }

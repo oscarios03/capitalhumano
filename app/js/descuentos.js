@@ -45,7 +45,7 @@ async function renderTabDescuentos(trabajadorId) {
 
   const { data: descuentos, error } = await _listarDescuentos(trabajadorId);
   if (error) {
-    el.innerHTML = `<div class="alert alert-danger">Error al cargar descuentos: ${error.message}
+    el.innerHTML = `<div class="alert alert-danger">Error al cargar descuentos: ${escapeHtml(error.message)}
       ${/relation|schema cache/i.test(error.message || '') ? '<br>Aplica la migración 17_migration_prestamos_descuentos.sql.' : ''}</div>`;
     return;
   }
@@ -61,7 +61,7 @@ async function renderTabDescuentos(trabajadorId) {
     return `
       <tr>
         <td>${cfg.icono} ${cfg.label}${d.tipo === 'pension_alimenticia' ? ' <span style="font-size:.68rem;color:var(--gold-primary);" title="Prioridad absoluta, sin tope de ley (orden judicial, Art. 110 fr. V LFT)">⚖️ prioritario</span>' : ''}</td>
-        <td style="font-size:.82rem;color:var(--text-muted);">${d.numero_credito || '—'}</td>
+        <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(d.numero_credito) || '—'}</td>
         <td style="font-size:.82rem;">${MODALIDADES_DESCUENTO[d.modalidad] || d.modalidad}<br><strong>${valorLabel}</strong></td>
         <td style="font-size:.82rem;">${d.saldo_restante != null ? fmt(d.saldo_restante) : '<span style="color:var(--text-muted);">Sin fin</span>'}</td>
         <td>
@@ -107,38 +107,38 @@ function _mostrarFormDescuento(trabajadorId) {
     <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">💳 Nuevo descuento / préstamo</div>
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Tipo <span class="req">*</span></label>
-        <select id="dsc-tipo" class="form-select" onchange="_ayudaTipoDescuento()">
+        <label class="form-label" for="dsc-tipo">Tipo <span class="req">*</span></label>
+        <select id="dsc-tipo" class="form-select" onchange="_ayudaTipoDescuento()" required aria-required="true">
           ${Object.entries(TIPOS_DESCUENTO).map(([v, t]) => `<option value="${v}">${t.icono} ${t.label}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Número de crédito / expediente</label>
+        <label class="form-label" for="dsc-numcredito">Número de crédito / expediente</label>
         <input id="dsc-numcredito" type="text" class="form-input" placeholder="Ej. 123456789 (INFONAVIT/FONACOT) o expediente judicial" />
       </div>
       <div class="form-group">
-        <label class="form-label">Modalidad <span class="req">*</span></label>
-        <select id="dsc-modalidad" class="form-select">
+        <label class="form-label" for="dsc-modalidad">Modalidad <span class="req">*</span></label>
+        <select id="dsc-modalidad" class="form-select" required aria-required="true">
           <option value="cuota_fija">Cuota fija por periodo ($)</option>
           <option value="porcentaje">% del salario del periodo</option>
           <option value="vsm">Veces UMA diaria (típico INFONAVIT)</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Valor <span class="req">*</span></label>
-        <input id="dsc-valor" type="number" class="form-input" min="0" step="0.01" placeholder="Monto, % o factor" />
+        <label class="form-label" for="dsc-valor">Valor <span class="req">*</span></label>
+        <input id="dsc-valor" type="number" class="form-input" min="0" step="0.01" placeholder="Monto, % o factor" required aria-required="true" />
       </div>
       <div class="form-group">
-        <label class="form-label">Monto total del crédito <span style="font-weight:400;color:var(--text-muted);">(opcional — vacío = sin fin, ej. pensión)</span></label>
+        <label class="form-label" for="dsc-total">Monto total del crédito <span style="font-weight:400;color:var(--text-muted);">(opcional — vacío = sin fin, ej. pensión)</span></label>
         <input id="dsc-total" type="number" class="form-input" min="0" step="0.01" placeholder="Ej. 150000" />
       </div>
       <div class="form-group span-2">
-        <label class="form-label">Descripción</label>
+        <label class="form-label" for="dsc-desc">Descripción</label>
         <input id="dsc-desc" type="text" class="form-input" placeholder="Notas internas" />
       </div>
       <div id="dsc-ayuda" class="form-group span-2 helper-text"></div>
     </div>
-    <div id="dsc-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+    <div id="dsc-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
       <button class="btn-secondary btn-sm" onclick="_cerrarFormDescuento()">Cancelar</button>
       <button id="dsc-btn-guardar" class="btn-primary btn-sm" onclick="_guardarDescuento('${trabajadorId}')">💾 Guardar</button>
@@ -232,7 +232,7 @@ async function _verHistorialDescuento(descuentoId, trabajadorId) {
   cont.innerHTML = `<div style="color:var(--text-muted);font-size:.85rem;">Cargando historial…</div>`;
 
   const { data: historial, error } = await _listarHistorialDescuento(descuentoId);
-  if (error) { cont.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`; return; }
+  if (error) { cont.innerHTML = `<div class="alert alert-danger">Error: ${escapeHtml(error.message)}</div>`; return; }
 
   cont.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">

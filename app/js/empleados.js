@@ -42,11 +42,13 @@ function _actualizarPreviewSalario() {
 //  EMPLEADOS
 // ═══════════════════════════════════════════════════════
 async function renderEmpleados() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const [trabajadores, sucursales] = await Promise.all([
       db.getTrabajadores(),
       db.getSucursales(false),
     ]);
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     const sucursalesBranch = sucursales.filter(s => s.tipo !== 'matriz');
     const activos = trabajadores.filter(t => t.estado === 'activo');
     const bajas   = trabajadores.filter(t => t.estado !== 'activo');
@@ -58,11 +60,11 @@ async function renderEmpleados() {
         const vencBadge = dias !== null && dias <= 15
           ? `<br><span style="font-size:.72rem;font-weight:700;color:${dias<=3?'var(--red-warn)':'#f39c12'};">⏰ ${dias<0?'VENCIDO':dias===0?'Vence hoy':'Vence en '+dias+'d'}</span>`
           : '';
-        return `<tr data-nombre="${(t.nombre||'').toLowerCase()}" data-sucursal="${t.sucursal_id || 'matriz'}">
-          <td><strong>${t.nombre}</strong></td>
+        return `<tr data-nombre="${escapeHtml((t.nombre||'').toLowerCase())}" data-sucursal="${escapeHtml(t.sucursal_id || 'matriz')}">
+          <td><strong>${escapeHtml(t.nombre)}</strong></td>
           <td>${badgeCalidad(t.tipo_contrato)}${vencBadge}</td>
-          <td>${t.puesto || '—'}</td>
-          <td><span style="font-size:.8rem;color:var(--text-secondary);">${t.sucursales?.nombre || 'Matriz'}</span></td>
+          <td>${escapeHtml(t.puesto) || '—'}</td>
+          <td><span style="font-size:.8rem;color:var(--text-secondary);">${escapeHtml(t.sucursales?.nombre) || 'Matriz'}</span></td>
           <td>${formatDateShort(t.fecha_ingreso)}</td>
           <td><div class="actions">
             <button class="btn-secondary btn-sm" onclick="navigate('empleado','${t.id}')">Ver perfil</button>
@@ -74,7 +76,7 @@ async function renderEmpleados() {
     const tablaHTML = (id, lista) => `
       <div class="table-wrap">
         <table class="data-table tabla-empleados" id="${id}">
-          <thead><tr><th>Trabajador</th><th>Calidad</th><th>Puesto</th><th>Centro de Trabajo</th><th>Ingreso</th><th>Acciones</th></tr></thead>
+          <thead><tr><th scope="col">Trabajador</th><th scope="col">Calidad</th><th scope="col">Puesto</th><th scope="col">Centro de Trabajo</th><th scope="col">Ingreso</th><th scope="col">Acciones</th></tr></thead>
           <tbody>${filasTrabajador(lista)}</tbody>
         </table>
       </div>`;
@@ -94,13 +96,13 @@ async function renderEmpleados() {
         <select class="form-select" style="max-width:200px;" id="filtro-sucursal" onchange="filtrarTabla()">
           <option value="">Todas las sucursales</option>
           <option value="matriz">Matriz</option>
-          ${sucursalesBranch.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')}
+          ${sucursalesBranch.map(s => `<option value="${s.id}">${escapeHtml(s.nombre)}</option>`).join('')}
         </select>` : ''}
       </div>
 
       <!-- Sección Activos -->
       <div class="seccion-trabajadores animate-in">
-        <div class="seccion-header" onclick="toggleSeccion('sec-activos', this)">
+        <div class="seccion-header" onclick="toggleSeccion('sec-activos', this)" role="button" tabindex="0" aria-expanded="true" aria-controls="sec-activos">
           <span>▼ Activos <span class="badge-count">(${activos.length})</span></span>
         </div>
         <div id="sec-activos" class="seccion-body">
@@ -110,7 +112,7 @@ async function renderEmpleados() {
 
       <!-- Sección Bajas -->
       <div class="seccion-trabajadores animate-in">
-        <div class="seccion-header seccion-header--baja" onclick="toggleSeccion('sec-bajas', this)">
+        <div class="seccion-header seccion-header--baja" onclick="toggleSeccion('sec-bajas', this)" role="button" tabindex="0" aria-expanded="false" aria-controls="sec-bajas">
           <span>▶ Dados de baja <span class="badge-count">(${bajas.length})</span></span>
         </div>
         <div id="sec-bajas" class="seccion-body" style="display:none;">
@@ -126,6 +128,7 @@ function toggleSeccion(id, headerEl) {
   if (!body) return;
   const collapsed = body.style.display === 'none';
   body.style.display = collapsed ? '' : 'none';
+  headerEl?.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
   const span = headerEl?.querySelector('span');
   if (span) span.innerHTML = span.innerHTML.replace(collapsed ? '▶' : '▼', collapsed ? '▼' : '▶');
 }
@@ -189,7 +192,7 @@ async function showModalTrabajador(id = null) {
       <div class="modal-header" style="padding:18px 24px 14px;flex-shrink:0;">
         <div>
           <div class="modal-title">${esEdicion ? '✏️ Editar Trabajador' : '+ Alta de Trabajador'}</div>
-          <p style="font-size:.82rem;color:var(--text-muted);margin-top:3px;">${esEdicion ? trab.nombre : 'El contrato PDF se genera automáticamente'}</p>
+          <p style="font-size:.82rem;color:var(--text-muted);margin-top:3px;">${esEdicion ? escapeHtml(trab.nombre) : 'El contrato PDF se genera automáticamente'}</p>
         </div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
@@ -206,61 +209,61 @@ async function showModalTrabajador(id = null) {
       <div id="mtab-personal" class="modal-tab-content">
         <div class="form-grid">
           <div class="form-group span-2">
-            <label class="form-label">Nombre Completo <span class="req">*</span></label>
-            <input id="n-nombre" type="text" class="form-input" value="${v('nombre')}" placeholder="Nombre(s) Apellido Paterno Apellido Materno" />
+            <label class="form-label" for="n-nombre">Nombre Completo <span class="req">*</span></label>
+            <input id="n-nombre" type="text" class="form-input" value="${escapeHtml(v('nombre'))}" placeholder="Nombre(s) Apellido Paterno Apellido Materno" required aria-required="true" aria-describedby="trab-modal-error" />
           </div>
           <div class="form-group">
-            <label class="form-label">RFC</label>
-            <input id="n-rfc" type="text" class="form-input" value="${v('rfc')}" placeholder="LOHM900415XY2" maxlength="13" style="text-transform:uppercase;" />
+            <label class="form-label" for="n-rfc">RFC</label>
+            <input id="n-rfc" type="text" class="form-input" value="${escapeHtml(v('rfc'))}" placeholder="LOHM900415XY2" maxlength="13" style="text-transform:uppercase;" />
           </div>
           <div class="form-group">
-            <label class="form-label">CURP</label>
-            <input id="n-curp" type="text" class="form-input" value="${v('curp')}" placeholder="LOHM900415MDFPRL09" maxlength="18" style="text-transform:uppercase;" />
+            <label class="form-label" for="n-curp">CURP</label>
+            <input id="n-curp" type="text" class="form-input" value="${escapeHtml(v('curp'))}" placeholder="LOHM900415MDFPRL09" maxlength="18" style="text-transform:uppercase;" />
           </div>
           <div class="form-group">
-            <label class="form-label">NSS (IMSS)</label>
-            <input id="n-nss" type="text" class="form-input" value="${v('nss')}" placeholder="12345678901" maxlength="11" />
+            <label class="form-label" for="n-nss">NSS (IMSS)</label>
+            <input id="n-nss" type="text" class="form-input" value="${escapeHtml(v('nss'))}" placeholder="12345678901" maxlength="11" />
           </div>
           <div class="form-group">
-            <label class="form-label">Edad</label>
+            <label class="form-label" for="n-edad">Edad</label>
             <input id="n-edad" type="number" class="form-input" value="${v('edad')}" min="14" max="99" placeholder="Años" />
           </div>
           <div class="form-group">
-            <label class="form-label">Estado Civil</label>
+            <label class="form-label" for="n-civil">Estado Civil</label>
             <select id="n-civil" class="form-select">
               <option value="">— Seleccionar —</option>
               ${optsEdoCivil.map(o=>`<option value="${o}" ${v('estado_civil')===o?'selected':''}>${o}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Nacionalidad</label>
-            <input id="n-nacionalidad" type="text" class="form-input" value="${v('nacionalidad','Mexicana')}" />
+            <label class="form-label" for="n-nacionalidad">Nacionalidad</label>
+            <input id="n-nacionalidad" type="text" class="form-input" value="${escapeHtml(v('nacionalidad','Mexicana'))}" />
           </div>
           <div class="form-group span-2">
-            <label class="form-label">Domicilio Particular</label>
-            <input id="n-domicilio-part" type="text" class="form-input" value="${v('domicilio')}" placeholder="Calle, número, colonia, ciudad" />
+            <label class="form-label" for="n-domicilio-part">Domicilio Particular</label>
+            <input id="n-domicilio-part" type="text" class="form-input" value="${escapeHtml(v('domicilio'))}" placeholder="Calle, número, colonia, ciudad" />
           </div>
           <div class="form-group">
-            <label class="form-label">Tipo de Identificación</label>
+            <label class="form-label" for="n-tipo-id">Tipo de Identificación</label>
             <select id="n-tipo-id" class="form-select">
               <option value="">— Seleccionar —</option>
               ${optsTipoId.map(o=>`<option value="${o}" ${v('tipo_identificacion')===o?'selected':''}>${o}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Número de Identificación</label>
-            <input id="n-num-id" type="text" class="form-input" value="${v('num_identificacion')}" placeholder="Número en el documento" />
+            <label class="form-label" for="n-num-id">Número de Identificación</label>
+            <input id="n-num-id" type="text" class="form-input" value="${escapeHtml(v('num_identificacion'))}" placeholder="Número en el documento" />
           </div>
           <div class="form-group">
-            <label class="form-label">Tipo de Sangre</label>
+            <label class="form-label" for="n-sangre">Tipo de Sangre</label>
             <select id="n-sangre" class="form-select">
               <option value="">— Seleccionar —</option>
               ${optsSangre.map(o=>`<option value="${o}" ${v('tipo_sangre')===o?'selected':''}>${o}</option>`).join('')}
             </select>
           </div>
           <div class="form-group span-2">
-            <label class="form-label">Enfermedades Crónicas / Condiciones Médicas</label>
-            <textarea id="n-enfermedades" class="form-textarea" rows="2" placeholder="Ninguna">${v('enfermedades_cronicas')}</textarea>
+            <label class="form-label" for="n-enfermedades">Enfermedades Crónicas / Condiciones Médicas</label>
+            <textarea id="n-enfermedades" class="form-textarea" rows="2" placeholder="Ninguna">${escapeHtml(v('enfermedades_cronicas'))}</textarea>
           </div>
         </div>
       </div>
@@ -269,31 +272,31 @@ async function showModalTrabajador(id = null) {
       <div id="mtab-laboral" class="modal-tab-content" style="display:none;">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Puesto / Cargo <span class="req">*</span></label>
-            <input id="n-puesto" type="text" class="form-input" value="${v('puesto')}" placeholder="Ej. Coordinador de Ventas" />
+            <label class="form-label" for="n-puesto">Puesto / Cargo <span class="req">*</span></label>
+            <input id="n-puesto" type="text" class="form-input" value="${escapeHtml(v('puesto'))}" placeholder="Ej. Coordinador de Ventas" required aria-required="true" />
           </div>
           <div class="form-group">
-            <label class="form-label">Departamento / Área</label>
-            <input id="n-dept" type="text" class="form-input" value="${v('departamento')}" placeholder="Ej. Comercial" />
+            <label class="form-label" for="n-dept">Departamento / Área</label>
+            <input id="n-dept" type="text" class="form-input" value="${escapeHtml(v('departamento'))}" placeholder="Ej. Comercial" />
           </div>
           <div class="form-group">
-            <label class="form-label">Fecha de Ingreso <span class="req">*</span></label>
-            <input id="n-ingreso" type="date" class="form-input" value="${v('fecha_ingreso', hoy)}" />
+            <label class="form-label" for="n-ingreso">Fecha de Ingreso <span class="req">*</span></label>
+            <input id="n-ingreso" type="date" class="form-input" value="${v('fecha_ingreso', hoy)}" required aria-required="true" />
           </div>
           <div class="form-group">
-            <label class="form-label">Fecha de Antigüedad Reconocida</label>
+            <label class="form-label" for="n-antig">Fecha de Antigüedad Reconocida</label>
             <input id="n-antig" type="date" class="form-input" value="${v('fecha_ingreso_reconocida')}" />
             <div class="helper-text">Si difiere de la fecha de ingreso formal</div>
           </div>
           <div class="form-group">
-            <label class="form-label">
+            <label class="form-label" for="n-salario">
               Salario <span id="n-salario-label-periodo">${_labelPeriodoSalario(v('periodo_salario','mensual'))}</span> <span class="req">*</span>
             </label>
             <input id="n-salario" type="number" class="form-input" value="${v('salario_mensual')}" placeholder="20000" min="1" step="0.01"
-                   oninput="_actualizarPreviewSalario()" />
+                   oninput="_actualizarPreviewSalario()" required aria-required="true" />
           </div>
           <div class="form-group">
-            <label class="form-label">Periodo de Pago</label>
+            <label class="form-label" for="n-periodo">Periodo de Pago</label>
             <select id="n-periodo" class="form-select" onchange="_actualizarPreviewSalario()">
               <option value="mensual" ${v('periodo_salario','mensual')==='mensual'?'selected':''}>Mensual</option>
               <option value="quincenal" ${v('periodo_salario')==='quincenal'?'selected':''}>Quincenal</option>
@@ -307,22 +310,22 @@ async function showModalTrabajador(id = null) {
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Zona SMG</label>
+            <label class="form-label" for="n-smg">Zona SMG</label>
             <select id="n-smg" class="form-select">
               <option value="general" ${v('smg_zone','general')==='general'?'selected':''}>Área General — $315.04/día</option>
               <option value="frontera" ${v('smg_zone')==='frontera'?'selected':''}>Zona Frontera Norte — $419.88/día</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Centro de Trabajo</label>
+            <label class="form-label" for="n-sucursal">Centro de Trabajo</label>
             <select id="n-sucursal" class="form-select">
               <option value="" ${!v('sucursal_id')?'selected':''}>Matriz (sede principal)</option>
-              ${sucBranch.map(s=>`<option value="${s.id}" ${v('sucursal_id')===s.id?'selected':''}>${s.nombre}${s.clave?' ('+s.clave+')':''}</option>`).join('')}
+              ${sucBranch.map(s=>`<option value="${s.id}" ${v('sucursal_id')===s.id?'selected':''}>${escapeHtml(s.nombre)}${s.clave?' ('+escapeHtml(s.clave)+')':''}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Tipo de Contrato <span class="req">*</span></label>
-            <select id="n-contrato" class="form-select" onchange="onTipoContratoChange()">
+            <label class="form-label" for="n-contrato">Tipo de Contrato <span class="req">*</span></label>
+            <select id="n-contrato" class="form-select" onchange="onTipoContratoChange()" required aria-required="true">
               <option value="indeterminado" ${(tipoContr==='indeterminado'||tipoContr==='indefinido')?'selected':''}>Por Tiempo Indeterminado</option>
               <option value="determinado" ${tipoContr==='determinado'?'selected':''}>Por Tiempo Determinado</option>
               <option value="obra" ${tipoContr==='obra'?'selected':''}>Por Obra o Servicio</option>
@@ -340,34 +343,34 @@ async function showModalTrabajador(id = null) {
             <div class="helper-text">Estos puestos pueden pactar hasta 180 días de periodo a prueba o de capacitación inicial; el resto, los topes generales de ley.</div>
           </div>
           <div class="form-group" id="grupo-prueba" style="display:none;">
-            <label class="form-label">Duración del período a prueba (días)</label>
+            <label class="form-label" for="n-prueba">Duración del período a prueba (días)</label>
             <input id="n-prueba" type="number" class="form-input" min="1" value="${v('periodo_prueba_dias',30)}" onchange="calcularFechaVencimiento()" />
             <div class="helper-text" id="n-prueba-hint">Máximo 30 días (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Días de capacitación inicial pactados <span style="font-size:.68rem;color:var(--text-muted);">(Art. 39-B LFT, opcional)</span></label>
+            <label class="form-label" for="n-capacitacion">Días de capacitación inicial pactados <span style="font-size:.68rem;color:var(--text-muted);">(Art. 39-B LFT, opcional)</span></label>
             <input id="n-capacitacion" type="number" class="form-input" min="0" value="${v('capacitacion_inicial_dias')||''}" placeholder="Ej. 90" />
             <div class="helper-text" id="n-capacitacion-hint">Máximo 90 días (180 en puestos de dirección/técnicos especializados).</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Forma de Pago</label>
+            <label class="form-label" for="n-forma-pago">Forma de Pago</label>
             <select id="n-forma-pago" class="form-select">
               <option value="deposito" ${v('forma_pago','deposito')==='deposito'?'selected':''}>Depósito bancario</option>
               <option value="efectivo" ${v('forma_pago')==='efectivo'?'selected':''}>Efectivo</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Días de Pago</label>
-            <input id="n-dias-pago" type="text" class="form-input" value="${v('dias_pago')}" placeholder="Ej. Viernes de cada semana" />
+            <label class="form-label" for="n-dias-pago">Días de Pago</label>
+            <input id="n-dias-pago" type="text" class="form-input" value="${escapeHtml(v('dias_pago'))}" placeholder="Ej. Viernes de cada semana" />
           </div>
           <div class="form-group span-2">
-            <label class="form-label">Funciones del Puesto</label>
-            <textarea id="n-funciones" class="form-textarea" rows="3" placeholder="Describe las funciones principales. Se incluirá en el contrato.">${v('funciones')}</textarea>
+            <label class="form-label" for="n-funciones">Funciones del Puesto</label>
+            <textarea id="n-funciones" class="form-textarea" rows="3" placeholder="Describe las funciones principales. Se incluirá en el contrato.">${escapeHtml(v('funciones'))}</textarea>
             <div class="helper-text">Se incluirá en el contrato de trabajo</div>
           </div>
           ${esEdicion ? `
           <div class="form-group span-2" id="grupo-motivo-salario">
-            <label class="form-label">Motivo del ajuste salarial <span style="font-weight:400;color:var(--text-muted);">(si cambiaste el salario)</span></label>
+            <label class="form-label" for="n-motivo-salario">Motivo del ajuste salarial <span style="font-weight:400;color:var(--text-muted);">(si cambiaste el salario)</span></label>
             <input id="n-motivo-salario" type="text" class="form-input" placeholder="Ej. Revisión anual, Promoción, Ajuste inflación" />
           </div>` : ''}
         </div>
@@ -379,7 +382,7 @@ async function showModalTrabajador(id = null) {
           </div>
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Tipo de salario</label>
+              <label class="form-label" for="n-tipo-salario">Tipo de salario</label>
               <select id="n-tipo-salario" class="form-select" onchange="_toggleNominaConfig()">
                 <option value="fijo"     ${v('tipo_salario','fijo')==='fijo'    ?'selected':''}>Fijo</option>
                 <option value="comision" ${v('tipo_salario')==='comision'       ?'selected':''}>Por comisión</option>
@@ -387,7 +390,7 @@ async function showModalTrabajador(id = null) {
               </select>
             </div>
             <div class="form-group" id="ng-pct-com" style="display:${['comision','mixto'].includes(v('tipo_salario'))?'':'none'};">
-              <label class="form-label">% Comisión habitual</label>
+              <label class="form-label" for="n-pct-comision">% Comisión habitual</label>
               <input id="n-pct-comision" type="number" class="form-input" min="0" max="100" step="0.01"
                 value="${parseFloat(v('pct_comision')||0)*100}"
                 placeholder="ej. 5 = 5%" />
@@ -405,7 +408,7 @@ async function showModalTrabajador(id = null) {
                 : ''}
             </div>
             <div class="form-group" id="ng-fondo-pct" style="display:${fondoDefOn?'':'none'};">
-              <label class="form-label">% Descuento obrero</label>
+              <label class="form-label" for="n-fondo-pct">% Descuento obrero</label>
               <input id="n-fondo-pct" type="number" class="form-input" min="0" max="20" step="0.01"
                 value="${(fondoDefPct*100).toFixed(1)}"
                 placeholder="13" />
@@ -420,7 +423,7 @@ async function showModalTrabajador(id = null) {
               </label>
             </div>
             <div class="form-group" id="ng-info-tipo" style="display:${v('infonavit_activo')?'':'none'};">
-              <label class="form-label">Tipo de descuento</label>
+              <label class="form-label" for="n-info-tipo">Tipo de descuento</label>
               <select id="n-info-tipo" class="form-select">
                 <option value="factor"     ${v('infonavit_tipo')==='factor'    ?'selected':''}>Factor × UMA diaria</option>
                 <option value="cuota_fija" ${v('infonavit_tipo','cuota_fija')==='cuota_fija'?'selected':''}>Cuota fija mensual</option>
@@ -428,7 +431,7 @@ async function showModalTrabajador(id = null) {
               </select>
             </div>
             <div class="form-group" id="ng-info-val" style="display:${v('infonavit_activo')?'':'none'};">
-              <label class="form-label">Valor</label>
+              <label class="form-label" for="n-info-valor">Valor</label>
               <input id="n-info-valor" type="number" class="form-input" min="0" step="0.0001"
                 value="${v('infonavit_valor')||0}"
                 placeholder="ej. 0.1 factor / 500 cuota fija / 0.05 pct" />
@@ -443,14 +446,14 @@ async function showModalTrabajador(id = null) {
               </label>
             </div>
             <div class="form-group" id="ng-pension-tipo" style="display:${v('pension_activa')?'':'none'};">
-              <label class="form-label">Tipo</label>
+              <label class="form-label" for="n-pension-tipo">Tipo</label>
               <select id="n-pension-tipo" class="form-select">
                 <option value="pct"  ${v('pension_tipo','pct')==='pct' ?'selected':''}>% del neto</option>
                 <option value="fijo" ${v('pension_tipo')==='fijo'      ?'selected':''}>Monto fijo</option>
               </select>
             </div>
             <div class="form-group" id="ng-pension-val" style="display:${v('pension_activa')?'':'none'};">
-              <label class="form-label">Valor</label>
+              <label class="form-label" for="n-pension-valor">Valor</label>
               <input id="n-pension-valor" type="number" class="form-input" min="0" step="0.01"
                 value="${v('pension_valor')||0}"
                 placeholder="ej. 0.30 para 30% / 1500 fijo" />
@@ -463,19 +466,19 @@ async function showModalTrabajador(id = null) {
       <div id="mtab-jornada" class="modal-tab-content" style="display:none;">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Hora de Inicio</label>
+            <label class="form-label" for="n-hora-ini">Hora de Inicio</label>
             <input id="n-hora-ini" type="time" class="form-input" value="${v('hora_inicio')}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Hora de Fin</label>
+            <label class="form-label" for="n-hora-fin">Hora de Fin</label>
             <input id="n-hora-fin" type="time" class="form-input" value="${v('hora_fin')}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Inicio Descanso / Comida</label>
+            <label class="form-label" for="n-des-ini">Inicio Descanso / Comida</label>
             <input id="n-des-ini" type="time" class="form-input" value="${v('hora_descanso_inicio')}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Fin Descanso / Comida</label>
+            <label class="form-label" for="n-des-fin">Fin Descanso / Comida</label>
             <input id="n-des-fin" type="time" class="form-input" value="${v('hora_descanso_fin')}" />
           </div>
           <div class="form-group span-2">
@@ -489,7 +492,7 @@ async function showModalTrabajador(id = null) {
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Día de Descanso Semanal</label>
+            <label class="form-label" for="n-dia-descanso">Día de Descanso Semanal</label>
             <select id="n-dia-descanso" class="form-select">
               <option value="">— Seleccionar —</option>
               ${['Domingo','Sábado','Lunes','Otro'].map(o=>`<option value="${o}" ${v('dia_descanso')===o?'selected':''}>${o}</option>`).join('')}
@@ -500,7 +503,7 @@ async function showModalTrabajador(id = null) {
         <div id="cond-determinado" style="display:none;margin-top:8px;">
           <div style="height:1px;background:var(--border);margin-bottom:16px;"></div>
           <div class="form-group">
-            <label class="form-label">Fecha de vencimiento calculada</label>
+            <label class="form-label" for="n-vencimiento">Fecha de vencimiento calculada</label>
             <input id="n-vencimiento" type="date" class="form-input" value="${v('fecha_vencimiento_contrato')}" />
             <div class="helper-text">Ajustable manualmente si se requiere una fecha distinta</div>
           </div>
@@ -510,12 +513,12 @@ async function showModalTrabajador(id = null) {
           <div style="height:1px;background:var(--border);margin-bottom:16px;"></div>
           <div class="form-grid">
             <div class="form-group span-2">
-              <label class="form-label">Nombre / Descripción del Proyecto <span class="req">*</span></label>
-              <textarea id="n-proyecto" class="form-textarea" rows="2" placeholder="Describe la obra o servicio determinado">${v('nombre_proyecto')}</textarea>
+              <label class="form-label" for="n-proyecto">Nombre / Descripción del Proyecto <span class="req">*</span></label>
+              <textarea id="n-proyecto" class="form-textarea" rows="2" placeholder="Describe la obra o servicio determinado" required aria-required="true">${v('nombre_proyecto')}</textarea>
             </div>
             <div class="form-group">
-              <label class="form-label">Fecha Estimada de Término <span class="req">*</span></label>
-              <input id="n-fin-proyecto" type="date" class="form-input" value="${v('fecha_fin_proyecto')}" />
+              <label class="form-label" for="n-fin-proyecto">Fecha Estimada de Término <span class="req">*</span></label>
+              <input id="n-fin-proyecto" type="date" class="form-input" value="${v('fecha_fin_proyecto')}" required aria-required="true" />
             </div>
           </div>
         </div>
@@ -534,8 +537,8 @@ async function showModalTrabajador(id = null) {
           <div style="height:1px;background:var(--border);margin-bottom:16px;"></div>
           <div class="form-grid">
             <div class="form-group span-2">
-              <label class="form-label">Zona Geográfica Asignada</label>
-              <input id="n-zona" type="text" class="form-input" value="${v('zona_asignada')}" placeholder="Ej. Zona Metropolitana Norte" />
+              <label class="form-label" for="n-zona">Zona Geográfica Asignada</label>
+              <input id="n-zona" type="text" class="form-input" value="${escapeHtml(v('zona_asignada'))}" placeholder="Ej. Zona Metropolitana Norte" />
             </div>
             <div class="form-group span-2">
               <label class="form-label">Días de Presentación en Oficina</label>
@@ -548,8 +551,8 @@ async function showModalTrabajador(id = null) {
               </div>
             </div>
             <div class="form-group span-2">
-              <label class="form-label">Horario de Presentación</label>
-              <input id="n-horario-pres" type="text" class="form-input" value="${v('horario_presentacion')}" placeholder="Ej. 10:00-12:00 y 16:00-18:00 hrs" />
+              <label class="form-label" for="n-horario-pres">Horario de Presentación</label>
+              <input id="n-horario-pres" type="text" class="form-input" value="${escapeHtml(v('horario_presentacion'))}" placeholder="Ej. 10:00-12:00 y 16:00-18:00 hrs" />
             </div>
             <div class="form-group span-2">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -568,16 +571,16 @@ async function showModalTrabajador(id = null) {
         <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">🚨 Contacto de Emergencia</div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Nombre Completo</label>
-            <input id="n-em-nombre" type="text" class="form-input" value="${v('contacto_emergencia_nombre')}" placeholder="Nombre del contacto" />
+            <label class="form-label" for="n-em-nombre">Nombre Completo</label>
+            <input id="n-em-nombre" type="text" class="form-input" value="${escapeHtml(v('contacto_emergencia_nombre'))}" placeholder="Nombre del contacto" />
           </div>
           <div class="form-group">
-            <label class="form-label">Parentesco</label>
-            <input id="n-em-parent" type="text" class="form-input" value="${v('contacto_emergencia_parentesco')}" placeholder="Ej. Cónyuge, Madre" />
+            <label class="form-label" for="n-em-parent">Parentesco</label>
+            <input id="n-em-parent" type="text" class="form-input" value="${escapeHtml(v('contacto_emergencia_parentesco'))}" placeholder="Ej. Cónyuge, Madre" />
           </div>
           <div class="form-group">
-            <label class="form-label">Teléfono</label>
-            <input id="n-em-tel" type="text" class="form-input" value="${v('contacto_emergencia_telefono')}" placeholder="55 1234 5678" />
+            <label class="form-label" for="n-em-tel">Teléfono</label>
+            <input id="n-em-tel" type="text" class="form-input" value="${escapeHtml(v('contacto_emergencia_telefono'))}" placeholder="55 1234 5678" />
           </div>
         </div>
         <div style="height:1px;background:var(--border);margin:20px 0;"></div>
@@ -586,37 +589,37 @@ async function showModalTrabajador(id = null) {
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Beneficiario 1</div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Nombre Completo</label>
-            <input id="n-b1-nombre" type="text" class="form-input" value="${v('beneficiario1_nombre')}" placeholder="Nombre del beneficiario" />
+            <label class="form-label" for="n-b1-nombre">Nombre Completo</label>
+            <input id="n-b1-nombre" type="text" class="form-input" value="${escapeHtml(v('beneficiario1_nombre'))}" placeholder="Nombre del beneficiario" />
           </div>
           <div class="form-group">
-            <label class="form-label">Parentesco</label>
-            <input id="n-b1-parent" type="text" class="form-input" value="${v('beneficiario1_parentesco')}" placeholder="Ej. Hijo/a, Cónyuge" />
+            <label class="form-label" for="n-b1-parent">Parentesco</label>
+            <input id="n-b1-parent" type="text" class="form-input" value="${escapeHtml(v('beneficiario1_parentesco'))}" placeholder="Ej. Hijo/a, Cónyuge" />
           </div>
           <div class="form-group">
-            <label class="form-label">Teléfono</label>
-            <input id="n-b1-tel" type="text" class="form-input" value="${v('beneficiario1_telefono')}" placeholder="55 1234 5678" />
+            <label class="form-label" for="n-b1-tel">Teléfono</label>
+            <input id="n-b1-tel" type="text" class="form-input" value="${escapeHtml(v('beneficiario1_telefono'))}" placeholder="55 1234 5678" />
           </div>
         </div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px;">Beneficiario 2 (opcional)</div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Nombre Completo</label>
-            <input id="n-b2-nombre" type="text" class="form-input" value="${v('beneficiario2_nombre')}" placeholder="Nombre del beneficiario" />
+            <label class="form-label" for="n-b2-nombre">Nombre Completo</label>
+            <input id="n-b2-nombre" type="text" class="form-input" value="${escapeHtml(v('beneficiario2_nombre'))}" placeholder="Nombre del beneficiario" />
           </div>
           <div class="form-group">
-            <label class="form-label">Parentesco</label>
-            <input id="n-b2-parent" type="text" class="form-input" value="${v('beneficiario2_parentesco')}" placeholder="Ej. Hijo/a, Cónyuge" />
+            <label class="form-label" for="n-b2-parent">Parentesco</label>
+            <input id="n-b2-parent" type="text" class="form-input" value="${escapeHtml(v('beneficiario2_parentesco'))}" placeholder="Ej. Hijo/a, Cónyuge" />
           </div>
           <div class="form-group">
-            <label class="form-label">Teléfono</label>
-            <input id="n-b2-tel" type="text" class="form-input" value="${v('beneficiario2_telefono')}" placeholder="55 1234 5678" />
+            <label class="form-label" for="n-b2-tel">Teléfono</label>
+            <input id="n-b2-tel" type="text" class="form-input" value="${escapeHtml(v('beneficiario2_telefono'))}" placeholder="55 1234 5678" />
           </div>
         </div>
       </div>
 
       <!-- Footer -->
-      <div id="trab-modal-error" class="error-msg" style="display:none;margin:0 24px 8px;flex-shrink:0;"></div>
+      <div id="trab-modal-error" class="error-msg" role="alert" style="display:none;margin:0 24px 8px;flex-shrink:0;"></div>
       <div class="modal-footer" style="flex-shrink:0;">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="handleGuardarTrabajador('${id||''}')">
@@ -717,7 +720,7 @@ function agregarTemporada(data = {}) {
   const div = document.createElement('div');
   div.className = 'dyn-row dyn-row-3';
   div.innerHTML = `
-    <input type="text" class="form-input" name="temp-nombre" placeholder="Ej. Temporada Alta" value="${data.nombre||''}" />
+    <input type="text" class="form-input" name="temp-nombre" placeholder="Ej. Temporada Alta" value="${escapeHtml(data.nombre)||''}" />
     <input type="date" class="form-input" name="temp-inicio" value="${data.inicio||''}" />
     <input type="date" class="form-input" name="temp-fin" value="${data.fin||''}" />
     <button class="btn-danger btn-sm dyn-row" onclick="this.closest('.dyn-row').remove()" title="Eliminar">🗑</button>
@@ -731,8 +734,8 @@ function agregarComision(data = {}) {
   const div = document.createElement('div');
   div.className = 'dyn-row dyn-row-2';
   div.innerHTML = `
-    <input type="text" class="form-input" name="com-rango" placeholder="Ej. De 1 a 3 ventas" value="${data.rango||''}" />
-    <input type="text" class="form-input" name="com-valor" placeholder="Ej. $50 por venta" value="${data.comision||''}" />
+    <input type="text" class="form-input" name="com-rango" placeholder="Ej. De 1 a 3 ventas" value="${escapeHtml(data.rango)||''}" />
+    <input type="text" class="form-input" name="com-valor" placeholder="Ej. $50 por venta" value="${escapeHtml(data.comision)||''}" />
     <button class="btn-danger btn-sm dyn-row" onclick="this.closest('.dyn-row').remove()" title="Eliminar">🗑</button>
   `;
   c.appendChild(div);
@@ -891,7 +894,7 @@ async function handleGuardarTrabajador(id = '') {
   try {
     if (id) {
       const trabActual = await db.getTrabajador(id);
-      await db.updateTrabajador(id, datos);
+      await db.updateTrabajador(id, datos, trabActual.updated_at);
       if (trabActual && datos.salario_mensual !== trabActual.salario_mensual) {
         const motivo = eid('n-motivo-salario')?.value.trim() || null;
         await db.registrarCambioSalario(id, trabActual.salario_mensual, datos.salario_mensual, motivo, CTX.empresa.id).catch(() => {});
@@ -908,22 +911,42 @@ async function handleGuardarTrabajador(id = '') {
       closeModal();
       navigate('empleado', id);
     } else {
-      const trab     = await db.createTrabajador(datos, CTX.empresa.id);
-      await db.createContrato({ trabajador_id: trab.id, tipo: datos.tipo_contrato }, CTX.empresa.id);
-      const sucursal = datos.sucursal_id ? await db.getSucursal(datos.sucursal_id) : null;
-      generateContratoPDF(CTX.empresa, trab, sucursal);
-      // Migración 19: alta de trabajador → movimiento IMSS 'alta' pendiente.
-      if (typeof registrarMovimientoIMSS === 'function') {
-        const sbcInicial = typeof calcularSBC === 'function' ? calcularSBC(trab) : null;
-        const { error: errSbc } = await window.supabase.from('trabajadores').update({ sbc: sbcInicial, fecha_ultimo_sbc: new Date().toISOString().split('T')[0] }).eq('id', trab.id);
-        if (errSbc) console.warn('No se pudo actualizar el SBC:', errSbc.message);
-        await registrarMovimientoIMSS(CTX.empresa.id, trab.id, 'alta', { sbcNuevo: sbcInicial });
+      // B-4: el alta es una secuencia de varios pasos no atómicos entre sí —
+      // si uno falla a medio camino, el trabajador puede quedar creado sin
+      // contrato, o sin su movimiento IMSS de alta. Se rastrea el paso
+      // alcanzado para poder avisar exactamente qué quedó a medias.
+      let paso = 'crear trabajador';
+      let trab;
+      try {
+        trab = await db.createTrabajador(datos, CTX.empresa.id);
+        paso = 'crear contrato';
+        await db.createContrato({ trabajador_id: trab.id, tipo: datos.tipo_contrato }, CTX.empresa.id);
+        paso = 'generar PDF del contrato';
+        const sucursal = datos.sucursal_id ? await db.getSucursal(datos.sucursal_id) : null;
+        generateContratoPDF(CTX.empresa, trab, sucursal);
+        // Migración 19: alta de trabajador → movimiento IMSS 'alta' pendiente.
+        if (typeof registrarMovimientoIMSS === 'function') {
+          paso = 'registrar SBC inicial';
+          const sbcInicial = typeof calcularSBC === 'function' ? calcularSBC(trab) : null;
+          const { error: errSbc } = await window.supabase.from('trabajadores').update({ sbc: sbcInicial, fecha_ultimo_sbc: new Date().toISOString().split('T')[0] }).eq('id', trab.id);
+          if (errSbc) console.warn('No se pudo actualizar el SBC:', errSbc.message);
+          paso = 'registrar movimiento IMSS de alta';
+          await registrarMovimientoIMSS(CTX.empresa.id, trab.id, 'alta', { sbcNuevo: sbcInicial });
+        }
+      } catch (eAlta) {
+        const quedoCreado = !!trab;
+        throw new Error(
+          `Falló el paso "${paso}": ${eAlta.message}.` +
+          (quedoCreado
+            ? ` El trabajador "${nombre}" ya quedó creado en el sistema — revisa su perfil y completa manualmente lo que falte (contrato/IMSS) antes de reintentar el alta, para no duplicarlo.`
+            : '')
+        );
       }
       closeModal();
       navigate('empleados');
     }
   } catch(e) {
-    err.textContent = e.message;
+    err.textContent = friendlyError(e);
     err.style.display = '';
     if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
   }
@@ -933,6 +956,7 @@ async function handleGuardarTrabajador(id = '') {
 //  PERFIL DE EMPLEADO
 // ═══════════════════════════════════════════════════════
 async function renderPerfilEmpleado(id) {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   if (!id) { navigate('empleados'); return; }
   try {
     const [trab, actas, contratos, asistencia, histSalarios] = await Promise.all([
@@ -953,16 +977,17 @@ async function renderPerfilEmpleado(id) {
     const dias      = diasParaVencimiento(trab.fecha_vencimiento_contrato);
     const necesitaRenovar = (trab.tipo_contrato === 'determinado') && dias !== null;
 
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     const main = eid('main-view');
     main.innerHTML = `
       <button class="btn-secondary btn-sm" onclick="navigate('empleados')" style="margin-bottom:16px;">← Volver</button>
 
       <div class="perfil-header animate-in">
         <div style="display:flex;align-items:center;gap:16px;">
-          <div class="perfil-avatar">${iniciales(trab.nombre)}</div>
+          <div class="perfil-avatar">${escapeHtml(iniciales(trab.nombre))}</div>
           <div class="perfil-info">
-            <div class="perfil-nombre">${trab.nombre} ${badgeCalidad(trab.tipo_contrato)}</div>
-            <div class="perfil-meta">${trab.puesto || '—'}${trab.departamento ? ' · ' + trab.departamento : ''} · Ingreso: ${formatDateShort(trab.fecha_ingreso)} · ${antiguedad}</div>
+            <div class="perfil-nombre">${escapeHtml(trab.nombre)} ${badgeCalidad(trab.tipo_contrato)}</div>
+            <div class="perfil-meta">${escapeHtml(trab.puesto) || '—'}${trab.departamento ? ' · ' + escapeHtml(trab.departamento) : ''} · Ingreso: ${formatDateShort(trab.fecha_ingreso)} · ${antiguedad}</div>
             ${trab.fecha_vencimiento_contrato && dias !== null ? `
             <div style="margin-top:6px;font-size:.82rem;">
               📅 Vencimiento: <strong>${formatDateShort(trab.fecha_vencimiento_contrato)}</strong>
@@ -990,7 +1015,7 @@ async function renderPerfilEmpleado(id) {
       ${faltas30.length >= 3 ? `
         <div class="alert alert-danger animate-in">
           <span>⚠️</span>
-          <span><strong>Atención:</strong> ${trab.nombre} acumula <strong>${faltas30.length} faltas injustificadas</strong> en los últimos 30 días (Art. 47 Fracc. X LFT).
+          <span><strong>Atención:</strong> ${escapeHtml(trab.nombre)} acumula <strong>${faltas30.length} faltas injustificadas</strong> en los últimos 30 días (Art. 47 Fracc. X LFT).
           <button class="btn-danger btn-sm" style="margin-left:12px;" onclick="showModalActa('${id}','rescisoria','asistencia')">Generar acta</button></span>
         </div>
       ` : ''}
@@ -1011,12 +1036,12 @@ async function renderPerfilEmpleado(id) {
         <div class="card" style="margin-bottom:14px;">
           <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Datos Personales</div>
           <div class="form-grid">
-            ${filaInfo('RFC', trab.rfc)} ${filaInfo('CURP', trab.curp)}
-            ${filaInfo('NSS', trab.nss)} ${filaInfo('Edad', trab.edad ? trab.edad + ' años' : null)}
-            ${filaInfo('Estado civil', trab.estado_civil)} ${filaInfo('Nacionalidad', trab.nacionalidad)}
-            ${filaInfo('Tipo de sangre', trab.tipo_sangre)} ${filaInfo('Identificación', trab.tipo_identificacion ? `${trab.tipo_identificacion}: ${trab.num_identificacion||''}` : null)}
-            ${trab.domicilio ? filaInfo('Domicilio', trab.domicilio) : ''}
-            ${trab.enfermedades_cronicas ? filaInfo('Condiciones médicas', trab.enfermedades_cronicas) : ''}
+            ${filaInfo('RFC', escapeHtml(trab.rfc))} ${filaInfo('CURP', escapeHtml(trab.curp))}
+            ${filaInfo('NSS', escapeHtml(trab.nss))} ${filaInfo('Edad', trab.edad ? trab.edad + ' años' : null)}
+            ${filaInfo('Estado civil', escapeHtml(trab.estado_civil))} ${filaInfo('Nacionalidad', escapeHtml(trab.nacionalidad))}
+            ${filaInfo('Tipo de sangre', escapeHtml(trab.tipo_sangre))} ${filaInfo('Identificación', trab.tipo_identificacion ? `${escapeHtml(trab.tipo_identificacion)}: ${escapeHtml(trab.num_identificacion)}` : null)}
+            ${trab.domicilio ? filaInfo('Domicilio', escapeHtml(trab.domicilio)) : ''}
+            ${trab.enfermedades_cronicas ? filaInfo('Condiciones médicas', escapeHtml(trab.enfermedades_cronicas)) : ''}
           </div>
         </div>
         <div class="card" style="margin-bottom:14px;">
@@ -1035,22 +1060,22 @@ async function renderPerfilEmpleado(id) {
             `)}
             ${filaInfo('Tipo de contrato', {indeterminado:'Tiempo Indeterminado',indefinido:'Tiempo Indeterminado',determinado:'Tiempo Determinado',obra:'Obra o Servicio',temporada:'Temporada',comision:'Por Comisión'}[trab.tipo_contrato]||trab.tipo_contrato)}
             ${filaInfo('Zona SMG', trab.smg_zone === 'frontera' ? 'Frontera Norte' : 'Área General')}
-            ${filaInfo('Centro de Trabajo', sucursal ? `${sucursal.nombre}${sucursal.ciudad ? ' — ' + sucursal.ciudad : ''}` : 'Matriz')}
+            ${filaInfo('Centro de Trabajo', sucursal ? `${escapeHtml(sucursal.nombre)}${sucursal.ciudad ? ' — ' + escapeHtml(sucursal.ciudad) : ''}` : 'Matriz')}
             ${filaInfo('Forma de pago', trab.forma_pago === 'efectivo' ? 'Efectivo' : 'Depósito bancario')}
-            ${trab.dias_pago ? filaInfo('Días de pago', trab.dias_pago) : ''}
-            ${trab.funciones ? filaInfo('Funciones', trab.funciones) : ''}
-            ${trab.hora_inicio ? filaInfo('Horario', `${trab.hora_inicio} – ${trab.hora_fin||''}${trab.hora_descanso_inicio ? '  |  Comida: '+trab.hora_descanso_inicio+' – '+(trab.hora_descanso_fin||'') : ''}`) : ''}
-            ${trab.dias_semana?.length ? filaInfo('Días laborales', trab.dias_semana.join(', ')) : ''}
-            ${trab.estado === 'baja' ? filaInfo('Fecha de baja', formatDateShort(trab.fecha_baja)) + filaInfo('Tipo de baja', trab.tipo_baja) : ''}
+            ${trab.dias_pago ? filaInfo('Días de pago', escapeHtml(trab.dias_pago)) : ''}
+            ${trab.funciones ? filaInfo('Funciones', escapeHtml(trab.funciones)) : ''}
+            ${trab.hora_inicio ? filaInfo('Horario', `${escapeHtml(trab.hora_inicio)} – ${escapeHtml(trab.hora_fin)||''}${trab.hora_descanso_inicio ? '  |  Comida: '+escapeHtml(trab.hora_descanso_inicio)+' – '+(escapeHtml(trab.hora_descanso_fin)||'') : ''}`) : ''}
+            ${trab.dias_semana?.length ? filaInfo('Días laborales', escapeHtml(trab.dias_semana.join(', '))) : ''}
+            ${trab.estado === 'baja' ? filaInfo('Fecha de baja', formatDateShort(trab.fecha_baja)) + filaInfo('Tipo de baja', escapeHtml(trab.tipo_baja)) : ''}
           </div>
         </div>
         ${(trab.contacto_emergencia_nombre || trab.beneficiario1_nombre) ? `
         <div class="card">
           <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Contactos</div>
           <div class="form-grid">
-            ${trab.contacto_emergencia_nombre ? filaInfo('Emergencia', `${trab.contacto_emergencia_nombre} (${trab.contacto_emergencia_parentesco||''}) — ${trab.contacto_emergencia_telefono||''}`) : ''}
-            ${trab.beneficiario1_nombre ? filaInfo('Beneficiario 1', `${trab.beneficiario1_nombre} (${trab.beneficiario1_parentesco||''})`) : ''}
-            ${trab.beneficiario2_nombre ? filaInfo('Beneficiario 2', `${trab.beneficiario2_nombre} (${trab.beneficiario2_parentesco||''})`) : ''}
+            ${trab.contacto_emergencia_nombre ? filaInfo('Emergencia', `${escapeHtml(trab.contacto_emergencia_nombre)} (${escapeHtml(trab.contacto_emergencia_parentesco)||''}) — ${escapeHtml(trab.contacto_emergencia_telefono)||''}`) : ''}
+            ${trab.beneficiario1_nombre ? filaInfo('Beneficiario 1', `${escapeHtml(trab.beneficiario1_nombre)} (${escapeHtml(trab.beneficiario1_parentesco)||''})`) : ''}
+            ${trab.beneficiario2_nombre ? filaInfo('Beneficiario 2', `${escapeHtml(trab.beneficiario2_nombre)} (${escapeHtml(trab.beneficiario2_parentesco)||''})`) : ''}
           </div>
         </div>` : ''}
       </div>
@@ -1078,7 +1103,7 @@ async function renderPerfilEmpleado(id) {
         </div>
         ${contratos.length === 0
           ? `<div class="empty-state"><div class="empty-state-icon">📄</div><div class="empty-state-title">Sin contratos registrados</div></div>`
-          : `<div class="table-wrap"><table class="data-table"><thead><tr><th>Tipo</th><th>Fecha generación</th></tr></thead><tbody>
+          : `<div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Tipo</th><th scope="col">Fecha generación</th></tr></thead><tbody>
               ${contratos.map(c=>`<tr><td>${{indefinido:'Tiempo Indeterminado',determinado:'Tiempo Determinado',obra:'Obra o Servicio',temporada:'Temporada'}[c.tipo]||c.tipo}</td><td>${formatDateShort(c.fecha_generacion)}</td></tr>`).join('')}
             </tbody></table></div>`
         }
@@ -1092,7 +1117,7 @@ async function renderPerfilEmpleado(id) {
         ${histSalarios.length === 0
           ? `<div class="empty-state"><div class="empty-state-icon">💵</div><div class="empty-state-title">Sin ajustes salariales registrados</div><p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Los cambios futuros al salario quedarán registrados aquí.</p></div>`
           : `<div class="table-wrap"><table class="data-table">
-              <thead><tr><th>Fecha</th><th>Salario anterior</th><th>Salario nuevo</th><th>Variación</th><th>Motivo</th></tr></thead>
+              <thead><tr><th scope="col">Fecha</th><th scope="col">Salario anterior</th><th scope="col">Salario nuevo</th><th scope="col">Variación</th><th scope="col">Motivo</th></tr></thead>
               <tbody>${histSalarios.map(h => {
                 const variacion = ((h.salario_nuevo - h.salario_anterior) / h.salario_anterior * 100).toFixed(1);
                 const color = h.salario_nuevo >= h.salario_anterior ? 'var(--green-ok)' : 'var(--red-warn)';
@@ -1102,7 +1127,7 @@ async function renderPerfilEmpleado(id) {
                   <td>$${parseFloat(h.salario_anterior).toLocaleString('es-MX',{minimumFractionDigits:2})}</td>
                   <td><strong>$${parseFloat(h.salario_nuevo).toLocaleString('es-MX',{minimumFractionDigits:2})}</strong></td>
                   <td style="color:${color};font-weight:700;">${signo}${variacion}%</td>
-                  <td style="color:var(--text-muted);font-size:.82rem;">${h.motivo || '—'}</td>
+                  <td style="color:var(--text-muted);font-size:.82rem;">${escapeHtml(h.motivo) || '—'}</td>
                 </tr>`;
               }).join('')}</tbody>
             </table></div>`
@@ -1126,12 +1151,12 @@ function filaInfo(label, value) {
 
 function tablaAsistencia(items) {
   if (!items.length) return `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin incidencias este mes</div></div>`;
-  return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Justificada</th><th>Observaciones</th><th></th></tr></thead><tbody>
+  return `<div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Fecha</th><th scope="col">Tipo</th><th scope="col">Justificada</th><th scope="col">Observaciones</th><th scope="col"></th></tr></thead><tbody>
     ${items.map(a=>`<tr>
       <td>${formatDateShort(a.fecha)}</td>
       <td><span class="badge ${a.tipo==='falta'?'badge-falta':'badge-retardo'}">${a.tipo==='falta'?'Falta':'Retardo'}</span></td>
       <td>${a.justificada?'<span style="color:var(--green-ok)">✓ Sí</span>':'<span style="color:var(--red-warn)">✗ No</span>'}</td>
-      <td style="color:var(--text-muted);font-size:.82rem;">${a.observaciones||'—'}</td>
+      <td style="color:var(--text-muted);font-size:.82rem;">${escapeHtml(a.observaciones)||'—'}</td>
       <td><button class="btn-danger btn-sm" onclick="eliminarAsistencia('${a.id}')">🗑</button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
@@ -1139,11 +1164,11 @@ function tablaAsistencia(items) {
 
 function tablaActas(items, trab) {
   if (!items.length) return `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin actas registradas</div></div>`;
-  return `<div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Falta</th><th>Acciones</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Fecha</th><th scope="col">Tipo</th><th scope="col">Falta</th><th scope="col">Acciones</th></tr></thead><tbody>
     ${items.map(a=>`<tr>
       <td>${formatDateShort(a.fecha)}</td>
       <td>${badgeActa(a.tipo)}</td>
-      <td style="font-size:.82rem;color:var(--text-muted);">${a.tipo_falta_label||a.tipo_falta||'—'}</td>
+      <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(a.tipo_falta_label||a.tipo_falta)||'—'}</td>
       <td><button class="btn-secondary btn-sm" onclick="reDescargarActa('${a.id}','${trab.id}')">⬇ PDF</button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
@@ -1173,7 +1198,7 @@ async function renovarAPlanta(trabId) {
     await db.createContrato({ trabajador_id: trabId, tipo: 'indeterminado' }, CTX.empresa.id);
     await generateContrato(trabId, 'indeterminado');
     navigate('empleado', trabId);
-  } catch(e) { alert('Error al renovar: ' + e.message); }
+  } catch(e) { alert('Error al renovar: ' + friendlyError(e)); }
 }
 
 async function reDescargarActa(actaId, trabId) {

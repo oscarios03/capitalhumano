@@ -19,8 +19,15 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// M-7: el proyecto todavía no tiene dominio de producción propio (2026-07),
+// así que se acepta cualquier origen por ahora. En cuanto exista un dominio
+// fijo, configurar el secret `ALLOWED_ORIGIN` (Supabase Dashboard → Edge
+// Functions → Secrets) con ese dominio exacto (ej. https://app.midominio.mx)
+// para restringir esta cabecera. Nota: este endpoint también lo llaman
+// agentes locales fuera del navegador (no sujetos a CORS), así que esta
+// cabecera solo protege el caso de invocación desde un navegador.
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
 };
 
@@ -65,7 +72,14 @@ Deno.serve(async (req: Request) => {
     .eq('api_key_hash', apiKeyHash)
     .maybeSingle();
 
-  if (!integracion || !integracion.activo) return json({ error: 'API key inválida o inactiva' }, 401);
+  if (!integracion || !integracion.activo) {
+    // B-3: la key ya tiene suficiente entropía para no requerir bloqueo,
+    // pero se deja rastro para detectar fuerza bruta / abuso por IP.
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      || req.headers.get('cf-connecting-ip') || 'unknown';
+    console.warn(`[checador-webhook] intento con x-api-key inválida — ip=${ip} hash_prefix=${apiKeyHash.slice(0, 8)} ts=${new Date().toISOString()}`);
+    return json({ error: 'API key inválida o inactiva' }, 401);
+  }
 
   const { data: trabajador } = await supabase
     .from('trabajadores')
@@ -77,7 +91,22 @@ Deno.serve(async (req: Request) => {
 
   if (!trabajador) return json({ error: 'codigo_checador no reconocido para esta empresa' }, 404);
 
-  const pTs = ts && !isNaN(Date.parse(ts)) ? ts : new Date().toISOString();
+  // M-11: el ts lo declara el dispositivo remoto — sin acotar su rango, una
+  // key comprometida podría fabricar asistencia con fecha pasada/futura
+  // arbitraria (backdating). Se tolera solo una ventana razonable respecto
+  // al reloj del servidor para absorber latencia de red/clock drift normal.
+  const MAX_SKEW_MS = 5 * 60 * 1000; // 5 minutos
+  let pTs: string;
+  if (ts) {
+    const parsedTs = Date.parse(ts);
+    if (isNaN(parsedTs)) return json({ error: 'ts inválido' }, 400);
+    if (Math.abs(Date.now() - parsedTs) > MAX_SKEW_MS) {
+      return json({ error: 'ts fuera de rango permitido (máx. 5 minutos de diferencia con el servidor). Verifica la hora del dispositivo.' }, 400);
+    }
+    pTs = new Date(parsedTs).toISOString();
+  } else {
+    pTs = new Date().toISOString();
+  }
 
   const { data: resultado, error } = await supabase.rpc('registrar_checada', {
     p_empresa_id:    integracion.empresa_id,

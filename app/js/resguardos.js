@@ -21,7 +21,7 @@ async function renderTabResguardos(trabajadorId) {
 
   const { data: resguardos, error } = await _listarResguardos(trabajadorId);
   if (error) {
-    el.innerHTML = `<div class="alert alert-danger">Error al cargar resguardos: ${error.message}
+    el.innerHTML = `<div class="alert alert-danger">Error al cargar resguardos: ${friendlyError(error)}
       ${/relation|schema cache/i.test(error.message||'') ? '<br>Aplica la migración 20_migration_resguardos.sql.' : ''}</div>`;
     return;
   }
@@ -33,8 +33,8 @@ async function renderTabResguardos(trabajadorId) {
   const filaActivo = r => `
     <tr>
       <td><input type="checkbox" class="res-check" value="${r.id}" /></td>
-      <td>${r.articulo}${r.descripcion ? `<br><span style="font-size:.75rem;color:var(--text-muted);">${r.descripcion}</span>` : ''}</td>
-      <td style="font-size:.82rem;color:var(--text-muted);">${r.numero_serie || '—'}</td>
+      <td>${escapeHtml(r.articulo)}${r.descripcion ? `<br><span style="font-size:.75rem;color:var(--text-muted);">${escapeHtml(r.descripcion)}</span>` : ''}</td>
+      <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(r.numero_serie) || '—'}</td>
       <td>${r.cantidad}</td>
       <td>${r.valor_estimado ? fmt(r.valor_estimado) : '—'}</td>
       <td style="font-size:.82rem;">${ESTADO_ENTREGA_LABEL[r.estado_entrega] || '—'}</td>
@@ -45,8 +45,8 @@ async function renderTabResguardos(trabajadorId) {
   const filaDevuelto = r => `
     <tr style="opacity:.6;">
       <td></td>
-      <td>${r.articulo}</td>
-      <td style="font-size:.82rem;color:var(--text-muted);">${r.numero_serie || '—'}</td>
+      <td>${escapeHtml(r.articulo)}</td>
+      <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(r.numero_serie) || '—'}</td>
       <td>${r.cantidad}</td>
       <td>${r.valor_estimado ? fmt(r.valor_estimado) : '—'}</td>
       <td style="font-size:.82rem;">Devuelto: ${{completo:'✅ Completo',danado:'⚠️ Dañado',no_devuelto:'🔴 No devuelto'}[r.estado_devolucion] || r.estado_devolucion || '—'}</td>
@@ -87,7 +87,7 @@ function _mostrarFormEntrega(trabajadorId) {
     <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">📦 Nueva entrega de artículos</div>
     <div id="filas-entrega-resguardo"></div>
     <button class="btn-secondary btn-sm" onclick="_agregarFilaEntrega()" style="margin-top:8px;">+ Agregar artículo</button>
-    <div id="entr-error" class="error-msg" style="display:none;margin:10px 0;"></div>
+    <div id="entr-error" class="error-msg" role="alert" style="display:none;margin:10px 0;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn-secondary btn-sm" onclick="_cerrarFormEntrega()">Cancelar</button>
       <button id="entr-btn-guardar" class="btn-primary btn-sm" onclick="_guardarEntregaResguardos('${trabajadorId}')">💾 Guardar entrega</button>
@@ -155,7 +155,7 @@ async function _guardarEntregaResguardos(trabajadorId) {
   if (btn) { btn.textContent = '💾 Guardar entrega'; btn.disabled = false; }
 
   if (error) {
-    errEl.textContent = 'Error al guardar: ' + error.message;
+    errEl.textContent = 'Error al guardar: ' + friendlyError(error);
     errEl.style.display = '';
     return;
   }
@@ -191,11 +191,11 @@ async function _generarCartaResponsiva(trabajadorId, resguardoIds) {
       <div style="font-weight:700;font-size:.9rem;margin-bottom:10px;">📎 Subir carta responsiva firmada (opcional)</div>
       <div class="form-grid">
         <div class="form-group span-2">
-          <label class="form-label">Archivo escaneado</label>
+          <label class="form-label" for="carta-res-archivo">Archivo escaneado</label>
           <input id="carta-res-archivo" type="file" class="form-input" accept=".pdf,.jpg,.jpeg,.png" />
         </div>
       </div>
-      <div id="carta-res-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="carta-res-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
         <button class="btn-secondary btn-sm" onclick="eid('form-carta-resguardo').style.display='none'">Cerrar</button>
         <button class="btn-primary btn-sm" onclick='_subirCartaFirmada("${trabajadorId}", ${JSON.stringify(resguardoIds)})'>💾 Subir al expediente</button>
@@ -210,9 +210,14 @@ async function _subirCartaFirmada(trabajadorId, resguardoIds) {
   errEl.style.display = 'none';
   const archivo = eid('carta-res-archivo')?.files?.[0];
   if (!archivo) { errEl.textContent = 'Selecciona un archivo.'; errEl.style.display = ''; return; }
+  if (archivo.size > 10 * 1024 * 1024) {
+    errEl.textContent = 'El archivo excede el límite de 10 MB.';
+    errEl.style.display = '';
+    return;
+  }
 
   const { data, error } = await expediente.subirDocumento(trabajadorId, archivo, 'resguardo', `Carta responsiva — ${resguardoIds.length} artículo(s)`);
-  if (error) { errEl.textContent = 'Error al subir: ' + (error.message || error); errEl.style.display = ''; return; }
+  if (error) { errEl.textContent = 'Error al subir: ' + friendlyError(error); errEl.style.display = ''; return; }
 
   await window.supabase.from('resguardos').update({ documento_url: data.storage_path }).in('id', resguardoIds);
   eid('form-carta-resguardo').style.display = 'none';
@@ -289,19 +294,19 @@ function _mostrarFormDevolucion(resguardoId, trabajadorId) {
     <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">↩ Registrar devolución</div>
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Estado de devolución <span class="req">*</span></label>
-        <select id="dev-estado" class="form-select">
+        <label class="form-label" for="dev-estado">Estado de devolución <span class="req">*</span></label>
+        <select id="dev-estado" class="form-select" required aria-required="true">
           <option value="completo">✅ Completo</option>
           <option value="danado">⚠️ Dañado</option>
           <option value="no_devuelto">🔴 No devuelto</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Fecha de devolución</label>
+        <label class="form-label" for="dev-fecha">Fecha de devolución</label>
         <input id="dev-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" />
       </div>
       <div class="form-group span-2">
-        <label class="form-label">Notas</label>
+        <label class="form-label" for="dev-notas">Notas</label>
         <input id="dev-notas" type="text" class="form-input" placeholder="Observaciones sobre el estado del artículo" />
       </div>
     </div>
@@ -322,7 +327,7 @@ async function _guardarDevolucion(resguardoId, trabajadorId) {
     estado_devolucion: estado, fecha_devolucion: fecha, notas_devolucion: notas,
   }).eq('id', resguardoId);
 
-  if (error) { alert('Error: ' + error.message); return; }
+  if (error) { alert('Error: ' + friendlyError(error)); return; }
   await renderTabResguardos(trabajadorId);
 }
 

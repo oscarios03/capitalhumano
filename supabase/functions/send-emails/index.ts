@@ -12,8 +12,8 @@
  * Invocar manualmente:
  *   supabase functions invoke send-emails
  *
- * Programar con pg_cron (ejecutar en SQL Editor):
- *   SELECT cron.schedule('send-emails', '*/15 * * * *',
+ * Programar con pg_cron (ejecutar en SQL Editor, cada 15 minutos):
+ *   SELECT cron.schedule('send-emails', '0,15,30,45 * * * *',
  *     $$SELECT net.http_post(
  *       url := current_setting('app.supabase_url') || '/functions/v1/send-emails',
  *       headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.service_role_key'))
@@ -61,14 +61,26 @@ async function enviarEmail(destinatario: string, asunto: string, html: string): 
   return false;
 }
 
-Deno.serve(async () => {
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+Deno.serve(async (req: Request) => {
+  // M-1: `verify_jwt` (default true en esta función) sólo valida que el JWT
+  // esté firmado por este proyecto — CUALQUIER usuario autenticado de la app
+  // podría invocar este endpoint directamente, no sólo el cron. Este
+  // endpoint sólo debe correr con la service_role key (cron / invocación
+  // manual de administrador), así que se exige explícitamente.
+  const authHeader = req.headers.get('Authorization') || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  if (!SERVICE_ROLE_KEY || token !== SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+  }
+
+  // M-2: `send_emails_claim` reclama las filas de forma atómica dentro de
+  // una transacción SQL con `FOR UPDATE SKIP LOCKED`, antes de hacer
+  // llamadas HTTP externas — evita que dos invocaciones solapadas
+  // (cron + manual, o dos crons) envíen el mismo correo dos veces.
   const { data: pendientes, error } = await supabase
-    .from('email_queue')
-    .select('id, destinatario, asunto, cuerpo_html, intentos')
-    .eq('enviado', false)
-    .lt('intentos', 3)
-    .order('creado_en')
-    .limit(MAX_BATCH);
+    .rpc('send_emails_claim', { p_max: MAX_BATCH });
 
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   if (!pendientes?.length) return new Response(JSON.stringify({ enviados: 0 }));
@@ -78,8 +90,8 @@ Deno.serve(async () => {
     const ok = await enviarEmail(email.destinatario, email.asunto, email.cuerpo_html);
     await supabase.from('email_queue').update(
       ok
-        ? { enviado: true, enviado_en: new Date().toISOString() }
-        : { intentos: email.intentos + 1 }
+        ? { enviado: true, enviado_en: new Date().toISOString(), procesando_desde: null }
+        : { intentos: email.intentos + 1, procesando_desde: null }
     ).eq('id', email.id);
     if (ok) enviados++;
   }

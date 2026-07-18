@@ -15,7 +15,7 @@ async function renderChecador() {
     <div class="view-header animate-in">
       <div>
         <div class="view-title">⏱ Reloj Checador</div>
-        <div class="view-subtitle">${CTX.empresa.nombre}</div>
+        <div class="view-subtitle">${escapeHtml(CTX.empresa.nombre)}</div>
       </div>
     </div>
     <div class="tabs animate-in" style="margin-bottom:16px;">
@@ -56,9 +56,9 @@ function _errorChecador(e) {
         Ejecuta <code>app/migrations/13_migration_checador.sql</code> en el
         SQL Editor de Supabase y recarga esta página.</span>
       </div>
-      <div style="font-size:.75rem;color:var(--text-muted);">Detalle técnico: ${msg}</div>`;
+      <div style="font-size:.75rem;color:var(--text-muted);">Detalle técnico: ${escapeHtml(msg)}</div>`;
   }
-  return `<div class="alert alert-danger"><span>❌</span><span>${msg}</span></div>`;
+  return `<div class="alert alert-danger"><span>❌</span><span>${escapeHtml(msg)}</span></div>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -86,7 +86,7 @@ async function _tabKiosco() {
           <tbody>
             ${sucursales.map(s => `
               <tr>
-                <td>${s.nombre}${s.tipo==='matriz'?' <span class="badge">Matriz</span>':''}</td>
+                <td>${escapeHtml(s.nombre)}${s.tipo==='matriz'?' <span class="badge">Matriz</span>':''}</td>
                 <td>${s.kiosco_token
                   ? `<code style="font-size:.78rem;">${_urlKiosco(s.kiosco_token)}</code>`
                   : '<span style="color:var(--text-muted);">Sin generar</span>'}</td>
@@ -108,8 +108,8 @@ async function _tabKiosco() {
           <tbody>
             ${trabajadores.map(t => `
               <tr>
-                <td>${t.nombre}</td>
-                <td>${t.puesto||'—'}</td>
+                <td>${escapeHtml(t.nombre)}</td>
+                <td>${escapeHtml(t.puesto)||'—'}</td>
                 <td>${t.pin_checador ? `<code>${t.pin_checador}</code>` : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td>${t.codigo_checador ? '✅ Asignado' : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td style="white-space:nowrap;">
@@ -215,7 +215,7 @@ async function _tabIntegraciones() {
           <tbody>
             ${integraciones.map(i => `
               <tr>
-                <td>${i.nombre}</td>
+                <td>${escapeHtml(i.nombre)}</td>
                 <td><code>${i.api_key_prefix}••••••••</code></td>
                 <td>${i.activo ? '<span class="badge badge-activo">Activo</span>' : '<span class="badge badge-baja">Inactivo</span>'}</td>
                 <td>${i.ultima_conexion ? new Date(i.ultima_conexion).toLocaleString('es-MX') : 'Nunca'}</td>

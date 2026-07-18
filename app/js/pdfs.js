@@ -129,8 +129,18 @@ async function generarReciboNominaBlob(reciboId) {
     dedRows.push(['Cuota IMSS obrero', `2.25% sobre base`, `-${fmt(recibo.cuota_imss)}`]);
   if (parseFloat(recibo.isr_retenido||0) > 0)
     dedRows.push(['ISR retenido', 'Art. 96 LISR 2026', `-${fmt(recibo.isr_retenido)}`]);
-  if (parseFloat(recibo.infonavit||0) > 0)
-    dedRows.push(['INFONAVIT', 'Crédito activo', `-${fmt(recibo.infonavit)}`]);
+  if (parseFloat(recibo.fondo_ahorro_obrero||0) > 0)
+    dedRows.push(['Fondo de ahorro obrero', 'Art. 110 fr. IV LFT', `-${fmt(recibo.fondo_ahorro_obrero)}`]);
+  if (parseFloat(recibo.prestamo_empresa||0) > 0)
+    dedRows.push(['Préstamo empresa', 'Art. 110 fr. I LFT', `-${fmt(recibo.prestamo_empresa)}`]);
+  if (parseFloat(recibo.infonavit_descuento||0) > 0)
+    dedRows.push(['INFONAVIT', 'Art. 97 Ley INFONAVIT', `-${fmt(recibo.infonavit_descuento)}`]);
+  if (parseFloat(recibo.pension_alimenticia||0) > 0)
+    dedRows.push(['Pensión alimenticia', 'Art. 110 fr. V LFT', `-${fmt(recibo.pension_alimenticia)}`]);
+  (Array.isArray(recibo.descuentos_detalle) ? recibo.descuentos_detalle : []).forEach(d => {
+    if (parseFloat(d.monto||0) > 0)
+      dedRows.push([np(d.descripcion || d.tipo), d.numero_credito ? `Núm. ${np(d.numero_credito)}` : 'Art. 110 LFT', `-${fmt(d.monto)}`]);
+  });
   if (parseFloat(recibo.otras_deducciones||0) > 0)
     dedRows.push(['Otras deducciones', recibo.notas || '—', `-${fmt(recibo.otras_deducciones)}`]);
   if (!dedRows.length) dedRows.push(['Sin deducciones','','$0.00']);

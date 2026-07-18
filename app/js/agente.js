@@ -450,7 +450,7 @@ function _renderPaso1() {
     <div style="margin-bottom:16px;">
       <div style="font-size:1rem;font-weight:700;color:var(--text-primary);">¿Qué documento necesitas generar?</div>
       <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;">
-        Trabajador: <strong style="color:var(--text-primary);">${s.trabajadorNombre}</strong>
+        Trabajador: <strong style="color:var(--text-primary);">${escapeHtml(s.trabajadorNombre)}</strong>
       </div>
     </div>
     ${categorias.map(cat => `
@@ -494,19 +494,19 @@ function _renderPaso2() {
     <div class="form-grid" style="margin-bottom:16px;">
       ${preguntas.map(p => `
         <div class="form-group span-2">
-          <label class="form-label">${p.label}${p.required ? ' <span class="req">*</span>' : ''}</label>
+          <label class="form-label" for="ctx-${p.id}">${p.label}${p.required ? ' <span class="req">*</span>' : ''}</label>
           ${p.tipo === 'select' ? `
-            <select id="ctx-${p.id}" class="form-select">
+            <select id="ctx-${p.id}" class="form-select"${p.required ? ' required aria-required="true"' : ''}>
               <option value="">— Seleccionar —</option>
               ${(p.opciones || []).map(o => `<option value="${o}">${o}</option>`).join('')}
             </select>` : p.tipo === 'textarea' ? `
-            <textarea id="ctx-${p.id}" class="form-textarea" rows="3"
+            <textarea id="ctx-${p.id}" class="form-textarea" rows="3"${p.required ? ' required aria-required="true"' : ''}
               placeholder="${p.placeholder || ''}"></textarea>` : `
-            <input id="ctx-${p.id}" type="text" class="form-input"
+            <input id="ctx-${p.id}" type="text" class="form-input"${p.required ? ' required aria-required="true"' : ''}
               placeholder="${p.placeholder || ''}" />`}
         </div>`).join('')}
     </div>
-    <div id="agente-ctx-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+    <div id="agente-ctx-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
     <div style="display:flex;gap:10px;justify-content:space-between;">
       <button class="btn-secondary" onclick="agentePrevPaso()">← Volver</button>
       <button class="btn-primary" id="btn-generar" onclick="agenteLanzar()">
@@ -532,23 +532,23 @@ function _renderPaso3() {
   if (!doc) return _renderSpinner();
 
   const seccionesHTML = (doc.secciones || []).map(sec => `
-    <div class="agente-seccion" data-tipo="${sec.tipo}">
+    <div class="agente-seccion" data-tipo="${escapeHtml(sec.tipo)}">
       ${sec.titulo ? `
         <div class="agente-seccion-titulo">
-          ${sec.numero ? `<span class="agente-seccion-num">${sec.numero}</span>` : ''}
-          ${sec.titulo}
+          ${sec.numero ? `<span class="agente-seccion-num">${escapeHtml(sec.numero)}</span>` : ''}
+          ${escapeHtml(sec.titulo)}
         </div>` : ''}
       ${s.editando
-        ? `<textarea class="form-textarea agente-edit-area" data-seccion-id="${sec.numero || sec.titulo}"
-             rows="${Math.min(Math.max(sec.contenido?.split('\n').length || 3, 3), 12)}">${sec.contenido || ''}</textarea>`
-        : `<div class="agente-seccion-cuerpo">${(sec.contenido || '').replace(/\n/g, '<br>')}</div>`}
+        ? `<textarea class="form-textarea agente-edit-area" data-seccion-id="${escapeHtml(sec.numero || sec.titulo)}"
+             rows="${Math.min(Math.max(sec.contenido?.split('\n').length || 3, 3), 12)}">${escapeHtml(sec.contenido)}</textarea>`
+        : `<div class="agente-seccion-cuerpo">${escapeHtml(sec.contenido).replace(/\n/g, '<br>')}</div>`}
     </div>`).join('');
 
   return `
     <div class="agente-preview-header">
       <div>
-        <div style="font-weight:700;font-size:.95rem;">${doc.titulo || ''}</div>
-        <div style="font-size:.78rem;color:var(--text-muted);">Folio: ${doc.folio || ''}</div>
+        <div style="font-weight:700;font-size:.95rem;">${escapeHtml(doc.titulo)}</div>
+        <div style="font-size:.78rem;color:var(--text-muted);">Folio: ${escapeHtml(doc.folio)}</div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-secondary btn-sm" onclick="agenteToggleEditar()"
@@ -652,7 +652,7 @@ async function agenteLanzar() {
         <span>❌</span>
         <div>
           <strong>Error al generar el documento</strong><br>
-          <span style="font-size:.85rem;">${e.message}</span>
+          <span style="font-size:.85rem;">${escapeHtml(e.message)}</span>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px;">
@@ -690,4 +690,8 @@ function agenteDescargarPDF() {
 function closeModalAgente() {
   const modal = document.getElementById('modal-agente');
   if (modal) modal.style.display = 'none';
+  if (typeof _agenteFocusReturn !== 'undefined' && _agenteFocusReturn && document.body.contains(_agenteFocusReturn)) {
+    _agenteFocusReturn.focus();
+  }
+  _agenteFocusReturn = null;
 }

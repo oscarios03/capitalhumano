@@ -6,6 +6,7 @@
 const _sbAG = () => window.supabase;
 
 async function renderAguinaldo() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const main = document.getElementById('main-view');
     main.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando…</div>`;
@@ -40,6 +41,7 @@ async function renderAguinaldo() {
 
     const totalMonto = rows.reduce((a,r) => a + r.monto, 0);
 
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     main.innerHTML = `
       <div class="view-header animate-in">
         <div>
@@ -93,7 +95,7 @@ async function renderAguinaldo() {
             <tbody>
               ${rows.map(r => `
                 <tr>
-                  <td><strong>${r.nombre}</strong></td>
+                  <td><strong>${escapeHtml(r.nombre)}</strong></td>
                   <td>${formatDateShort(r.fecha_ingreso)}</td>
                   <td>${r.diasTrab}</td>
                   <td>${r.diasAguinaldo.toFixed(2)}</td>

@@ -103,7 +103,7 @@ async function renderTabExpediente(trabajadorId) {
 
   const { data: docs, error } = await expediente.listarDocumentos(trabajadorId);
   if (error) {
-    el.innerHTML = `<div class="alert alert-danger">Error al cargar documentos: ${error.message}</div>`;
+    el.innerHTML = `<div class="alert alert-danger">Error al cargar documentos: ${friendlyError(error)}</div>`;
     return;
   }
 
@@ -122,8 +122,8 @@ async function renderTabExpediente(trabajadorId) {
                const t = TIPOS_DOCS[d.tipo_documento] || TIPOS_DOCS.otro;
                return `<tr>
                  <td><span title="${t.label}">${t.icono} <span style="font-size:.78rem;color:var(--text-muted);">${t.label}</span></span></td>
-                 <td style="font-size:.88rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${d.nombre_archivo}">${d.nombre_archivo}</td>
-                 <td style="font-size:.82rem;color:var(--text-muted);">${d.descripcion || '—'}</td>
+                 <td style="font-size:.88rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(d.nombre_archivo)}">${escapeHtml(d.nombre_archivo)}</td>
+                 <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(d.descripcion) || '—'}</td>
                  <td style="font-size:.82rem;white-space:nowrap;">${formatDateShort(d.created_at)}</td>
                  <td>
                    <div class="actions">
@@ -147,22 +147,22 @@ async function renderTabExpediente(trabajadorId) {
       <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">📤 Subir nuevo documento</div>
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Archivo <span class="req">*</span></label>
-          <input id="exp-archivo" type="file" class="form-input" accept=".pdf,.jpg,.jpeg,.png" />
+          <label class="form-label" for="exp-archivo">Archivo <span class="req">*</span></label>
+          <input id="exp-archivo" type="file" class="form-input" accept=".pdf,.jpg,.jpeg,.png" required aria-required="true" />
           <div class="helper-text">PDF, JPG o PNG — máximo 10 MB</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo de documento <span class="req">*</span></label>
-          <select id="exp-tipo" class="form-select">
+          <label class="form-label" for="exp-tipo">Tipo de documento <span class="req">*</span></label>
+          <select id="exp-tipo" class="form-select" required aria-required="true">
             ${Object.entries(TIPOS_DOCS).map(([v, t]) => `<option value="${v}">${t.icono} ${t.label}</option>`).join('')}
           </select>
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Descripción <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
+          <label class="form-label" for="exp-desc">Descripción <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
           <input id="exp-desc" type="text" class="form-input" placeholder="Ej. Contrato firmado 2024, INE vigente…" maxlength="200" />
         </div>
       </div>
-      <div id="exp-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="exp-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
         <button class="btn-secondary btn-sm" onclick="cerrarFormSubirDocumento()">Cancelar</button>
         <button id="exp-btn-subir" class="btn-primary btn-sm" onclick="guardarDocExpediente('${trabajadorId}')">💾 Subir</button>
@@ -209,7 +209,7 @@ async function guardarDocExpediente(trabajadorId) {
   if (btn) { btn.textContent = '💾 Subir'; btn.disabled = false; }
 
   if (error) {
-    errEl.textContent = 'Error al subir: ' + (error.message || error);
+    errEl.textContent = 'Error al subir: ' + friendlyError(error);
     errEl.style.display = '';
     return;
   }
@@ -220,7 +220,7 @@ async function guardarDocExpediente(trabajadorId) {
 async function descargarDocExpediente(docId, storagePath) {
   const { data, error } = await expediente.descargarDocumento(storagePath);
   if (error || !data?.signedUrl) {
-    alert('No se pudo generar el enlace de descarga: ' + (error?.message || 'Error desconocido'));
+    alert('No se pudo generar el enlace de descarga: ' + (error ? friendlyError(error) : 'Error desconocido'));
     return;
   }
   const a = document.createElement('a');
@@ -234,7 +234,7 @@ async function eliminarDocExpediente(docId, storagePath, trabajadorId) {
   if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
   const { error } = await expediente.eliminarDocumento(docId, storagePath);
   if (error) {
-    alert('Error al eliminar: ' + (error.message || error));
+    alert('Error al eliminar: ' + friendlyError(error));
     return;
   }
   await renderTabExpediente(trabajadorId);

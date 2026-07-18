@@ -82,6 +82,7 @@ const _sbN = () => window.supabase;
 //  PUNTO DE ENTRADA
 // ═══════════════════════════════════════════════════════════════════════════
 async function renderNominaModulo() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   // Resetear estado al entrar al módulo para evitar tabs/períodos stale
   _N.tab             = 1;
   _N.periodoActualId = null;
@@ -99,9 +100,11 @@ async function renderNominaModulo() {
     _N.sucursales   = sucs.data   || [];
     _N.periodos     = periodos.data || [];
 
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     _renderShellNomina();
     await _cargarTabNomina();
   } catch(e) {
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     main.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${e.message}</span></div>`;
   }
 }
@@ -112,7 +115,7 @@ function _renderShellNomina() {
     <div class="view-header animate-in">
       <div>
         <div class="view-title">💰 Nómina</div>
-        <div class="view-subtitle">${CTX.empresa.nombre}</div>
+        <div class="view-subtitle">${escapeHtml(CTX.empresa.nombre)}</div>
       </div>
     </div>
     <div class="tabs animate-in" style="margin-bottom:16px;">
@@ -182,15 +185,15 @@ async function _tabPeriodos() {
       `<div class="table-wrap">
         <table class="data-table">
           <thead><tr>
-            <th>Período</th><th>Tipo</th><th>Fechas</th>
-            <th>Trabajadores</th><th>Total neto</th><th>Estado</th><th>Acciones</th>
+            <th scope="col">Período</th><th scope="col">Tipo</th><th scope="col">Fechas</th>
+            <th scope="col">Trabajadores</th><th scope="col">Total neto</th><th scope="col">Estado</th><th scope="col">Acciones</th>
           </tr></thead>
           <tbody>
             ${_N.periodos.map(p => {
               const cnt  = cntMap[p.id] || { n:0, total:0 };
               const esta = p.cerrado ? 'pagado' : (cnt.n > 0 ? 'aprobado' : 'borrador');
               return `<tr>
-                <td><strong>${p.nombre}</strong></td>
+                <td><strong>${escapeHtml(p.nombre)}</strong></td>
                 <td><span style="font-size:.78rem;">${badgeTipo[p.tipo]||p.tipo}</span></td>
                 <td style="font-size:.82rem;">${formatDateShort(p.fecha_inicio)} — ${formatDateShort(p.fecha_fin)}</td>
                 <td style="text-align:center;">${cnt.n}</td>
@@ -202,7 +205,7 @@ async function _tabPeriodos() {
                     ${cnt.n > 0 ? `
                       <button class="btn-secondary btn-sm" onclick="exportarSPEI('${p.id}')">SPEI</button>
                       <button class="btn-secondary btn-sm" onclick="descargarZIPRecibos('${p.id}')">ZIP</button>` : ''}
-                    ${!p.cerrado ? `<button class="btn-secondary btn-sm" onclick="cerrarPeriodo('${p.id}')">✓ Cerrar</button>` : ''}
+                    ${!p.cerrado ? `<button class="btn-secondary btn-sm" onclick="cerrarPeriodo('${p.id}', this)">✓ Cerrar</button>` : ''}
                     <button class="btn-sm" style="background:rgba(231,76,60,.12);color:var(--red-warn);border:1px solid rgba(231,76,60,.3);" onclick="confirmarEliminarPeriodo('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${cnt.n})">🗑️</button>
                   </div>
                 </td>
@@ -233,7 +236,7 @@ function showModalRevisionSalarios() {
     const alerta = per !== 'mensual'; // resaltar los más propensos a error de captura
     return `
       <tr style="${alerta ? 'background:rgba(245,166,35,.05);' : ''}">
-        <td><strong>${t.nombre}</strong><div style="font-size:.72rem;color:var(--text-muted);">${t.puesto || ''}</div></td>
+        <td><strong>${escapeHtml(t.nombre)}</strong><div style="font-size:.72rem;color:var(--text-muted);">${escapeHtml(t.puesto) || ''}</div></td>
         <td>
           <select class="form-select" style="min-width:110px;" id="rec-per-${t.id}" onchange="_previewSalarioReconc('${t.id}')">
             <option value="mensual"   ${per==='mensual'?'selected':''}>Mensual</option>
@@ -264,8 +267,8 @@ function showModalRevisionSalarios() {
       <div class="table-wrap" style="max-height:52vh;overflow:auto;">
         <table class="data-table">
           <thead><tr>
-            <th>Trabajador</th><th>Frecuencia</th><th>Salario capturado</th>
-            <th style="text-align:right;">Diario</th><th style="text-align:right;">Equiv. mensual</th><th></th>
+            <th scope="col">Trabajador</th><th scope="col">Frecuencia</th><th scope="col">Salario capturado</th>
+            <th scope="col" style="text-align:right;">Diario</th><th scope="col" style="text-align:right;">Equiv. mensual</th><th scope="col"></th>
           </tr></thead>
           <tbody>${filas}</tbody>
         </table>
@@ -429,7 +432,7 @@ function showModalCalendarioAnual() {
       </p>
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Frecuencia</label>
+          <label class="form-label" for="cal-tipo">Frecuencia</label>
           <select id="cal-tipo" class="form-select">
             <option value="semanal"   ${tipoDom==='semanal'?'selected':''}>Semanal (~52)</option>
             <option value="quincenal" ${tipoDom==='quincenal'?'selected':''}>Quincenal (24)</option>
@@ -437,11 +440,11 @@ function showModalCalendarioAnual() {
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Año</label>
+          <label class="form-label" for="cal-anio">Año</label>
           <input id="cal-anio" type="number" class="form-input" value="${anioActual}" min="2020" max="2100" />
         </div>
       </div>
-      <div id="cal-msg" style="display:none;margin:8px 0;"></div>
+      <div id="cal-msg" role="alert" style="display:none;margin:8px 0;"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" id="cal-btn" onclick="generarCalendarioAnual()">Crear períodos</button>
@@ -480,7 +483,10 @@ async function generarCalendarioAnual() {
       const sinPago = nuevos.map(({ fecha_pago, ...r }) => r);
       ({ error } = await _sbN().from('periodos_nomina').insert(sinPago));
     }
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') throw new Error('Algunos de estos períodos ya existían y fueron omitidos automáticamente; vuelve a intentar para crear el resto.');
+      throw error;
+    }
 
     closeModal();
     // Recargar períodos
@@ -507,10 +513,10 @@ function showModalNuevoPeriodo(prefill = null) {
 
   const sucOpts = _N.sucursales.length > 1
     ? `<div class="form-group span-2">
-        <label class="form-label">Sucursal (dejar vacío = todas)</label>
+        <label class="form-label" for="np-suc">Sucursal (dejar vacío = todas)</label>
         <select id="np-suc" class="form-select">
           <option value="">Todas las sucursales</option>
-          ${_N.sucursales.map(s=>`<option value="${s.id}">${s.nombre}</option>`).join('')}
+          ${_N.sucursales.map(s=>`<option value="${s.id}">${escapeHtml(s.nombre)}</option>`).join('')}
         </select>
        </div>` : '';
 
@@ -522,11 +528,11 @@ function showModalNuevoPeriodo(prefill = null) {
       </div>
       <div class="form-grid">
         <div class="form-group span-2">
-          <label class="form-label">Nombre del período <span class="req">*</span></label>
-          <input id="np-nombre" type="text" class="form-input" value="${nombre}" />
+          <label class="form-label" for="np-nombre">Nombre del período <span class="req">*</span></label>
+          <input id="np-nombre" type="text" class="form-input" value="${escapeHtml(nombre)}" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Tipo de período</label>
+          <label class="form-label" for="np-tipo">Tipo de período</label>
           <select id="np-tipo" class="form-select" onchange="_actualizarFechasPeriodo()">
             <option value="semanal" ${tipoDom==='semanal'?'selected':''}>Semanal</option>
             <option value="quincenal" ${tipoDom==='quincenal'?'selected':''}>Quincenal</option>
@@ -534,16 +540,16 @@ function showModalNuevoPeriodo(prefill = null) {
           </select>
         </div>
         <div class="form-group" style="grid-column:1;">
-          <label class="form-label">Fecha inicio <span class="req">*</span></label>
+          <label class="form-label" for="np-ini">Fecha inicio <span class="req">*</span></label>
           <input id="np-ini" type="date" class="form-input" value="${ini}"
-                 onchange="_recalcularFinPeriodo()" />
+                 onchange="_recalcularFinPeriodo()" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha fin <span class="req">*</span></label>
-          <input id="np-fin" type="date" class="form-input" value="${fin}" />
+          <label class="form-label" for="np-fin">Fecha fin <span class="req">*</span></label>
+          <input id="np-fin" type="date" class="form-input" value="${fin}" required aria-required="true" />
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Fecha de pago
+          <label class="form-label" for="np-pago">Fecha de pago
             <span style="font-size:.72rem;color:var(--text-muted);font-weight:400;">— día en que se liquida (Art. 88 LFT)</span>
           </label>
           <input id="np-pago" type="date" class="form-input" value="${pago || fin}" />
@@ -593,7 +599,7 @@ function showModalNuevoPeriodo(prefill = null) {
            color:var(--gold-primary);display:none;">
         ⚠️ La fecha fin es anterior a la fecha inicio. Por favor corrígela.
       </div>
-      <div id="np-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="np-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" id="np-btn-crear" onclick="handleCrearPeriodo()">⚡ Crear y generar nómina</button>
@@ -695,7 +701,10 @@ async function handleCrearPeriodo() {
       ({ data: periodo, error: pErr } = await _sbN()
         .from('periodos_nomina').insert(baseInsert).select().single());
     }
-    if (pErr) throw pErr;
+    if (pErr) {
+      if (pErr.code === '23505') throw new Error('Ya existe un período con ese tipo, sucursal y rango de fechas. Revisa la lista de períodos antes de crear uno nuevo.');
+      throw pErr;
+    }
 
     // Generar recibos solo en modo automático
     let avisoExcluidos = null;
@@ -741,9 +750,14 @@ async function verDetallePeriodo(periodoId) {
   await _cargarTabNomina();
 }
 
-async function cerrarPeriodo(periodoId) {
+async function cerrarPeriodo(periodoId, btn) {
   if (!confirm('¿Marcar este período como pagado y cerrado?')) return;
-  await _sbN().from('periodos_nomina').update({ cerrado: true }).eq('id', periodoId);
+  if (btn) btn.disabled = true;
+  try {
+    await _sbN().from('periodos_nomina').update({ cerrado: true }).eq('id', periodoId);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
   const p = _N.periodos.find(x => x.id === periodoId);
   if (p) p.cerrado = true;
   await _tabPeriodos();
@@ -843,7 +857,7 @@ async function _tabDetalle() {
     <!-- Resumen del período -->
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
       <button class="btn-secondary btn-sm" onclick="switchNominaTab(1)">← Períodos</button>
-      <div style="font-weight:800;font-size:1.1rem;">${periodo?.nombre || ''}</div>
+      <div style="font-weight:800;font-size:1.1rem;">${escapeHtml(periodo?.nombre) || ''}</div>
       <div style="font-size:.8rem;color:var(--text-muted);">
         ${formatDateShort(periodo?.fecha_inicio)} — ${formatDateShort(periodo?.fecha_fin)}
       </div>
@@ -863,7 +877,7 @@ async function _tabDetalle() {
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <button class="btn-secondary" onclick="recalcularTodo()">Recalcular todo</button>
+      <button class="btn-secondary" onclick="recalcularTodo(this)">Recalcular todo</button>
       <button class="btn-secondary" onclick="exportarSPEI('${_N.periodoActualId}')">Exportar SPEI</button>
       <button class="btn-secondary" onclick="descargarZIPRecibos('${_N.periodoActualId}')">Descargar todos los recibos (ZIP)</button>
     </div>
@@ -876,11 +890,11 @@ async function _tabDetalle() {
       `<div class="table-wrap">
         <table class="data-table">
           <thead><tr>
-            <th>Trabajador</th><th>Días lab.</th><th>Salario base</th>
-            <th>💰 Comisiones</th><th>Extras</th><th>Faltas</th>
-            <th>IMSS</th><th>ISR</th>
-            <th title="INFONAVIT: aportación patronal 5% SBC (informativo) + descuento crédito si aplica">INFONAVIT</th>
-            <th style="color:var(--green-ok);">NETO</th><th>Acciones</th>
+            <th scope="col">Trabajador</th><th scope="col">Días lab.</th><th scope="col">Salario base</th>
+            <th scope="col">💰 Comisiones</th><th scope="col">Extras</th><th scope="col">Faltas</th>
+            <th scope="col">IMSS</th><th scope="col">ISR</th>
+            <th scope="col" title="INFONAVIT: aportación patronal 5% SBC (informativo) + descuento crédito si aplica">INFONAVIT</th>
+            <th scope="col" style="color:var(--green-ok);">NETO</th><th scope="col">Acciones</th>
           </tr></thead>
           <tbody>
             ${_N.recibos.map(r => {
@@ -892,8 +906,8 @@ async function _tabDetalle() {
               const infPatronal   = parseFloat((sdiCap * 0.05 * r.dias_laborados).toFixed(2));
               return `<tr id="rn-${r.id}">
                 <td>
-                  <strong>${r.trabajadores?.nombre||'—'}</strong>
-                  <br><span style="font-size:.75rem;color:var(--text-muted);">${r.trabajadores?.puesto||''}</span>
+                  <strong>${escapeHtml(r.trabajadores?.nombre)||'—'}</strong>
+                  <br><span style="font-size:.75rem;color:var(--text-muted);">${escapeHtml(r.trabajadores?.puesto)||''}</span>
                 </td>
                 <td style="text-align:center;">${r.dias_laborados}</td>
                 <td>${fmt(r.salario_base)}</td>
@@ -933,11 +947,12 @@ async function _tabDetalle() {
         </table>
       </div>`
     }
-    <div id="detalle-msg" style="display:none;margin-top:10px;"></div>
+    <div id="detalle-msg" role="alert" style="display:none;margin-top:10px;"></div>
   `;
 }
 
-async function recalcularTodo() {
+async function recalcularTodo(btn) {
+  if (btn) { if (btn.disabled) return; btn.disabled = true; }
   const msg = document.getElementById('detalle-msg');
   if (msg) { msg.textContent = '⏳ Recalculando nómina…'; msg.style.display = ''; msg.className = ''; }
   try {
@@ -951,6 +966,8 @@ async function recalcularTodo() {
     await _tabDetalle();
   } catch(e) {
     if (msg) { msg.textContent = '❌ ' + e.message; msg.className = 'alert alert-danger'; }
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -973,7 +990,7 @@ async function editarReciboInline(reciboId) {
         <div>
           <div class="modal-title" style="color:#fff;font-size:.95rem;">✏️ Editar recibo</div>
           <div style="font-size:.75rem;color:rgba(255,255,255,.5);margin-top:1px;">
-            ${t.nombre || ''} &nbsp;·&nbsp; Salario base: <strong style="color:var(--gold-primary);">${fmt(nv('salario_base'))}</strong>
+            ${escapeHtml(t.nombre)} &nbsp;·&nbsp; Salario base: <strong style="color:var(--gold-primary);">${fmt(nv('salario_base'))}</strong>
           </div>
         </div>
         <button class="modal-close" onclick="closeModal()" style="color:#fff;">×</button>
@@ -998,44 +1015,44 @@ async function editarReciboInline(reciboId) {
           </p>
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Monto de ventas del período</label>
+              <label class="form-label" for="re-mventas">Monto de ventas del período</label>
               <input id="re-mventas" type="number" class="form-input" value="${nv('monto_ventas')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">% Comisión sobre ventas</label>
+              <label class="form-label" for="re-pct-ventas">% Comisión sobre ventas</label>
               <input id="re-pct-ventas" type="number" class="form-input" value="${nv('pct_comision_ventas') * 100}"
                 min="0" max="100" step="0.01" placeholder="ej. 5 = 5%"
                 oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Monto recuperado (cartera)</label>
+              <label class="form-label" for="re-mrecup">Monto recuperado (cartera)</label>
               <input id="re-mrecup" type="number" class="form-input" value="${nv('monto_recuperado')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">% Comisión recuperación</label>
+              <label class="form-label" for="re-pct-recup">% Comisión recuperación</label>
               <input id="re-pct-recup" type="number" class="form-input" value="${nv('pct_comision_recuper') * 100}"
                 min="0" max="100" step="0.01" placeholder="ej. 3 = 3%"
                 oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Bono por meta (monto fijo)</label>
+              <label class="form-label" for="re-bono-meta">Bono por meta (monto fijo)</label>
               <input id="re-bono-meta" type="number" class="form-input" value="${nv('bono_meta')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Concepto del bono</label>
+              <label class="form-label" for="re-concepto-bono">Concepto del bono</label>
               <input id="re-concepto-bono" type="text" class="form-input"
                 value="${r.concepto_bono_meta || ''}" placeholder="ej. Meta mensual alcanzada" />
             </div>
             <div class="form-group">
-              <label class="form-label">Prima vacacional proporcional</label>
+              <label class="form-label" for="re-prima-vac">Prima vacacional proporcional</label>
               <input id="re-prima-vac" type="number" class="form-input" value="${nv('prima_vacacional')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Aguinaldo proporcional</label>
+              <label class="form-label" for="re-aguinaldo">Aguinaldo proporcional</label>
               <input id="re-aguinaldo" type="number" class="form-input" value="${nv('aguinaldo_prop')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
@@ -1049,32 +1066,32 @@ async function editarReciboInline(reciboId) {
           </p>
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Fondo de ahorro obrero <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. IV LFT)</span></label>
+              <label class="form-label" for="re-fondo-ahorro">Fondo de ahorro obrero <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. IV LFT)</span></label>
               <input id="re-fondo-ahorro" type="number" class="form-input" value="${nv('fondo_ahorro_obrero')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label" style="color:var(--text-muted);font-size:.78rem;">Aportación patronal (igual, informativo)</label>
+              <label class="form-label" style="color:var(--text-muted);font-size:.78rem;" for="re-fondo-patron">Aportación patronal (igual, informativo)</label>
               <input id="re-fondo-patron" type="number" class="form-input" style="opacity:.6;"
                 value="${nv('fondo_ahorro_patronal')}" min="0" step="0.01" readonly />
             </div>
             <div class="form-group">
-              <label class="form-label">Préstamo empresa <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. I LFT)</span></label>
+              <label class="form-label" for="re-prestamo">Préstamo empresa <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. I LFT)</span></label>
               <input id="re-prestamo" type="number" class="form-input" value="${nv('prestamo_empresa')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">INFONAVIT <span style="font-size:.68rem;color:var(--text-muted);">(Art. 97 Ley INFONAVIT)</span></label>
+              <label class="form-label" for="re-infonavit">INFONAVIT <span style="font-size:.68rem;color:var(--text-muted);">(Art. 97 Ley INFONAVIT)</span></label>
               <input id="re-infonavit" type="number" class="form-input" value="${nv('infonavit_descuento')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Pensión alimenticia <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. V LFT)</span></label>
+              <label class="form-label" for="re-pension">Pensión alimenticia <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. V LFT)</span></label>
               <input id="re-pension" type="number" class="form-input" value="${nv('pension_alimenticia')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Otras deducciones</label>
+              <label class="form-label" for="re-otras-ded">Otras deducciones</label>
               <input id="re-otras-ded" type="number" class="form-input" value="${nv('otras_deducciones')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
@@ -1085,38 +1102,38 @@ async function editarReciboInline(reciboId) {
         <div id="repanel-3" style="display:none;">
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label">Horas extra <span style="font-size:.68rem;color:var(--text-muted);">(Art. 67-68 LFT)</span></label>
+              <label class="form-label" for="re-hextra">Horas extra <span style="font-size:.68rem;color:var(--text-muted);">(Art. 67-68 LFT)</span></label>
               <input id="re-hextra" type="number" class="form-input" value="${nv('horas_extra')}"
                 min="0" step="0.5" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Tarifa por hora extra</label>
+              <label class="form-label" for="re-tarifa">Tarifa por hora extra</label>
               <input id="re-tarifa" type="number" class="form-input" value="${tarifaHE}"
                 step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Prima dominical <span style="font-size:.68rem;color:var(--text-muted);">(Art. 71 LFT)</span></label>
+              <label class="form-label" for="re-prima-dom">Prima dominical <span style="font-size:.68rem;color:var(--text-muted);">(Art. 71 LFT)</span></label>
               <input id="re-prima-dom" type="number" class="form-input" value="${nv('prima_dominical')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Prima día festivo trabajado <span style="font-size:.68rem;color:var(--text-muted);">(Art. 75 LFT)</span></label>
+              <label class="form-label" for="re-prima-fest">Prima día festivo trabajado <span style="font-size:.68rem;color:var(--text-muted);">(Art. 75 LFT)</span></label>
               <input id="re-prima-fest" type="number" class="form-input" value="${nv('prima_festivo')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Vales de despensa <span style="font-size:.68rem;color:var(--text-muted);">(Art. 27 LISR)</span></label>
+              <label class="form-label" for="re-vales">Vales de despensa <span style="font-size:.68rem;color:var(--text-muted);">(Art. 27 LISR)</span></label>
               <input id="re-vales" type="number" class="form-input" value="${nv('vales_despensa')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Bonos adicionales</label>
+              <label class="form-label" for="re-bonos">Bonos adicionales</label>
               <input id="re-bonos" type="number" class="form-input" value="${nv('bonos')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group span-2">
-              <label class="form-label">Notas del recibo</label>
-              <input id="re-notas" type="text" class="form-input" value="${r.notas || ''}" />
+              <label class="form-label" for="re-notas">Notas del recibo</label>
+              <input id="re-notas" type="text" class="form-input" value="${escapeHtml(r.notas)||''}" />
             </div>
           </div>
         </div>
@@ -1284,7 +1301,7 @@ async function guardarEdicionRecibo(reciboId) {
   if (btn) { btn.textContent = '⏳ Guardando…'; btn.disabled = true; }
 
   try {
-    await _sbN().from('recibos_nomina').update({
+    const datosRecibo = {
       // Comisiones
       monto_ventas:          montoVentas,
       pct_comision_ventas:   pctVentas,
@@ -1317,7 +1334,14 @@ async function guardarEdicionRecibo(reciboId) {
       total_percepciones:    totalPerc,
       total_deducciones:     totalDed,
       neto_pagar:            neto,
-    }).eq('id', reciboId);
+    };
+    let updQ = _sbN().from('recibos_nomina').update(datosRecibo).eq('id', reciboId);
+    if (r.updated_at) updQ = updQ.eq('updated_at', r.updated_at);
+    const { data: filaAct, error: errUpd } = await updQ.select('id');
+    if (errUpd) throw errUpd;
+    if (r.updated_at && (!filaAct || filaAct.length === 0)) {
+      throw new Error('Alguien más editó este recibo mientras tanto. Recarga la página e intenta de nuevo.');
+    }
 
     closeModal();
     await _tabDetalle();
@@ -1335,10 +1359,10 @@ async function _tabHistorial() {
   el.innerHTML = `
     <div class="form-grid" style="margin-bottom:16px;">
       <div class="form-group span-2">
-        <label class="form-label">Selecciona un trabajador</label>
+        <label class="form-label" for="hist-nom-trab">Selecciona un trabajador</label>
         <select class="form-select" id="hist-nom-trab" onchange="cargarHistorialTrabajador(this.value)">
           <option value="">— Seleccionar —</option>
-          ${_N.trabajadores.map(t=>`<option value="${t.id}" ${t.id===_N.histTrabId?'selected':''}>${t.nombre} — ${t.puesto||''}</option>`).join('')}
+          ${_N.trabajadores.map(t=>`<option value="${t.id}" ${t.id===_N.histTrabId?'selected':''}>${escapeHtml(t.nombre)} — ${escapeHtml(t.puesto)||''}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -1397,11 +1421,11 @@ async function cargarHistorialTrabajador(trabId) {
     <div class="card animate-in">
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Período</th><th>Días</th><th>Percepciones</th><th>Deducciones</th><th>NETO</th><th></th></tr></thead>
+          <thead><tr><th scope="col">Período</th><th scope="col">Días</th><th scope="col">Percepciones</th><th scope="col">Deducciones</th><th scope="col">NETO</th><th scope="col"></th></tr></thead>
           <tbody>
             ${recibos.map(r=>`<tr>
               <td>
-                <strong>${r.periodos_nomina?.nombre||'—'}</strong>
+                <strong>${escapeHtml(r.periodos_nomina?.nombre)||'—'}</strong>
                 <br><span style="font-size:.75rem;color:var(--text-muted);">
                   ${formatDateShort(r.periodos_nomina?.fecha_inicio)} — ${formatDateShort(r.periodos_nomina?.fecha_fin)}
                 </span>
@@ -1488,8 +1512,30 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
   const descuentosDisponibles = !errDesc;
   if (errDesc) console.warn('descuentos_trabajador no disponible — aplica la migración 17_migration_prestamos_descuentos.sql:', errDesc.message);
 
+  // Idempotencia de descuentos/préstamos (C-5): si este período YA tenía
+  // descuentos aplicados de una corrida anterior (p.ej. el usuario pulsa
+  // "Recalcular todo" más de una vez), hay que "deshacer" su efecto sobre
+  // saldo_restante ANTES de recalcular — si no, cada corrida vuelve a
+  // descontar el crédito del trabajador. Se recupera lo aplicado
+  // previamente PARA ESTE PERÍODO (con el trabajador dueño, vía join, para
+  // no depender de que el descuento siga activo) y se restaura el saldo de
+  // cada descuento antes de pasarlo a calcularDescuentosPeriodo().
+  const trabIds = new Set(trabs.map(t => t.id));
+  const { data: prevAplicaciones, error: errPrevAp } = await _sbN()
+    .from('descuentos_aplicados')
+    .select('descuento_id, monto_aplicado, descuentos_trabajador(trabajador_id)')
+    .eq('periodo_id', periodoId);
+  if (errPrevAp) console.warn('No se pudo leer descuentos_aplicados previos (se asumirá que no hay):', errPrevAp.message);
+  const prevAplicadoMap = {}; // descuento_id -> monto_aplicado previo en ESTE período
+  (prevAplicaciones || []).forEach(p => {
+    const trabId = p.descuentos_trabajador?.trabajador_id;
+    if (trabId && trabIds.has(trabId)) prevAplicadoMap[p.descuento_id] = parseFloat(p.monto_aplicado || 0);
+  });
+
   const descMap = {};
   (todosDescuentos || []).forEach(d => {
+    const prevMonto = prevAplicadoMap[d.id];
+    if (prevMonto) d.saldo_restante = parseFloat((parseFloat(d.saldo_restante || 0) + prevMonto).toFixed(2));
     if (!descMap[d.trabajador_id]) descMap[d.trabajador_id] = [];
     descMap[d.trabajador_id].push(d);
   });
@@ -1832,16 +1878,38 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     }
   }
 
-  // Historial de descuentos aplicados (migración 17): registra cada
-  // aplicación y actualiza el saldo restante; desactiva el descuento y
-  // genera una alerta informativa cuando queda liquidado.
+  // Historial de descuentos aplicados (migración 17): UPSERT por
+  // (descuento_id, periodo_id) — migración 25 agregó ese constraint único —
+  // para que recalcular el mismo período sea idempotente: ya no vuelve a
+  // descontar el saldo cada vez que se corre "Recalcular todo".
+  //
+  // Si un descuento que SÍ se había aplicado antes en este período ahora
+  // calcula $0 (p.ej. cambió la asistencia y ya no alcanza, o se desactivó),
+  // hay que revertir esa aplicación anterior: borrar la fila de
+  // descuentos_aplicados y devolver el monto a saldo_restante — si no,
+  // quedaría una aplicación fantasma y el saldo nunca se restauraría.
+  const descuentoIdsProcesados = new Set(aplicacionesDescuento.map(a => a.descuento_id));
+  for (const [descId, prevMonto] of Object.entries(prevAplicadoMap)) {
+    if (prevMonto <= 0 || descuentoIdsProcesados.has(descId)) continue;
+    const { error: errDel } = await _sbN().from('descuentos_aplicados')
+      .delete().eq('descuento_id', descId).eq('periodo_id', periodoId);
+    if (errDel) { console.warn('No se pudo revertir descuentos_aplicados:', errDel.message); continue; }
+    const { data: descRow, error: errGet } = await _sbN().from('descuentos_trabajador')
+      .select('saldo_restante').eq('id', descId).single();
+    if (errGet || !descRow) continue;
+    const saldoRestaurado = parseFloat((parseFloat(descRow.saldo_restante || 0) + prevMonto).toFixed(2));
+    const { error: errRest } = await _sbN().from('descuentos_trabajador')
+      .update({ saldo_restante: saldoRestaurado, activo: true }).eq('id', descId);
+    if (errRest) console.warn('No se pudo restaurar saldo_restante:', errRest.message);
+  }
+
   for (const ap of aplicacionesDescuento) {
     const { _descuentoRow, _liquidado, ...fila } = ap;
-    const { error: errAp } = await _sbN().from('descuentos_aplicados').insert(fila);
+    const { error: errAp } = await _sbN().from('descuentos_aplicados')
+      .upsert(fila, { onConflict: 'descuento_id,periodo_id' });
     if (errAp) console.warn('No se pudo registrar descuentos_aplicados:', errAp.message);
 
-    const updateFields = { saldo_restante: ap.saldo_despues };
-    if (_liquidado) updateFields.activo = false;
+    const updateFields = { saldo_restante: ap.saldo_despues, activo: !_liquidado };
     const { error: errUpd } = await _sbN().from('descuentos_trabajador').update(updateFields).eq('id', ap.descuento_id);
     if (errUpd) console.warn('No se pudo actualizar saldo_restante:', errUpd.message);
 
@@ -2056,16 +2124,16 @@ async function descargarReciboNomina(reciboId) {
             <div>
               <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
                           color:var(--text-muted);margin-bottom:3px;">Trabajador</div>
-              <div style="font-weight:800;font-size:.95rem;">${t.nombre || '—'}</div>
+              <div style="font-weight:800;font-size:.95rem;">${escapeHtml(t.nombre) || '—'}</div>
               <div style="font-size:.78rem;color:var(--text-muted);margin-top:2px;">
-                ${[t.puesto, t.departamento].filter(Boolean).join(' · ')}
+                ${[t.puesto, t.departamento].filter(Boolean).map(escapeHtml).join(' · ')}
               </div>
-              ${t.rfc ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">RFC: ${t.rfc}</div>` : ''}
+              ${t.rfc ? `<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">RFC: ${escapeHtml(t.rfc)}</div>` : ''}
             </div>
             <div>
               <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
                           color:var(--text-muted);margin-bottom:3px;">Período</div>
-              <div style="font-weight:700;font-size:.88rem;">${p.nombre || '—'}</div>
+              <div style="font-weight:700;font-size:.88rem;">${escapeHtml(p.nombre) || '—'}</div>
               <div style="font-size:.78rem;color:var(--text-muted);margin-top:2px;">
                 ${formatDateShort(p.fecha_inicio)} — ${formatDateShort(p.fecha_fin)}
               </div>
@@ -2088,9 +2156,9 @@ async function descargarReciboNomina(reciboId) {
               </colgroup>
               <thead>
                 <tr style="background:rgba(39,174,96,.08);font-size:.72rem;color:var(--text-muted);">
-                  <th style="padding:5px 10px;text-align:left;font-weight:600;">Concepto</th>
-                  <th style="padding:5px 10px;text-align:left;font-weight:600;">Cálculo</th>
-                  <th style="padding:5px 10px;text-align:right;font-weight:600;">Importe</th>
+                  <th scope="col" style="padding:5px 10px;text-align:left;font-weight:600;">Concepto</th>
+                  <th scope="col" style="padding:5px 10px;text-align:left;font-weight:600;">Cálculo</th>
+                  <th scope="col" style="padding:5px 10px;text-align:right;font-weight:600;">Importe</th>
                 </tr>
               </thead>
               <tbody>
@@ -2122,9 +2190,9 @@ async function descargarReciboNomina(reciboId) {
               </colgroup>
               <thead>
                 <tr style="background:rgba(192,57,43,.08);font-size:.72rem;color:var(--text-muted);">
-                  <th style="padding:5px 10px;text-align:left;font-weight:600;">Concepto</th>
-                  <th style="padding:5px 10px;text-align:left;font-weight:600;">Referencia</th>
-                  <th style="padding:5px 10px;text-align:right;font-weight:600;">Importe</th>
+                  <th scope="col" style="padding:5px 10px;text-align:left;font-weight:600;">Concepto</th>
+                  <th scope="col" style="padding:5px 10px;text-align:left;font-weight:600;">Referencia</th>
+                  <th scope="col" style="padding:5px 10px;text-align:right;font-weight:600;">Importe</th>
                 </tr>
               </thead>
               <tbody>

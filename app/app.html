@@ -43,7 +43,7 @@
 <div class="app-shell" id="app-shell">
 
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="app-sidebar">
     <div class="sidebar-brand topbar-brand">
       <div class="topbar-brand-icon">C</div>
       Capital Humano
@@ -51,6 +51,7 @@
 
     <span class="nav-section-label">Principal</span>
     <div class="nav-item active" data-route="dashboard" onclick="navigate('dashboard')"
+         role="button" tabindex="0" aria-current="page"
          style="position:relative;">
       <svg class="ic"><use href="#i-grid"></use></svg> Dashboard
       <span id="badge-alertas"
@@ -63,71 +64,75 @@
     </div>
 
     <span class="nav-section-label">Gestión</span>
-    <div class="nav-item" data-route="empleados" onclick="navigate('empleados')">
+    <div class="nav-item" data-route="empleados" onclick="navigate('empleados')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-user"></use></svg> Trabajadores
     </div>
-    <div class="nav-item" data-route="contratos" onclick="navigate('contratos')">
+    <div class="nav-item" data-route="contratos" onclick="navigate('contratos')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-file"></use></svg> Contratos
     </div>
-    <div class="nav-item" data-route="asistencia" onclick="navigate('asistencia')">
+    <div class="nav-item" data-route="asistencia" onclick="navigate('asistencia')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-calendar"></use></svg> Asistencia
     </div>
-    <div class="nav-item" data-route="checador" onclick="navigate('checador')">
+    <div class="nav-item" data-route="checador" onclick="navigate('checador')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-clock"></use></svg> Reloj Checador
     </div>
-    <div class="nav-item" data-route="nomina" onclick="navigate('nomina')">
+    <div class="nav-item" data-route="nomina" onclick="navigate('nomina')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-wallet"></use></svg> Nómina
     </div>
-    <div class="nav-item" data-route="disciplinario" onclick="navigate('disciplinario')">
+    <div class="nav-item" data-route="disciplinario" onclick="navigate('disciplinario')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-alert"></use></svg> Actas Admin.
     </div>
-    <div class="nav-item" data-route="bajas" onclick="navigate('bajas')">
+    <div class="nav-item" data-route="bajas" onclick="navigate('bajas')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-exit"></use></svg> Bajas
     </div>
-    <div class="nav-item" data-route="imss" onclick="navigate('imss')">
+    <div class="nav-item" data-route="imss" onclick="navigate('imss')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-bank"></use></svg> IMSS / Movimientos
     </div>
 
     <span class="nav-section-label">Prestaciones</span>
-    <div class="nav-item" data-route="vacaciones" onclick="navigate('vacaciones')">
+    <div class="nav-item" data-route="vacaciones" onclick="navigate('vacaciones')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-sun"></use></svg> Vacaciones
     </div>
-    <div class="nav-item" data-route="incapacidades" onclick="navigate('incapacidades')">
+    <div class="nav-item" data-route="incapacidades" onclick="navigate('incapacidades')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-activity"></use></svg> Incapacidades
     </div>
-    <div class="nav-item" data-route="aguinaldo" onclick="navigate('aguinaldo')">
+    <div class="nav-item" data-route="aguinaldo" onclick="navigate('aguinaldo')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-gift"></use></svg> Aguinaldo
     </div>
-    <div class="nav-item" data-route="ptu" onclick="navigate('ptu')">
+    <div class="nav-item" data-route="ptu" onclick="navigate('ptu')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-pie"></use></svg> PTU
     </div>
 
     <span class="nav-section-label">Organización</span>
-    <div class="nav-item" data-route="organigrama" onclick="navigate('organigrama')">
+    <div class="nav-item" data-route="organigrama" onclick="navigate('organigrama')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-network"></use></svg> Organigrama
     </div>
-    <div class="nav-item" data-route="reportes" onclick="navigate('reportes')">
+    <div class="nav-item" data-route="reportes" onclick="navigate('reportes')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-bar"></use></svg> Reportes
     </div>
 
     <span class="nav-section-label">Configuración</span>
-    <div class="nav-item" data-route="empresa" onclick="navigate('empresa')">
+    <div class="nav-item" data-route="empresa" onclick="navigate('empresa')" role="button" tabindex="0">
       <svg class="ic"><use href="#i-bank"></use></svg> Mi Empresa
     </div>
 
     <span class="nav-section-label">Herramientas</span>
-    <div class="nav-item" id="nav-agente" onclick="showModalAgente(null)" style="color:var(--accent-navy);font-weight:600;"
+    <div class="nav-item" id="nav-agente" onclick="closeSidebarMobile();showModalAgente(null)" role="button" tabindex="0" style="color:var(--accent-navy);font-weight:600;"
          title="Generar documentos con IA">
       <svg class="ic"><use href="#i-sparkle"></use></svg> Agente IA
     </div>
-    <div class="nav-item" data-route="manual" onclick="navigate('manual')"
+    <div class="nav-item" data-route="manual" onclick="navigate('manual')" role="button" tabindex="0"
          title="Manual de usuario">
       <svg class="ic"><use href="#i-book"></use></svg> Manual de Uso
     </div>
   </aside>
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebarMobile()"></div>
 
   <!-- TOPBAR -->
   <header class="topbar">
+    <button class="topbar-menu-btn" onclick="toggleSidebarMobile()" aria-label="Abrir menú" aria-expanded="false" aria-controls="app-sidebar">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
     <div class="topbar-search" id="topbar-search-wrap">
       <svg class="topbar-search-icon"><use href="#i-search"></use></svg>
       <input id="global-search" type="search" class="topbar-search-input" placeholder="Buscar trabajador…"
@@ -156,7 +161,7 @@
 <div id="modal-container"></div>
 
 <!-- Modal Agente IA -->
-<div id="modal-agente" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(15,25,35,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;">
+<div id="modal-agente" role="dialog" aria-modal="true" aria-labelledby="agente-modal-title" tabindex="-1" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(15,25,35,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;">
   <div class="agente-inner">
     <!-- Header fijo -->
     <div class="agente-header">
@@ -165,7 +170,7 @@
           <svg class="ic" style="color:#fff;"><use href="#i-sparkle"></use></svg>
         </div>
         <div>
-          <div style="font-family:var(--font-serif);font-weight:600;font-size:.95rem;color:var(--text-primary);">Agente IA — Capital Humano MX</div>
+          <div id="agente-modal-title" style="font-family:var(--font-serif);font-weight:600;font-size:.95rem;color:var(--text-primary);">Agente IA — Capital Humano MX</div>
           <div style="font-size:.72rem;color:var(--text-muted);">Generación de documentos laborales con Claude</div>
         </div>
       </div>

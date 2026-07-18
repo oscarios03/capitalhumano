@@ -10,6 +10,7 @@ const _sbV = () => window.supabase;
 const VAC_TIPO_TO_ASIST = { vacacion: 'vacaciones', permiso_goce: 'permiso_goce', permiso_sin: 'permiso_sin' };
 
 async function renderVacaciones() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   _VAC.tab = 1; // Resetear al entrar al módulo
   try {
     const main = document.getElementById('main-view');
@@ -26,6 +27,7 @@ async function renderVacaciones() {
     ]);
     _VAC.trabajadores = trabRes.data || [];
     _VAC.solicitudes  = solRes.data || [];
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     _renderShellVAC();
     _renderVACTab();
   } catch(e) { showError(e); }
@@ -81,7 +83,7 @@ function _renderVACSolicitudes(c) {
         <tbody>
           ${_VAC.solicitudes.map(s => `
             <tr>
-              <td><strong>${s.trabajadores?.nombre || '—'}</strong></td>
+              <td><strong>${escapeHtml(s.trabajadores?.nombre) || '—'}</strong></td>
               <td>${TIPO_LABEL[s.tipo] || s.tipo}</td>
               <td>${formatDateShort(s.fecha_inicio)}</td>
               <td>${formatDateShort(s.fecha_fin)}</td>
@@ -112,15 +114,15 @@ function _renderVACNueva(c) {
       <div class="card-header"><span class="card-title">+ Nueva Solicitud</span></div>
       <div class="form-grid" style="margin-top:14px;">
         <div class="form-group span-2">
-          <label class="form-label">Trabajador <span class="req">*</span></label>
-          <select id="vac-trab" class="form-select" onchange="_vacCalcSaldo()">
+          <label class="form-label" for="vac-trab">Trabajador <span class="req">*</span></label>
+          <select id="vac-trab" class="form-select" onchange="_vacCalcSaldo()" required aria-required="true">
             <option value="">— Seleccionar —</option>
-            ${_VAC.trabajadores.map(t => `<option value="${t.id}" data-ingreso="${t.fecha_ingreso}" data-salario="${t.salario_mensual}" data-periodo="${t.periodo_salario||'mensual'}">${t.nombre}</option>`).join('')}
+            ${_VAC.trabajadores.map(t => `<option value="${t.id}" data-ingreso="${t.fecha_ingreso}" data-salario="${t.salario_mensual}" data-periodo="${t.periodo_salario||'mensual'}">${escapeHtml(t.nombre)}</option>`).join('')}
           </select>
           <div id="vac-saldo-info" style="margin-top:6px;font-size:.82rem;color:var(--text-muted);"></div>
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Tipo</label>
+          <label class="form-label" for="vac-tipo">Tipo</label>
           <select id="vac-tipo" class="form-select" onchange="_vacCalcDias()">
             <option value="vacacion">Vacaciones</option>
             <option value="permiso_goce">Permiso con goce de sueldo</option>
@@ -128,20 +130,20 @@ function _renderVACNueva(c) {
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha inicio <span class="req">*</span></label>
-          <input id="vac-ini" type="date" class="form-input" value="${hoy}" onchange="_vacCalcDias()" />
+          <label class="form-label" for="vac-ini">Fecha inicio <span class="req">*</span></label>
+          <input id="vac-ini" type="date" class="form-input" value="${hoy}" onchange="_vacCalcDias()" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha fin <span class="req">*</span></label>
-          <input id="vac-fin" type="date" class="form-input" value="${hoy}" onchange="_vacCalcDias()" />
+          <label class="form-label" for="vac-fin">Fecha fin <span class="req">*</span></label>
+          <input id="vac-fin" type="date" class="form-input" value="${hoy}" onchange="_vacCalcDias()" required aria-required="true" />
         </div>
         <div class="form-group span-2" id="vac-resumen-wrap"></div>
         <div class="form-group span-2">
-          <label class="form-label">Notas</label>
+          <label class="form-label" for="vac-notas">Notas</label>
           <textarea id="vac-notas" class="form-textarea" rows="2" placeholder="Observaciones opcionales"></textarea>
         </div>
       </div>
-      <div id="vac-error" class="error-msg" style="display:none;margin-top:10px;"></div>
+      <div id="vac-error" class="error-msg" role="alert" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
         <button class="btn-primary" onclick="guardarVAC()">💾 Guardar solicitud</button>
       </div>
@@ -318,7 +320,7 @@ function _renderVACSaldos(c) {
         <tbody>
           ${rows.map(r => `
             <tr>
-              <td><strong>${r.nombre}</strong></td>
+              <td><strong>${escapeHtml(r.nombre)}</strong></td>
               <td>${formatDateShort(r.fecha_ingreso)}</td>
               <td>${r.anios} año${r.anios!==1?'s':''}</td>
               <td>${r.ganados}</td>

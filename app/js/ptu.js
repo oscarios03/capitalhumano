@@ -7,6 +7,7 @@ let _PTU = { tab: 1, ejercicios: [], detalle: [] };
 const _sbPTU = () => window.supabase;
 
 async function renderPTU() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   _PTU.tab = 1; // Resetear al entrar al módulo
   try {
     const { data } = await _sbPTU().from('ptu_ejercicios')
@@ -14,6 +15,7 @@ async function renderPTU() {
       .eq('empresa_id', CTX.empresa.id)
       .order('ejercicio', { ascending: false });
     _PTU.ejercicios = data || [];
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     _renderShellPTU();
     _renderPTUTab();
   } catch(e) { showError(e); }
@@ -55,16 +57,16 @@ function _renderPTUCalc(c) {
       <div class="card-header"><span class="card-title">Datos del ejercicio fiscal</span></div>
       <div class="form-grid" style="margin-top:14px;">
         <div class="form-group">
-          <label class="form-label">Año fiscal <span class="req">*</span></label>
-          <input id="ptu-anio" type="number" class="form-input" value="${anioActual}" min="2020" max="${new Date().getFullYear()}" />
+          <label class="form-label" for="ptu-anio">Año fiscal <span class="req">*</span></label>
+          <input id="ptu-anio" type="number" class="form-input" value="${anioActual}" min="2020" max="${new Date().getFullYear()}" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Utilidad repartible (MXN) <span class="req">*</span></label>
-          <input id="ptu-utilidad" type="number" class="form-input" min="0" step="0.01" placeholder="Ej. 500000.00" />
+          <label class="form-label" for="ptu-utilidad">Utilidad repartible (MXN) <span class="req">*</span></label>
+          <input id="ptu-utilidad" type="number" class="form-input" min="0" step="0.01" placeholder="Ej. 500000.00" required aria-required="true" />
           <div class="helper-text">10% de la utilidad fiscal declarada ante SAT (Art. 117 LFT)</div>
         </div>
       </div>
-      <div id="ptu-calc-error" class="error-msg" style="display:none;margin-top:10px;"></div>
+      <div id="ptu-calc-error" class="error-msg" role="alert" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
         <button class="btn-primary" onclick="calcularPTU()">🧮 Calcular distribución</button>
       </div>
@@ -156,7 +158,7 @@ async function calcularPTU() {
             <tbody>
               ${detalle.map(d => `
                 <tr>
-                  <td><strong>${d.nombre}</strong></td>
+                  <td><strong>${escapeHtml(d.nombre)}</strong></td>
                   <td>${d.dias}</td>
                   <td>${fmt(d.salarioAcum)}</td>
                   <td>${fmt(d.pd)}</td>

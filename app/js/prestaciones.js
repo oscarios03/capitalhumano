@@ -40,7 +40,7 @@ async function renderTabPrestaciones(trabajadorId) {
   const trab = await db.getTrabajador(trabajadorId);
   const { data: extra, error } = await _listarPrestaciones(trabajadorId);
   if (error) {
-    el.innerHTML = `<div class="alert alert-danger">Error al cargar prestaciones: ${error.message}
+    el.innerHTML = `<div class="alert alert-danger">Error al cargar prestaciones: ${escapeHtml(error.message)}
       ${/relation|schema cache/i.test(error.message || '') ? '<br>Aplica la migración 18_migration_prestaciones_fiscal.sql.' : ''}</div>`;
     return;
   }
@@ -102,8 +102,8 @@ function _mostrarFormPrestacion(trabajadorId) {
     <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">🎁 Nueva prestación</div>
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Tipo <span class="req">*</span></label>
-        <select id="prs-tipo" class="form-select">
+        <label class="form-label" for="prs-tipo">Tipo <span class="req">*</span></label>
+        <select id="prs-tipo" class="form-select" required aria-required="true">
           <option value="premio_puntualidad">⏱️ Premio de puntualidad</option>
           <option value="premio_asistencia">📅 Premio de asistencia</option>
           <option value="ayuda_transporte">🚌 Ayuda de transporte</option>
@@ -111,21 +111,21 @@ function _mostrarFormPrestacion(trabajadorId) {
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Modalidad <span class="req">*</span></label>
-        <select id="prs-modalidad" class="form-select">
+        <label class="form-label" for="prs-modalidad">Modalidad <span class="req">*</span></label>
+        <select id="prs-modalidad" class="form-select" required aria-required="true">
           <option value="monto_fijo_periodo">Monto fijo por periodo</option>
           <option value="porcentaje_salario">% del salario del periodo</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Valor <span class="req">*</span></label>
-        <input id="prs-valor" type="number" class="form-input" min="0" step="0.01" placeholder="Monto o %" />
+        <label class="form-label" for="prs-valor">Valor <span class="req">*</span></label>
+        <input id="prs-valor" type="number" class="form-input" min="0" step="0.01" placeholder="Monto o %" required aria-required="true" />
       </div>
       <div class="form-group span-2 helper-text">
         Los premios de puntualidad/asistencia no integran al SBC hasta el 10% del SBC de cada uno (Art. 27 fr. VII LSS); el excedente integra.
       </div>
     </div>
-    <div id="prs-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+    <div id="prs-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
       <button class="btn-secondary btn-sm" onclick="_cerrarFormPrestacion()">Cancelar</button>
       <button id="prs-btn-guardar" class="btn-primary btn-sm" onclick="_guardarPrestacion('${trabajadorId}')">💾 Guardar</button>

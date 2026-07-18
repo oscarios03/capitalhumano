@@ -104,24 +104,24 @@
     </div>
     <div class="form-grid">
       <div class="form-group span-2">
-        <label class="form-label">Razón Social / Nombre del Patrón <span class="req">*</span></label>
-        <input id="e-nombre" type="text" class="form-input" placeholder="Ej. Grupo Empresarial Omega S.A. de C.V." />
+        <label class="form-label" for="e-nombre">Razón Social / Nombre del Patrón <span class="req">*</span></label>
+        <input id="e-nombre" type="text" class="form-input" placeholder="Ej. Grupo Empresarial Omega S.A. de C.V." required aria-required="true" />
       </div>
       <div class="form-group">
-        <label class="form-label">RFC del Patrón</label>
+        <label class="form-label" for="e-rfc">RFC del Patrón</label>
         <input id="e-rfc" type="text" class="form-input" placeholder="GOEO801231AB1" maxlength="13" style="text-transform:uppercase;" />
       </div>
       <div class="form-group">
-        <label class="form-label">Representante Legal</label>
+        <label class="form-label" for="e-rep">Representante Legal</label>
         <input id="e-rep" type="text" class="form-input" placeholder="Lic. Juan Pérez García" />
       </div>
       <div class="form-group span-2">
-        <label class="form-label">Domicilio Fiscal</label>
+        <label class="form-label" for="e-dom">Domicilio Fiscal</label>
         <input id="e-dom" type="text" class="form-input" placeholder="Av. Insurgentes Sur 1234, Col. Del Valle, CDMX" />
       </div>
       <div class="form-group">
-        <label class="form-label">Ciudad de Firma <span class="req">*</span></label>
-        <input id="e-ciudad" type="text" class="form-input" placeholder="Ciudad de México" />
+        <label class="form-label" for="e-ciudad">Ciudad de Firma <span class="req">*</span></label>
+        <input id="e-ciudad" type="text" class="form-input" placeholder="Ciudad de México" required aria-required="true" />
       </div>
     </div>
     <div id="empresa-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>

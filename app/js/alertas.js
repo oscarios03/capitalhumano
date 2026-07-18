@@ -223,20 +223,20 @@ function renderListaAlertas(alertas) {
         </div>
         <div class="alerta-body">
           <div class="alerta-cabecera">
-            <span class="alerta-titulo">${a.titulo}</span>
+            <span class="alerta-titulo">${escapeHtml(a.titulo)}</span>
             <span class="alerta-prioridad-badge" style="background:${cfg.bg};color:${cfg.color};border-color:${cfg.border};">
               ${cfg.dot} ${cfg.label}
             </span>
           </div>
           ${a.trabajadores?.nombre ? `
             <div class="alerta-trabajador" onclick="navigate('empleado','${a.trabajadores.id}')"
-                 style="cursor:pointer;color:var(--blue-accent);">
-              👤 ${a.trabajadores.nombre}${a.trabajadores.puesto ? ' — ' + a.trabajadores.puesto : ''}
+                 role="button" tabindex="0" style="cursor:pointer;color:var(--blue-accent);">
+              👤 ${escapeHtml(a.trabajadores.nombre)}${a.trabajadores.puesto ? ' — ' + escapeHtml(a.trabajadores.puesto) : ''}
             </div>` : ''}
-          <div class="alerta-desc">${a.descripcion || ''}</div>
+          <div class="alerta-desc">${escapeHtml(a.descripcion) || ''}</div>
           <div class="alerta-footer">
-            ${a.articulo_lft ? `<span class="alerta-articulo">${a.articulo_lft}</span>` : ''}
-            ${a.accion_sugerida ? `<span class="alerta-accion">→ ${a.accion_sugerida}</span>` : ''}
+            ${a.articulo_lft ? `<span class="alerta-articulo">${escapeHtml(a.articulo_lft)}</span>` : ''}
+            ${a.accion_sugerida ? `<span class="alerta-accion">→ ${escapeHtml(a.accion_sugerida)}</span>` : ''}
             ${vencTxt ? `<span style="font-size:.75rem;font-weight:700;color:${vencColor};">${vencTxt}</span>` : ''}
           </div>
         </div>
@@ -286,8 +286,8 @@ function renderContratosPorVencer(alertas) {
             <div class="alerta-left"><div class="alerta-icono">${cfg.icono}</div></div>
             <div class="alerta-body">
               <div class="alerta-cabecera">
-                <span class="alerta-titulo">${a.trabajadores?.nombre || a.titulo}</span>
-                <span class="alerta-articulo">${cfg.label}${a.articulo_lft ? ' · ' + a.articulo_lft : ''}</span>
+                <span class="alerta-titulo">${escapeHtml(a.trabajadores?.nombre || a.titulo)}</span>
+                <span class="alerta-articulo">${cfg.label}${a.articulo_lft ? ' · ' + escapeHtml(a.articulo_lft) : ''}</span>
               </div>
               <div class="alerta-desc">${vencTxt}</div>
             </div>

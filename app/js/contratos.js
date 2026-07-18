@@ -15,8 +15,10 @@ const _TIPOS_CONTRATO = [
 ];
 
 async function renderContratos() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const trabajadores = await db.getTrabajadores();
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     const main = eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
@@ -35,20 +37,21 @@ async function renderContratos() {
                   const tipo = t.tipo_contrato || 'indeterminado';
                   const tipoLabel = (_TIPOS_CONTRATO.find(x => x.value === tipo || (tipo==='indefinido' && x.value==='indeterminado')) || {label: tipo}).label;
                   return `<tr>
-                    <td><strong>${t.nombre}</strong></td>
-                    <td>${t.puesto||'—'}</td>
+                    <td><strong>${escapeHtml(t.nombre)}</strong></td>
+                    <td>${escapeHtml(t.puesto)||'—'}</td>
                     <td><span style="font-size:.8rem;color:var(--text-secondary);">${tipoLabel}</span></td>
                     <td>${formatDateShort(t.fecha_ingreso)}</td>
                     <td>${badgeEstado(t.estado)}</td>
                     <td>
                       <div class="actions" style="position:relative;">
                         <div class="contrato-dropdown" id="dd-${t.id}">
-                          <button class="btn-primary btn-sm" onclick="toggleContratoMenu('${t.id}')">
+                          <button id="ddbtn-${t.id}" class="btn-primary btn-sm" onclick="toggleContratoMenu('${t.id}')"
+                            aria-haspopup="true" aria-expanded="false" aria-controls="menu-${t.id}">
                             📄 Generar contrato ▾
                           </button>
-                          <div class="contrato-menu" id="menu-${t.id}" style="display:none;">
+                          <div class="contrato-menu" id="menu-${t.id}" role="menu" style="display:none;">
                             ${_TIPOS_CONTRATO.map(op => `
-                              <button class="contrato-menu-item ${op.value===tipo||((tipo==='indefinido'||!tipo)&&op.value==='indeterminado') ? 'activo' : ''}"
+                              <button class="contrato-menu-item ${op.value===tipo||((tipo==='indefinido'||!tipo)&&op.value==='indeterminado') ? 'activo' : ''}" role="menuitem"
                                 onclick="descargarContrato('${t.id}','${op.value}',this)">
                                 📄 ${op.label}
                               </button>`).join('')}
@@ -70,18 +73,30 @@ async function renderContratos() {
   } catch(e) { showError(e); }
 }
 
-function _cerrarMenusContrato(e) {
-  if (!e.target.closest('.contrato-dropdown')) {
-    document.querySelectorAll('.contrato-menu').forEach(m => m.style.display = 'none');
-  }
+function _cerrarTodosMenusContrato() {
+  document.querySelectorAll('.contrato-menu').forEach(m => m.style.display = 'none');
+  document.querySelectorAll('.contrato-dropdown button[aria-haspopup]').forEach(b => b.setAttribute('aria-expanded', 'false'));
 }
+
+function _cerrarMenusContrato(e) {
+  if (!e.target.closest('.contrato-dropdown')) _cerrarTodosMenusContrato();
+}
+
+// B-10: Escape cierra el menú de "Generar contrato" abierto (patrón consistente
+// con el Escape que ya cierra modales/Agente IA en app.js).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.querySelector('.contrato-menu[style*="block"]')) _cerrarTodosMenusContrato();
+});
 
 function toggleContratoMenu(trabId) {
   const menu = eid(`menu-${trabId}`);
+  const btn  = eid(`ddbtn-${trabId}`);
   if (!menu) return;
   const visible = menu.style.display !== 'none';
-  document.querySelectorAll('.contrato-menu').forEach(m => m.style.display = 'none');
+  _cerrarTodosMenusContrato();
   menu.style.display = visible ? 'none' : 'block';
+  if (btn) btn.setAttribute('aria-expanded', visible ? 'false' : 'true');
 }
 
 async function descargarContrato(trabId, tipo, btn) {

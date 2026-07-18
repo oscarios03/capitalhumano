@@ -37,7 +37,7 @@
   --text-primary:  #14212e;
   --text-main:     var(--text-primary);
   --text-secondary:#5b6672;
-  --text-muted:    #94a0ac;
+  --text-muted:    #6b7580;   /* contraste 4.69:1 sobre blanco (WCAG AA), antes #94a0ac ~2.7:1 */
 
   --border:        #e2e6ea;
   --border-strong: #dbe1e7;
@@ -55,6 +55,31 @@
 
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 html { scroll-behavior:smooth; }
+
+/* B-9: respeta la preferencia del sistema de reducir movimiento (vestibular/
+   mareo por animación) — recorta duración de animaciones/transiciones casi
+   a cero sin tener que desactivarlas una por una. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Foco visible uniforme (WCAG 2.2 AA 2.4.7/2.4.11) — reemplaza outline:none
+   sin indicador de reemplazo en inputs/botones/nav-items/tabs. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-border);
+}
 body { font-family:var(--font-sans); background:var(--bg-base); color:var(--text-primary); overflow-x:hidden; -webkit-font-smoothing:antialiased; }
 a { color:var(--accent); text-decoration:none; }
 a:hover { color:var(--accent-hover); }
@@ -79,6 +104,22 @@ button { font-family:inherit; cursor:pointer; }
   position: relative; z-index: 100;
 }
 .topbar-right { display:flex; align-items:center; gap:16px; }
+
+/* Botón hamburguesa — solo visible en móvil (ver @media 768px) */
+.topbar-menu-btn {
+  display:none; align-items:center; justify-content:center;
+  width:36px; height:36px; margin-right:10px; flex-shrink:0;
+  background:transparent; border:1px solid var(--border-strong);
+  border-radius:var(--radius-sm); color:var(--text-secondary);
+  cursor:pointer;
+}
+.topbar-menu-btn svg { width:18px; height:18px; }
+
+.sidebar-backdrop {
+  display:none; position:fixed; inset:0; z-index:590;
+  background:rgba(15,25,35,.5);
+}
+.sidebar-backdrop.open { display:block; }
 
 /* Búsqueda global en topbar */
 .topbar-search { position:relative; flex:1; max-width:360px; }
@@ -134,7 +175,7 @@ button { font-family:inherit; cursor:pointer; }
   position:sticky; top:0; background:var(--sidebar-bg); z-index:2;
 }
 .nav-section-label {
-  font-size:.656rem; font-weight:700; color:#5d7186;
+  font-size:.656rem; font-weight:700; color:#8296ab; /* contraste 5.19:1 sobre --sidebar-bg (#0f2438), WCAG AA — antes #5d7186 ~3.14:1 */
   letter-spacing:.1em; text-transform:uppercase;
   padding:16px 24px 6px;
 }
@@ -188,6 +229,7 @@ button { font-family:inherit; cursor:pointer; }
   display:inline-flex; align-items:center; gap:7px;
 }
 .btn-primary:hover { background:var(--accent-hover); transform:none; box-shadow:none; }
+.btn-primary:disabled { opacity:.6; cursor:not-allowed; pointer-events:none; }
 
 .btn-secondary {
   padding:9px 15px;
@@ -197,6 +239,7 @@ button { font-family:inherit; cursor:pointer; }
   transition:var(--transition);
 }
 .btn-secondary:hover { background:#f5f7f9; color:var(--text-primary); }
+.btn-secondary:disabled { opacity:.6; cursor:not-allowed; pointer-events:none; }
 
 .btn-danger {
   padding:8px 16px;
@@ -205,6 +248,7 @@ button { font-family:inherit; cursor:pointer; }
   font-size:.82rem; font-weight:600; transition:var(--transition);
 }
 .btn-danger:hover { background:rgba(192,57,43,.14); }
+.btn-danger:disabled { opacity:.6; cursor:not-allowed; pointer-events:none; }
 
 .btn-sm {
   padding:6px 12px; font-size:.78rem;
@@ -452,7 +496,14 @@ input[type="date"], input[type="time"] { color-scheme:light; }
 /* Responsive sidebar */
 @media(max-width:768px) {
   .app-shell { grid-template-columns:0 1fr; }
-  .sidebar { display:none; }
+  .topbar-menu-btn { display:flex; }
+  .sidebar {
+    position:fixed; top:0; left:0; height:100vh; width:var(--sidebar-w);
+    z-index:600; transform:translateX(-100%);
+    transition:transform .25s ease;
+    box-shadow:2px 0 24px rgba(0,0,0,.3);
+  }
+  .sidebar.open { transform:translateX(0); }
   .main-view { padding:20px 16px; }
 }
 

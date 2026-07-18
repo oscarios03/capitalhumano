@@ -14,6 +14,7 @@ let _INC = { tab: 1, trabajadores: [], incapacidades: [] };
 const _sbI = () => window.supabase;
 
 async function renderIncapacidades() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   _INC.tab = 1; // Resetear al entrar al módulo
   try {
     const [trabRes, incRes] = await Promise.all([
@@ -29,6 +30,7 @@ async function renderIncapacidades() {
     ]);
     _INC.trabajadores  = trabRes.data || [];
     _INC.incapacidades = incRes.data || [];
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     _renderShellINC();
     _renderINCTab();
   } catch(e) { showError(e); }
@@ -75,9 +77,9 @@ function _renderINCLista(c) {
         <tbody>
           ${_INC.incapacidades.map(i => `
             <tr>
-              <td><strong>${i.trabajadores?.nombre || '—'}</strong></td>
-              <td>${INC_TIPOS[i.tipo]?.label || i.tipo}</td>
-              <td style="color:var(--text-muted);">${i.folio_imss || '—'}</td>
+              <td><strong>${escapeHtml(i.trabajadores?.nombre) || '—'}</strong></td>
+              <td>${INC_TIPOS[i.tipo]?.label || escapeHtml(i.tipo)}</td>
+              <td style="color:var(--text-muted);">${escapeHtml(i.folio_imss) || '—'}</td>
               <td>${formatDateShort(i.fecha_inicio)}</td>
               <td>${formatDateShort(i.fecha_fin)}</td>
               <td><strong>${i.dias}</strong></td>
@@ -100,43 +102,43 @@ function _renderINCNueva(c) {
       <div class="card-header"><span class="card-title">+ Nueva Incapacidad</span></div>
       <div class="form-grid" style="margin-top:14px;">
         <div class="form-group span-2">
-          <label class="form-label">Trabajador <span class="req">*</span></label>
-          <select id="inc-trab" class="form-select">
+          <label class="form-label" for="inc-trab">Trabajador <span class="req">*</span></label>
+          <select id="inc-trab" class="form-select" required aria-required="true">
             <option value="">— Seleccionar —</option>
-            ${_INC.trabajadores.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('')}
+            ${_INC.trabajadores.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Tipo de incapacidad</label>
+          <label class="form-label" for="inc-tipo">Tipo de incapacidad</label>
           <select id="inc-tipo" class="form-select" onchange="_incOnTipo()">${tiposOpts}</select>
           <div id="inc-nota" style="margin-top:6px;font-size:.8rem;color:var(--text-muted);padding:8px 10px;background:rgba(245,166,35,.05);border-radius:var(--radius-sm);border:1px solid var(--gold-border);">${INC_TIPOS.enfermedad_general.nota}</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha inicio <span class="req">*</span></label>
-          <input id="inc-ini" type="date" class="form-input" value="${hoy}" onchange="_incCalcDias()" />
+          <label class="form-label" for="inc-ini">Fecha inicio <span class="req">*</span></label>
+          <input id="inc-ini" type="date" class="form-input" value="${hoy}" onchange="_incCalcDias()" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Fecha fin <span class="req">*</span></label>
-          <input id="inc-fin" type="date" class="form-input" value="${hoy}" onchange="_incCalcDias()" />
+          <label class="form-label" for="inc-fin">Fecha fin <span class="req">*</span></label>
+          <input id="inc-fin" type="date" class="form-input" value="${hoy}" onchange="_incCalcDias()" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">Días calculados</label>
+          <label class="form-label" for="inc-dias">Días calculados</label>
           <input id="inc-dias" type="number" class="form-input" min="1" placeholder="Auto" />
         </div>
         <div class="form-group">
-          <label class="form-label">% Subsidio IMSS</label>
+          <label class="form-label" for="inc-subsidio">% Subsidio IMSS</label>
           <input id="inc-subsidio" type="number" class="form-input" value="60" min="0" max="100" step="1" />
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Folio IMSS</label>
+          <label class="form-label" for="inc-folio">Folio IMSS</label>
           <input id="inc-folio" type="text" class="form-input" placeholder="Número de folio (opcional)" />
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Notas</label>
+          <label class="form-label" for="inc-notas">Notas</label>
           <textarea id="inc-notas" class="form-textarea" rows="2"></textarea>
         </div>
       </div>
-      <div id="inc-error" class="error-msg" style="display:none;margin-top:10px;"></div>
+      <div id="inc-error" class="error-msg" role="alert" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
         <button class="btn-primary" onclick="guardarINC()">💾 Guardar</button>
       </div>

@@ -7,8 +7,10 @@
 //  BAJAS
 // ═══════════════════════════════════════════════════════
 async function renderBajas(preselId) {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const trabajadores = await db.getTrabajadores({ estado:'activo' });
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     const main = eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
@@ -18,31 +20,31 @@ async function renderBajas(preselId) {
       <div class="card animate-in" style="max-width:760px;margin:0 auto;">
         <div class="form-grid">
           <div class="form-group span-2">
-            <label class="form-label">Trabajador <span class="req">*</span></label>
-            <select id="baja-trab" class="form-select" onchange="precargarDatosBaja()">
+            <label class="form-label" for="baja-trab">Trabajador <span class="req">*</span></label>
+            <select id="baja-trab" class="form-select" onchange="precargarDatosBaja()" required aria-required="true">
               <option value="">— Seleccionar trabajador activo —</option>
-              ${trabajadores.map(t=>`<option value="${t.id}" ${t.id===preselId?'selected':''}>${t.nombre} — ${t.puesto||''}</option>`).join('')}
+              ${trabajadores.map(t=>`<option value="${t.id}" ${t.id===preselId?'selected':''}>${escapeHtml(t.nombre)} — ${escapeHtml(t.puesto)||''}</option>`).join('')}
             </select>
           </div>
           <div id="baja-resguardos-warning" class="form-group span-2" style="display:none;"></div>
           <div class="form-group">
-            <label class="form-label">Tipo de baja <span class="req">*</span></label>
-            <select id="baja-tipo" class="form-select" onchange="actualizarTipoBaja()">
+            <label class="form-label" for="baja-tipo">Tipo de baja <span class="req">*</span></label>
+            <select id="baja-tipo" class="form-select" onchange="actualizarTipoBaja()" required aria-required="true">
               <option value="injustificada">⚖️ Despido sin justificación (Liquidación)</option>
               <option value="renuncia">📄 Renuncia voluntaria (Finiquito + Carta)</option>
               <option value="justificada">🚫 Rescisión justificada Art. 47 (Finiquito)</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Fecha de baja <span class="req">*</span></label>
-            <input id="baja-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" />
+            <label class="form-label" for="baja-fecha">Fecha de baja <span class="req">*</span></label>
+            <input id="baja-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" required aria-required="true" />
           </div>
           <div class="form-group">
-            <label class="form-label">Salario ordinario <span class="req">*</span></label>
-            <input id="baja-salario" type="number" class="form-input" placeholder="Se carga automáticamente" min="1" step="0.01" />
+            <label class="form-label" for="baja-salario">Salario ordinario <span class="req">*</span></label>
+            <input id="baja-salario" type="number" class="form-input" placeholder="Se carga automáticamente" min="1" step="0.01" required aria-required="true" />
           </div>
           <div class="form-group">
-            <label class="form-label">Periodo de pago</label>
+            <label class="form-label" for="baja-periodo">Periodo de pago</label>
             <select id="baja-periodo" class="form-select">
               <option value="mensual">Mensual (÷ 30)</option>
               <option value="quincenal">Quincenal (÷ 15)</option>
@@ -50,7 +52,7 @@ async function renderBajas(preselId) {
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Días de salario pendientes de pago</label>
+            <label class="form-label" for="baja-dias">Días de salario pendientes de pago</label>
             <input id="baja-dias" type="number" class="form-input" value="0" min="0" />
           </div>
           <div class="form-group span-2">
@@ -63,7 +65,7 @@ async function renderBajas(preselId) {
             <div class="helper-text">Desmarca si hay vacaciones de años cumplidos sin tomar ni pagar.</div>
           </div>
           <div class="form-group" id="baja-vac-pend-group" style="display:none;">
-            <label class="form-label">Días de vacaciones pendientes (años anteriores)</label>
+            <label class="form-label" for="baja-vac-pend">Días de vacaciones pendientes (años anteriores)</label>
             <input id="baja-vac-pend" type="number" class="form-input" placeholder="0" min="0" value="0" />
           </div>
           <div class="form-group" id="baja-ag-group" style="display:none;">
@@ -86,7 +88,7 @@ async function renderBajas(preselId) {
           <span>⚖️</span><span><strong>Despido sin justificación:</strong> Se generará Aviso de Rescisión + Recibo de Liquidación (incluye indemnización constitucional).</span>
         </div>
 
-        <div id="baja-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+        <div id="baja-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;">
           <button class="btn-primary" onclick="handleProcesarBaja()">⚡ Calcular y generar documentos</button>
         </div>
@@ -205,7 +207,7 @@ async function handleProcesarBaja() {
       <div style="padding:20px 24px;">
         <p style="font-size:.9rem;color:var(--text-secondary);margin-bottom:16px;">Revisa los datos antes de confirmar. Esta acción es irreversible.</p>
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;display:grid;gap:10px;font-size:.88rem;">
-          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Trabajador</span><strong>${trab.nombre}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Trabajador</span><strong>${escapeHtml(trab.nombre)}</strong></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Tipo de baja</span><span>${tipoLabel}</span></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Fecha de baja</span><span>${formatDateShort(fecha)}</span></div>
           <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:10px;margin-top:2px;"><span style="color:var(--text-muted);">Monto total</span><strong style="color:var(--gold-primary);font-size:1rem;">${fmtMx(montoTotal)}</strong></div>
@@ -225,25 +227,40 @@ async function _confirmarBaja() {
   const { trabId, fecha, tipo, salario, diasPendientes, result, trab, trabajadorPdf, sucursalTrab } = window._pendingBaja || {};
   if (!trabId) return;
   const err = eid('baja-error');
+  // B-4: esta secuencia tiene dos escrituras que NO son atómicas entre sí
+  // (createBaja + darDeBaja) — si la primera tiene éxito y la segunda falla
+  // (ej. conflicto de optimistic locking), el trabajador queda "a medias":
+  // existe un registro en `bajas` pero su `estado` sigue activo. Se avisa
+  // explícitamente en ese caso en vez de mostrar solo el error crudo.
+  let bajaRegistrada = false;
   try {
     await db.createBaja({
       trabajador_id: trabId, fecha_baja: fecha, tipo_baja: tipo,
       salario_al_momento: salario, dias_pendientes: diasPendientes,
       calculo_json: result,
     }, CTX.empresa.id);
+    bajaRegistrada = true;
 
-    await db.darDeBaja(trabId, tipo, fecha);
+    await db.darDeBaja(trabId, tipo, fecha, trab?.updated_at);
 
-    // Migración 19: movimiento IMSS de baja con la clave de causa correspondiente.
+    // Migración 19: movimiento IMSS de baja — es un registro complementario,
+    // su falla no debe impedir cerrar la baja (ya consumada arriba).
     if (typeof registrarMovimientoIMSS === 'function') {
       await registrarMovimientoIMSS(CTX.empresa.id, trabId, 'baja', {
         causaBaja: _causaBajaDesdeTipo(tipo),
         fecha,
-      });
+      }).catch(e => console.warn('No se pudo registrar el movimiento IMSS de baja (no bloquea el proceso):', e.message));
     }
 
     showResumenBaja(trab, result, tipo, CTX.empresa, trabajadorPdf, sucursalTrab);
-  } catch(e) { if (err) { err.textContent = e.message; err.style.display=''; } }
+  } catch(e) {
+    if (err) {
+      err.textContent = bajaRegistrada
+        ? `Se registró la baja, pero el trabajador NO quedó marcado como dado de baja (${e.message}). Recarga la página y verifica su estado antes de reintentar — no vuelvas a confirmar sin revisar primero.`
+        : e.message;
+      err.style.display = '';
+    }
+  }
   delete window._pendingBaja;
 }
 
@@ -277,7 +294,7 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
         <div style="display:flex;gap:14px;align-items:center;margin-bottom:20px;">
           <div style="font-size:2.5rem;">✅</div>
           <div>
-            <div style="font-family:'Montserrat',sans-serif;font-size:1.2rem;font-weight:900;">${trab.nombre}</div>
+            <div style="font-family:'Montserrat',sans-serif;font-size:1.2rem;font-weight:900;">${escapeHtml(trab.nombre)}</div>
             <div style="font-size:.85rem;color:var(--text-secondary);">
               ${{injustificada:'Despido sin justificación',renuncia:'Renuncia voluntaria',justificada:'Rescisión justificada Art. 47'}[tipo]}
               · ${formatDateShort(trabajadorPdf.fecha_baja)}

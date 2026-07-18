@@ -12,8 +12,13 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// M-7: el proyecto todavía no tiene dominio de producción propio (2026-07),
+// así que se acepta cualquier origen por ahora. En cuanto exista un dominio
+// fijo, configurar el secret `ALLOWED_ORIGIN` (Supabase Dashboard → Edge
+// Functions → Secrets) con ese dominio exacto (ej. https://app.midominio.mx)
+// para restringir esta cabecera.
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -77,16 +82,60 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Reenviar el body sin modificar hacia Anthropic
-  let body: unknown;
+  // Leer y VALIDAR el body del cliente. NUNCA reenviar model/max_tokens tal
+  // cual: cualquier usuario con JWT válido (de cualquier tenant con el
+  // feature habilitado) podría invocar este endpoint directamente —no solo
+  // desde agente.js— y usarlo como proxy genérico contra la cuenta de
+  // Anthropic compartida, inflando costo o cambiando el modelo. system y
+  // messages sí vienen del cliente (contienen el caso/plantilla concretos),
+  // pero se acotan en tamaño para no permitir payloads absurdamente grandes.
+  let clientBody: { system?: unknown; messages?: unknown };
   try {
-    body = await req.json();
+    clientBody = await req.json();
   } catch {
     return new Response(JSON.stringify({ error: 'Body JSON inválido' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   }
+
+  const MODEL_PERMITIDO   = 'claude-opus-4-5';
+  const MAX_TOKENS_TOPE   = 8000;
+  const SYSTEM_MAX_CHARS  = 6000;
+  const MESSAGE_MAX_CHARS = 20000;
+  const MAX_MENSAJES      = 4;
+
+  if (typeof clientBody.system !== 'string' || !clientBody.system.trim()
+      || clientBody.system.length > SYSTEM_MAX_CHARS) {
+    return new Response(JSON.stringify({ error: 'system inválido o demasiado largo' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    });
+  }
+
+  if (!Array.isArray(clientBody.messages) || clientBody.messages.length === 0
+      || clientBody.messages.length > MAX_MENSAJES) {
+    return new Response(JSON.stringify({ error: 'messages inválido' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    });
+  }
+  for (const m of clientBody.messages as Array<{ content?: unknown }>) {
+    if (typeof m.content !== 'string' || m.content.length > MESSAGE_MAX_CHARS) {
+      return new Response(JSON.stringify({ error: 'Contenido de mensaje inválido o demasiado largo' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
+    }
+  }
+
+  // model y max_tokens se FIJAN aquí — nunca vienen del cliente.
+  const anthropicBody = {
+    model: MODEL_PERMITIDO,
+    max_tokens: MAX_TOKENS_TOPE,
+    system: clientBody.system,
+    messages: clientBody.messages,
+  };
 
   const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -95,7 +144,7 @@ Deno.serve(async (req: Request) => {
       'x-api-key': anthropicKey,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(anthropicBody),
   });
 
   const responseData = await anthropicRes.json();

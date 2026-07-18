@@ -7,6 +7,7 @@
 //  MI EMPRESA
 // ═══════════════════════════════════════════════════════
 async function renderEmpresa() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   const e   = CTX.empresa;
   const main = eid('main-view');
 
@@ -25,6 +26,7 @@ async function renderEmpresa() {
   }));
   conteos['matriz'] = await db.countTrabajadoresBySucursal(null);
 
+  if (typeof _navStale === 'function' && _navStale(_gen)) return;
   main.innerHTML = `
     <div class="view-header animate-in">
       <div><div class="view-title">🏢 Mi Empresa</div></div>
@@ -33,27 +35,27 @@ async function renderEmpresa() {
       <div class="card-header"><span class="card-title">Datos Fiscales</span></div>
       <div class="form-grid">
         <div class="form-group span-2">
-          <label class="form-label">Razón Social / Nombre del Patrón <span class="req">*</span></label>
-          <input id="emp-nombre" type="text" class="form-input" value="${e.nombre||''}" />
+          <label class="form-label" for="emp-nombre">Razón Social / Nombre del Patrón <span class="req">*</span></label>
+          <input id="emp-nombre" type="text" class="form-input" value="${escapeHtml(e.nombre)||''}" required aria-required="true" />
         </div>
         <div class="form-group">
-          <label class="form-label">RFC</label>
-          <input id="emp-rfc" type="text" class="form-input" value="${e.rfc||''}" maxlength="13" style="text-transform:uppercase;" />
+          <label class="form-label" for="emp-rfc">RFC</label>
+          <input id="emp-rfc" type="text" class="form-input" value="${escapeHtml(e.rfc)||''}" maxlength="13" style="text-transform:uppercase;" />
         </div>
         <div class="form-group">
-          <label class="form-label">Representante Legal</label>
-          <input id="emp-rep" type="text" class="form-input" value="${e.representante||''}" />
+          <label class="form-label" for="emp-rep">Representante Legal</label>
+          <input id="emp-rep" type="text" class="form-input" value="${escapeHtml(e.representante)||''}" />
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Domicilio Fiscal</label>
-          <input id="emp-dom" type="text" class="form-input" value="${e.domicilio||''}" />
+          <label class="form-label" for="emp-dom">Domicilio Fiscal</label>
+          <input id="emp-dom" type="text" class="form-input" value="${escapeHtml(e.domicilio)||''}" />
         </div>
         <div class="form-group">
-          <label class="form-label">Ciudad <span class="req">*</span></label>
-          <input id="emp-ciudad" type="text" class="form-input" value="${e.ciudad||''}" />
+          <label class="form-label" for="emp-ciudad">Ciudad <span class="req">*</span></label>
+          <input id="emp-ciudad" type="text" class="form-input" value="${escapeHtml(e.ciudad)||''}" required aria-required="true" />
         </div>
       </div>
-      <div id="emp-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="emp-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button class="btn-primary" onclick="handleGuardarEmpresa()">💾 Guardar cambios</button>
       </div>
@@ -94,23 +96,23 @@ async function renderEmpresa() {
         </label>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">1ª quincena (día del mes)</label>
+            <label class="form-label" for="emp-pago-q1">1ª quincena (día del mes)</label>
             <input id="emp-pago-q1" type="number" class="form-input" min="0" max="31"
               value="${e.dia_pago_quincenal_1 ?? 15}" />
           </div>
           <div class="form-group">
-            <label class="form-label">2ª quincena (0 = fin de mes)</label>
+            <label class="form-label" for="emp-pago-q2">2ª quincena (0 = fin de mes)</label>
             <input id="emp-pago-q2" type="number" class="form-input" min="0" max="31"
               value="${e.dia_pago_quincenal_2 ?? 0}" />
           </div>
           <div class="form-group">
-            <label class="form-label">Mensual (0 = fin de mes)</label>
+            <label class="form-label" for="emp-pago-mensual">Mensual (0 = fin de mes)</label>
             <input id="emp-pago-mensual" type="number" class="form-input" min="0" max="31"
               value="${e.dia_pago_mensual ?? 0}" />
           </div>
         </div>
       </div>
-      <div id="emp-nomina-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="emp-nomina-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button class="btn-primary" onclick="handleGuardarConfigNomina()">💾 Guardar configuración</button>
       </div>
@@ -126,31 +128,31 @@ async function renderEmpresa() {
       <div id="presta-costo-mensual" style="margin-bottom:16px;font-size:.82rem;color:var(--text-muted);"></div>
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Días de aguinaldo</label>
+          <label class="form-label" for="presta-aguinaldo">Días de aguinaldo</label>
           <input id="presta-aguinaldo" type="number" class="form-input" min="15" step="0.5"
             value="${e.dias_aguinaldo ?? 15}" />
           <div class="helper-text">Mínimo de ley: 15 días (Art. 87 LFT)</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Días extra de vacaciones</label>
+          <label class="form-label" for="presta-vac-extra">Días extra de vacaciones</label>
           <input id="presta-vac-extra" type="number" class="form-input" min="0" step="1"
             value="${e.dias_vacaciones_extra ?? 0}" />
           <div class="helper-text">Se suman a la tabla del Art. 76 LFT 2023</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Prima vacacional (%)</label>
+          <label class="form-label" for="presta-prima-vac">Prima vacacional (%)</label>
           <input id="presta-prima-vac" type="number" class="form-input" min="25" max="100" step="1"
             value="${((e.prima_vacacional_pct ?? 0.25) * 100).toFixed(0)}" />
           <div class="helper-text">Mínimo de ley: 25% (Art. 80 LFT)</div>
         </div>
         <div class="form-group">
-          <label class="form-label">Prima dominical (%)</label>
+          <label class="form-label" for="presta-prima-dom">Prima dominical (%)</label>
           <input id="presta-prima-dom" type="number" class="form-input" min="25" max="200" step="1"
             value="${((e.prima_dominical_pct ?? 0.25) * 100).toFixed(0)}" />
           <div class="helper-text">Mínimo de ley: 25% (Art. 71 LFT)</div>
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Factor de pago de horas extra</label>
+          <label class="form-label" for="presta-factor-he">Factor de pago de horas extra</label>
           <input id="presta-factor-he" type="number" class="form-input" min="2" max="4" step="0.1"
             value="${e.factor_horas_extra ?? 2}" style="max-width:140px;" />
           <div class="helper-text">2.0 = doble, mínimo de ley (Art. 67 LFT). Se aplica sobre el salario por hora (jornada de 8 hrs) a las horas extra capturadas en Asistencia.</div>
@@ -168,12 +170,12 @@ async function renderEmpresa() {
           </div>
         </div>
         <div class="form-group" id="presta-fondo-cfg-1" style="display:${e.fondo_ahorro_empresa_activo ? '' : 'none'};">
-          <label class="form-label">Aportación del trabajador (%)</label>
+          <label class="form-label" for="presta-fondo-trab">Aportación del trabajador (%)</label>
           <input id="presta-fondo-trab" type="number" class="form-input" min="0" max="30" step="0.5"
             value="${((e.fondo_ahorro_pct_trabajador ?? 0.13) * 100).toFixed(1)}" />
         </div>
         <div class="form-group" id="presta-fondo-cfg-2" style="display:${e.fondo_ahorro_empresa_activo ? '' : 'none'};">
-          <label class="form-label">Aportación del patrón (%)</label>
+          <label class="form-label" for="presta-fondo-patron">Aportación del patrón (%)</label>
           <input id="presta-fondo-patron" type="number" class="form-input" min="0" max="30" step="0.5"
             value="${((e.fondo_ahorro_pct_patron ?? 0.13) * 100).toFixed(1)}" />
         </div>
@@ -189,14 +191,14 @@ async function renderEmpresa() {
           </div>
         </div>
         <div class="form-group" id="presta-vales-cfg-1" style="display:${e.vales_despensa_activo ? '' : 'none'};">
-          <label class="form-label">Tipo</label>
+          <label class="form-label" for="presta-vales-tipo">Tipo</label>
           <select id="presta-vales-tipo" class="form-input">
             <option value="monto" ${(e.vales_despensa_tipo ?? 'monto') === 'monto' ? 'selected' : ''}>Monto fijo por período</option>
             <option value="pct" ${e.vales_despensa_tipo === 'pct' ? 'selected' : ''}>% del salario del período</option>
           </select>
         </div>
         <div class="form-group" id="presta-vales-cfg-2" style="display:${e.vales_despensa_activo ? '' : 'none'};">
-          <label class="form-label">Valor</label>
+          <label class="form-label" for="presta-vales-valor">Valor</label>
           <input id="presta-vales-valor" type="number" class="form-input" min="0" step="0.01"
             value="${e.vales_despensa_tipo === 'pct' ? ((e.vales_despensa_valor ?? 0) * 100).toFixed(1) : (e.vales_despensa_valor ?? 0)}" />
           <div class="helper-text">Si es %, captura el porcentaje (ej. 5 = 5%). Tope exento: 40% UMA/día (Art. 27 LISR).</div>
@@ -210,11 +212,11 @@ async function renderEmpresa() {
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
             <div>
-              <label class="form-label" style="font-size:.72rem;">Fecha</label>
+              <label class="form-label" style="font-size:.72rem;" for="presta-fest-fecha">Fecha</label>
               <input id="presta-fest-fecha" type="date" class="form-input" style="max-width:160px;" />
             </div>
             <div style="flex:1;min-width:160px;">
-              <label class="form-label" style="font-size:.72rem;">Descripción</label>
+              <label class="form-label" style="font-size:.72rem;" for="presta-fest-desc">Descripción</label>
               <input id="presta-fest-desc" type="text" class="form-input" placeholder="Ej. Aniversario de la empresa" />
             </div>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.8rem;padding-bottom:10px;">
@@ -226,7 +228,7 @@ async function renderEmpresa() {
           <div id="presta-fest-lista" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${_festivosChipsHTML()}</div>
         </div>
       </div>
-      <div id="presta-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="presta-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button class="btn-primary" onclick="handleGuardarPrestaciones()">💾 Guardar prestaciones</button>
       </div>
@@ -240,7 +242,7 @@ async function renderEmpresa() {
         Trabajar un día festivo de esta lista activa el pago triple (Art. 75 LFT) en la nómina.
       </p>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-        <label class="form-label" style="margin:0;">Año</label>
+        <label class="form-label" style="margin:0;" for="fest-anio-select">Año</label>
         <select id="fest-anio-select" class="form-input" style="max-width:120px;" onchange="_renderFestivosOficiales()">
           ${[new Date().getFullYear(), new Date().getFullYear()+1].map(a => `<option value="${a}">${a}</option>`).join('')}
         </select>
@@ -250,11 +252,11 @@ async function renderEmpresa() {
         <label class="form-label" style="display:block;margin-bottom:6px;">➕ Agregar festivo propio de la empresa</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div>
-            <label class="form-label" style="font-size:.72rem;">Fecha</label>
+            <label class="form-label" style="font-size:.72rem;" for="fest-nuevo-fecha">Fecha</label>
             <input id="fest-nuevo-fecha" type="date" class="form-input" style="max-width:160px;" />
           </div>
           <div style="flex:1;min-width:160px;">
-            <label class="form-label" style="font-size:.72rem;">Descripción</label>
+            <label class="form-label" style="font-size:.72rem;" for="fest-nuevo-desc">Descripción</label>
             <input id="fest-nuevo-desc" type="text" class="form-input" placeholder="Ej. Día del ramo / costumbre" />
           </div>
           <button class="btn-secondary btn-sm" style="margin-bottom:4px;" onclick="_agregarFestivoOficial()">+ Agregar</button>
@@ -277,14 +279,14 @@ async function renderEmpresa() {
           </label>
         </div>
         <div class="form-group span-2">
-          <label class="form-label">Email de destino</label>
+          <label class="form-label" for="notif-email">Email de destino</label>
           <input id="notif-email" type="email" class="form-input"
-            value="${e.notif_email_destino || ''}"
+            value="${escapeHtml(e.notif_email_destino) || ''}"
             placeholder="alertas@miempresa.com" />
           <div class="helper-text">Puede ser diferente al email de tu cuenta de usuario.</div>
         </div>
       </div>
-      <div id="notif-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="notif-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button class="btn-primary" onclick="handleGuardarNotificaciones()">💾 Guardar</button>
       </div>
@@ -303,16 +305,16 @@ async function renderEmpresa() {
       <div class="matriz-card-header">
         <div>
           <span class="matriz-label">⭐ Matriz</span>
-          <div style="font-weight:800;font-size:1.05rem;margin-top:4px;">${e.nombre}</div>
-          ${e.rfc ? `<div style="font-size:.82rem;color:var(--text-muted);">RFC: ${e.rfc}</div>` : ''}
+          <div style="font-weight:800;font-size:1.05rem;margin-top:4px;">${escapeHtml(e.nombre)}</div>
+          ${e.rfc ? `<div style="font-size:.82rem;color:var(--text-muted);">RFC: ${escapeHtml(e.rfc)}</div>` : ''}
         </div>
         <button class="btn-secondary btn-sm" onclick="showModalSucursal('${matriz.id}')">✏️ Editar</button>
       </div>
       <div style="font-size:.85rem;color:var(--text-secondary);line-height:1.7;">
-        ${e.domicilio ? `📍 ${e.domicilio}` : ''}
+        ${e.domicilio ? `📍 ${escapeHtml(e.domicilio)}` : ''}
         ${e.domicilio && e.ciudad ? '<br>' : ''}
-        ${e.ciudad ? `🏙 ${e.ciudad}` : ''}
-        ${e.representante ? `<br>👤 ${e.representante}` : ''}
+        ${e.ciudad ? `🏙 ${escapeHtml(e.ciudad)}` : ''}
+        ${e.representante ? `<br>👤 ${escapeHtml(e.representante)}` : ''}
       </div>
       <div style="margin-top:12px;font-size:.8rem;color:var(--text-muted);">
         👥 ${conteos['matriz']} trabajador${conteos['matriz']!==1?'es':''} sin sucursal asignada
@@ -325,16 +327,16 @@ async function renderEmpresa() {
         <div class="sucursal-card ${!s.activa ? 'inactiva' : ''}">
           <div class="sucursal-header">
             <div>
-              <div class="sucursal-nombre">${s.nombre}</div>
-              ${s.clave ? `<span class="sucursal-clave">${s.clave}</span>` : ''}
+              <div class="sucursal-nombre">${escapeHtml(s.nombre)}</div>
+              ${s.clave ? `<span class="sucursal-clave">${escapeHtml(s.clave)}</span>` : ''}
             </div>
             ${!s.activa ? '<span class="badge-inactiva">Inactiva</span>' : ''}
           </div>
           <div class="sucursal-meta">
-            ${s.domicilio ? `📍 ${s.domicilio}` : ''}
-            ${s.ciudad    ? `<br>🏙 ${s.ciudad}${s.estado ? ', '+s.estado : ''}${s.cp ? ' C.P. '+s.cp : ''}` : ''}
-            ${s.telefono  ? `<br>📞 ${s.telefono}` : ''}
-            ${s.responsable_nombre ? `<br>👤 ${s.responsable_nombre}${s.responsable_puesto ? ' · '+s.responsable_puesto : ''}` : ''}
+            ${s.domicilio ? `📍 ${escapeHtml(s.domicilio)}` : ''}
+            ${s.ciudad    ? `<br>🏙 ${escapeHtml(s.ciudad)}${s.estado ? ', '+escapeHtml(s.estado) : ''}${s.cp ? ' C.P. '+escapeHtml(s.cp) : ''}` : ''}
+            ${s.telefono  ? `<br>📞 ${escapeHtml(s.telefono)}` : ''}
+            ${s.responsable_nombre ? `<br>👤 ${escapeHtml(s.responsable_nombre)}${s.responsable_puesto ? ' · '+escapeHtml(s.responsable_puesto) : ''}` : ''}
             <br>👥 <strong>${conteos[s.id]||0}</strong> trabajador${(conteos[s.id]||0)!==1?'es':''}
           </div>
           <div class="sucursal-footer">
@@ -403,45 +405,45 @@ async function showModalSucursal(id) {
       </div>
       <div class="form-grid">
         <div class="form-group ${esMatrizEdit ? 'span-2' : ''}">
-          <label class="form-label">Nombre <span class="req">*</span></label>
-          <input id="suc-nombre" type="text" class="form-input" value="${suc?.nombre||''}"
-                 placeholder="${esMatrizEdit ? 'Nombre de la empresa' : 'Ej. Sucursal Monterrey'}" />
+          <label class="form-label" for="suc-nombre">Nombre <span class="req">*</span></label>
+          <input id="suc-nombre" type="text" class="form-input" value="${escapeHtml(suc?.nombre)||''}"
+                 placeholder="${esMatrizEdit ? 'Nombre de la empresa' : 'Ej. Sucursal Monterrey'}" required aria-required="true" />
         </div>
         ${!esMatrizEdit ? `
         <div class="form-group">
-          <label class="form-label">Clave interna</label>
-          <input id="suc-clave" type="text" class="form-input" value="${suc?.clave||''}" placeholder="Ej. MTY-01" />
+          <label class="form-label" for="suc-clave">Clave interna</label>
+          <input id="suc-clave" type="text" class="form-input" value="${escapeHtml(suc?.clave)||''}" placeholder="Ej. MTY-01" />
         </div>` : '<input type="hidden" id="suc-clave" value="">'}
         <div class="form-group span-2">
-          <label class="form-label">Domicilio (calle y número)</label>
-          <input id="suc-domicilio" type="text" class="form-input" value="${suc?.domicilio||''}" placeholder="Av. Constitución 100" />
+          <label class="form-label" for="suc-domicilio">Domicilio (calle y número)</label>
+          <input id="suc-domicilio" type="text" class="form-input" value="${escapeHtml(suc?.domicilio)||''}" placeholder="Av. Constitución 100" />
         </div>
         <div class="form-group">
-          <label class="form-label">Ciudad</label>
-          <input id="suc-ciudad" type="text" class="form-input" value="${suc?.ciudad||''}" placeholder="Monterrey" />
+          <label class="form-label" for="suc-ciudad">Ciudad</label>
+          <input id="suc-ciudad" type="text" class="form-input" value="${escapeHtml(suc?.ciudad)||''}" placeholder="Monterrey" />
         </div>
         <div class="form-group">
-          <label class="form-label">Estado</label>
-          <input id="suc-estado" type="text" class="form-input" value="${suc?.estado||''}" placeholder="Nuevo León" />
+          <label class="form-label" for="suc-estado">Estado</label>
+          <input id="suc-estado" type="text" class="form-input" value="${escapeHtml(suc?.estado)||''}" placeholder="Nuevo León" />
         </div>
         <div class="form-group">
-          <label class="form-label">Código Postal</label>
-          <input id="suc-cp" type="text" class="form-input" value="${suc?.cp||''}" placeholder="64000" maxlength="5" />
+          <label class="form-label" for="suc-cp">Código Postal</label>
+          <input id="suc-cp" type="text" class="form-input" value="${escapeHtml(suc?.cp)||''}" placeholder="64000" maxlength="5" />
         </div>
         <div class="form-group">
-          <label class="form-label">Teléfono</label>
-          <input id="suc-tel" type="text" class="form-input" value="${suc?.telefono||''}" placeholder="81 1234 5678" />
+          <label class="form-label" for="suc-tel">Teléfono</label>
+          <input id="suc-tel" type="text" class="form-input" value="${escapeHtml(suc?.telefono)||''}" placeholder="81 1234 5678" />
         </div>
         <div class="form-group">
-          <label class="form-label">Nombre del responsable</label>
-          <input id="suc-resp-nombre" type="text" class="form-input" value="${suc?.responsable_nombre||''}" placeholder="Nombre del gerente o encargado" />
+          <label class="form-label" for="suc-resp-nombre">Nombre del responsable</label>
+          <input id="suc-resp-nombre" type="text" class="form-input" value="${escapeHtml(suc?.responsable_nombre)||''}" placeholder="Nombre del gerente o encargado" />
         </div>
         <div class="form-group">
-          <label class="form-label">Puesto del responsable</label>
-          <input id="suc-resp-puesto" type="text" class="form-input" value="${suc?.responsable_puesto||''}" placeholder="Ej. Gerente de Sucursal" />
+          <label class="form-label" for="suc-resp-puesto">Puesto del responsable</label>
+          <input id="suc-resp-puesto" type="text" class="form-input" value="${escapeHtml(suc?.responsable_puesto)||''}" placeholder="Ej. Gerente de Sucursal" />
         </div>
       </div>
-      <div id="suc-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+      <div id="suc-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="handleGuardarSucursal('${id||''}')">
@@ -481,7 +483,7 @@ async function handleGuardarSucursal(id) {
     closeModal();
     navigate('empresa');
   } catch(e) {
-    err.textContent = e.message; err.style.display='';
+    err.textContent = friendlyError(e); err.style.display='';
     btn.textContent = '💾 Guardar'; btn.disabled = false;
   }
 }
@@ -492,7 +494,7 @@ async function toggleSucursalStatus(id, activar) {
   try {
     await db.toggleSucursal(id, activar);
     navigate('empresa');
-  } catch(e) { alert(e.message); }
+  } catch(e) { alert(friendlyError(e)); }
 }
 
 let _diaPagoSeleccionado = null;
@@ -538,7 +540,7 @@ async function handleGuardarConfigNomina() {
     _diaPagoSeleccionado = null;
     msg.textContent = '✅ Configuración guardada.'; msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) {
-    msg.textContent = e.message; msg.className = 'error-msg'; msg.style.display = '';
+    msg.textContent = friendlyError(e); msg.className = 'error-msg'; msg.style.display = '';
   }
 }
 
@@ -557,7 +559,7 @@ async function handleGuardarEmpresa() {
     CTX.empresa = { ...CTX.empresa, nombre, ciudad };
     document.getElementById('topbar-empresa').textContent = nombre;
     msg.textContent = '✅ Datos guardados correctamente.'; msg.className='alert alert-success'; msg.style.display='';
-  } catch(e) { msg.textContent = e.message; msg.className='error-msg'; msg.style.display=''; }
+  } catch(e) { msg.textContent = friendlyError(e); msg.className='error-msg'; msg.style.display=''; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -572,8 +574,8 @@ function _festivosChipsHTML() {
   return _festivosTmp.map((f, i) => `
     <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;
                  background:rgba(245,166,35,.12);border:1px solid var(--gold-border);font-size:.78rem;">
-      ${f.tipo === 'recurrente' ? '🔁' : '📅'} ${f.valor}${f.descripcion ? ' · ' + f.descripcion : ''}
-      <span onclick="_quitarFestivoEmpresa(${i})" style="cursor:pointer;font-weight:700;color:var(--red-warn);">×</span>
+      ${f.tipo === 'recurrente' ? '🔁' : '📅'} ${escapeHtml(f.valor)}${f.descripcion ? ' · ' + escapeHtml(f.descripcion) : ''}
+      <span onclick="_quitarFestivoEmpresa(${i})" role="button" tabindex="0" aria-label="Quitar festivo" style="cursor:pointer;font-weight:700;color:var(--red-warn);">×</span>
     </span>`).join('');
 }
 
@@ -626,10 +628,10 @@ function _renderFestivosOficiales() {
         ${dias.map(f => `
           <tr style="border-top:1px solid var(--border);">
             <td style="padding:6px 8px;white-space:nowrap;">${formatDateShort(f.fecha)}</td>
-            <td style="padding:6px 8px;">${f.descripcion}</td>
+            <td style="padding:6px 8px;">${escapeHtml(f.descripcion)}</td>
             <td style="padding:6px 8px;">${f.oficial ? '<span style="color:var(--text-muted);">Oficial (Art. 74 LFT)</span>' : '<span style="color:var(--gold-primary);">Propio</span>'}</td>
             <td style="padding:6px 8px;text-align:right;">
-              ${f.oficial ? '' : `<span onclick="_eliminarFestivoOficial('${f.id}')" style="cursor:pointer;font-weight:700;color:var(--red-warn);">× Eliminar</span>`}
+              ${f.oficial ? '' : `<span onclick="_eliminarFestivoOficial('${f.id}')" role="button" tabindex="0" style="cursor:pointer;font-weight:700;color:var(--red-warn);">× Eliminar</span>`}
             </td>
           </tr>`).join('')}
       </tbody>
@@ -647,7 +649,7 @@ async function _agregarFestivoOficial() {
     eid('fest-nuevo-desc').value  = '';
     _renderFestivosOficiales();
   } catch (e) {
-    alert('No se pudo agregar el festivo: ' + e.message);
+    alert('No se pudo agregar el festivo: ' + friendlyError(e));
   }
 }
 
@@ -657,7 +659,7 @@ async function _eliminarFestivoOficial(id) {
     await eliminarFestivoEmpresa(id);
     _renderFestivosOficiales();
   } catch (e) {
-    alert('No se pudo eliminar: ' + e.message);
+    alert('No se pudo eliminar: ' + friendlyError(e));
   }
 }
 
@@ -725,7 +727,7 @@ async function handleGuardarPrestaciones() {
     if (/column|does not exist|schema cache/i.test(e.message || '')) {
       fail('Falta aplicar la migración 14_migration_prestaciones.sql en Supabase (SQL Editor).');
     } else {
-      fail(e.message);
+      fail(friendlyError(e));
     }
   }
 }
@@ -747,5 +749,5 @@ async function handleGuardarNotificaciones() {
     CTX.empresa = { ...CTX.empresa, notif_email_activo: activo, notif_email_destino: email };
     msg.textContent = '✅ Configuración de notificaciones guardada.';
     msg.className = 'alert alert-success'; msg.style.display = '';
-  } catch(e) { msg.textContent = e.message; msg.className = 'error-msg'; msg.style.display = ''; }
+  } catch(e) { msg.textContent = friendlyError(e); msg.className = 'error-msg'; msg.style.display = ''; }
 }

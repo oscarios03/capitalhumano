@@ -6,6 +6,7 @@ let _REP = { tipo: 'nomina_periodo', periodos: [], trabajadores: [] };
 const _sbREP = () => window.supabase;
 
 async function renderReportes() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
     const main = document.getElementById('main-view');
     main.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando…</div>`;
@@ -24,6 +25,7 @@ async function renderReportes() {
     _REP.periodos     = perRes.data || [];
     _REP.trabajadores = trabRes.data || [];
 
+    if (typeof _navStale === 'function' && _navStale(_gen)) return;
     _renderShellREP();
     _renderREPForm();
   } catch(e) { showError(e); }
@@ -84,10 +86,10 @@ function _renderREPForm() {
       <div class="card">
         <div class="form-grid">
           <div class="form-group span-2">
-            <label class="form-label">Período de nómina</label>
+            <label class="form-label" for="rep-periodo">Período de nómina</label>
             <select id="rep-periodo" class="form-select">
               <option value="">— Seleccionar —</option>
-              ${_REP.periodos.map(p => `<option value="${p.id}">${p.nombre} (${formatDateShort(p.fecha_inicio)} – ${formatDateShort(p.fecha_fin)})</option>`).join('')}
+              ${_REP.periodos.map(p => `<option value="${p.id}">${escapeHtml(p.nombre)} (${formatDateShort(p.fecha_inicio)} – ${formatDateShort(p.fecha_fin)})</option>`).join('')}
             </select>
           </div>
         </div>
@@ -101,16 +103,16 @@ function _renderREPForm() {
       <div class="card">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Año</label>
+            <label class="form-label" for="rep-anio">Año</label>
             <select id="rep-anio" class="form-select">
               ${anios.map(a => `<option value="${a}">${a}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Trabajador</label>
+            <label class="form-label" for="rep-trab">Trabajador</label>
             <select id="rep-trab" class="form-select">
               <option value="">Todos</option>
-              ${_REP.trabajadores.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('')}
+              ${_REP.trabajadores.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -124,14 +126,14 @@ function _renderREPForm() {
       <div class="card">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Trabajador <span class="req">*</span></label>
-            <select id="rep-trab-pdf" class="form-select">
+            <label class="form-label" for="rep-trab-pdf">Trabajador <span class="req">*</span></label>
+            <select id="rep-trab-pdf" class="form-select" required aria-required="true">
               <option value="">— Seleccionar —</option>
-              ${_REP.trabajadores.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('')}
+              ${_REP.trabajadores.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Año</label>
+            <label class="form-label" for="rep-anio-pdf">Año</label>
             <select id="rep-anio-pdf" class="form-select">
               ${anios.map(a => `<option value="${a}">${a}</option>`).join('')}
             </select>
@@ -175,19 +177,19 @@ async function _repGenNominaPeriodo() {
     res.innerHTML = `
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
-          <span class="card-title">Nómina: ${periodo?.nombre || ''}</span>
+          <span class="card-title">Nómina: ${escapeHtml(periodo?.nombre) || ''}</span>
           <button class="btn-secondary btn-sm" onclick="_exportarNominaXLSX()">⬇ Excel</button>
         </div>
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
-            <thead><tr><th>Trabajador</th><th>Días</th><th>Percepciones</th><th>IMSS obrero</th><th>ISR</th><th>INFONAVIT pat.</th><th>Otras ded.</th><th>Neto</th></tr></thead>
+            <thead><tr><th scope="col">Trabajador</th><th scope="col">Días</th><th scope="col">Percepciones</th><th scope="col">IMSS obrero</th><th scope="col">ISR</th><th scope="col">INFONAVIT pat.</th><th scope="col">Otras ded.</th><th scope="col">Neto</th></tr></thead>
             <tbody>
               ${(data||[]).map(r => {
                 const sbc = Math.min(r.salario_diario * 30, SBC_TOPE);
                 const infoPat = sbc * 0.05;
                 const otDed = (r.deducciones_totales||0) - (r.imss_obrero||0) - (r.isr||0);
                 return `<tr>
-                  <td><strong>${r.trabajadores?.nombre || '—'}</strong></td>
+                  <td><strong>${escapeHtml(r.trabajadores?.nombre) || '—'}</strong></td>
                   <td>${r.dias_laborados||0}</td>
                   <td>${fmt(r.percepciones_totales||0)}</td>
                   <td>${fmt(r.imss_obrero||0)}</td>
@@ -253,16 +255,16 @@ async function _repGenAcumulado() {
     res.innerHTML = `
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
-          <span class="card-title">Acumulado ${anio}${trabId ? ' — ' + (_REP.trabajadores.find(t=>t.id===trabId)?.nombre||'') : ''}</span>
+          <span class="card-title">Acumulado ${anio}${trabId ? ' — ' + escapeHtml(_REP.trabajadores.find(t=>t.id===trabId)?.nombre) : ''}</span>
           <button class="btn-secondary btn-sm" onclick="_exportarAcumuladoXLSX()">⬇ Excel</button>
         </div>
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
-            <thead><tr><th>Período</th><th>Trabajador</th><th>Percepciones</th><th>ISR</th><th>IMSS obrero</th><th>Neto</th></tr></thead>
+            <thead><tr><th scope="col">Período</th><th scope="col">Trabajador</th><th scope="col">Percepciones</th><th scope="col">ISR</th><th scope="col">IMSS obrero</th><th scope="col">Neto</th></tr></thead>
             <tbody>
               ${data.map(r => `<tr>
-                <td>${r.periodos_nomina?.nombre || '—'}</td>
-                <td>${r.trabajadores?.nombre || '—'}</td>
+                <td>${escapeHtml(r.periodos_nomina?.nombre) || '—'}</td>
+                <td>${escapeHtml(r.trabajadores?.nombre) || '—'}</td>
                 <td>${fmt(r.percepciones_totales||0)}</td>
                 <td>${fmt(r.isr||0)}</td>
                 <td>${fmt(r.imss_obrero||0)}</td>
@@ -405,12 +407,12 @@ async function _repGenSUA() {
       </div>
       <div class="table-wrap" style="margin-top:12px;">
         <table class="data-table">
-          <thead><tr><th>Nombre</th><th>RFC</th><th>NSS</th><th>Salario diario</th><th>SDI (aprox.)</th><th>IMSS obrero/mes</th><th>IMSS patronal (est.)</th></tr></thead>
+          <thead><tr><th scope="col">Nombre</th><th scope="col">RFC</th><th scope="col">NSS</th><th scope="col">Salario diario</th><th scope="col">SDI (aprox.)</th><th scope="col">IMSS obrero/mes</th><th scope="col">IMSS patronal (est.)</th></tr></thead>
           <tbody>
             ${filas.map(t => `<tr>
-              <td><strong>${t.nombre}</strong></td>
-              <td style="font-size:.82rem;">${t.rfc || '—'}</td>
-              <td style="font-size:.82rem;">${t.nss || '—'}</td>
+              <td><strong>${escapeHtml(t.nombre)}</strong></td>
+              <td style="font-size:.82rem;">${escapeHtml(t.rfc) || '—'}</td>
+              <td style="font-size:.82rem;">${escapeHtml(t.nss) || '—'}</td>
               <td>${fmt(t.sd)}</td>
               <td>${fmt(t.sdi)}</td>
               <td>${fmt(t.imssOb)}</td>
@@ -426,12 +428,20 @@ async function _repGenSUA() {
   `;
 }
 
+// B-2: neutraliza fórmula-injection — si el valor empieza con =, +, -, o @,
+// Excel/LibreOffice lo interpretan como fórmula al abrir el CSV. Anteponer
+// un apóstrofe fuerza que se lea como texto literal.
+function _csvSafe(val) {
+  const s = String(val ?? '');
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+
 function _exportarSUAcsv() {
   const filas = window._repDataSUA;
   if (!filas?.length) { alert('Primero genera el listado SUA.'); return; }
   const header = 'NSS|RFC|Nombre|Salario diario|SDI|IMSS obrero mensual|IMSS patronal estimado';
   const rows = filas.map(t => [
-    t.nss||'', t.rfc||'', t.nombre||'',
+    _csvSafe(t.nss||''), _csvSafe(t.rfc||''), _csvSafe(t.nombre||''),
     t.sd.toFixed(2),
     (t.sdi ?? t.sd * 1.045).toFixed(2),
     t.imssOb.toFixed(2),

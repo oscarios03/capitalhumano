@@ -62,6 +62,7 @@ async function recalcularSBC(trabajadorId) {
 //  BANDEJA DE MOVIMIENTOS
 // ═══════════════════════════════════════════════════════════════════════════
 async function renderIMSS() {
+  const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   const main = eid('main-view');
   main.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
@@ -70,6 +71,8 @@ async function renderIMSS() {
     .select('*, trabajadores(nombre, nss, curp, rfc)')
     .eq('empresa_id', CTX.empresa.id)
     .order('created_at', { ascending: false });
+
+  if (typeof _navStale === 'function' && _navStale(_gen)) return;
 
   if (error) {
     main.innerHTML = `<div class="alert alert-danger">Error al cargar movimientos: ${error.message}
@@ -104,7 +107,7 @@ async function renderIMSS() {
               const dias = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 86400000);
               return `<tr${dias > 3 ? ' style="background:rgba(231,76,60,.08);"' : ''}>
                 <td><input type="checkbox" class="mov-check" value="${m.id}" /></td>
-                <td>${m.trabajadores?.nombre || '—'}</td>
+                <td>${escapeHtml(m.trabajadores?.nombre) || '—'}</td>
                 <td>${TIPO_LABEL[m.tipo] || m.tipo}${m.tipo==='baja' && m.causa_baja ? `<br><span style="font-size:.72rem;color:var(--text-muted);">${CAUSAS_BAJA_IMSS[m.causa_baja]||m.causa_baja}</span>`:''}</td>
                 <td>${formatDateShort(m.fecha_movimiento)}</td>
                 <td>${m.sbc_nuevo != null ? fmt(m.sbc_nuevo) : '—'}${m.sbc_anterior != null ? ` <span style="font-size:.72rem;color:var(--text-muted);">(antes ${fmt(m.sbc_anterior)})</span>` : ''}</td>

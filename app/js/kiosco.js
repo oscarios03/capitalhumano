@@ -6,6 +6,13 @@
 
 let _K = { tab: 'pin', pin: '', token: null, qrScanner: null, busy: false };
 
+// Escapa HTML antes de interpolar datos no confiables (respuesta del backend) en innerHTML.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   _K.token = params.get('t');
@@ -132,12 +139,12 @@ async function _kioskEnviar(tipo, valor) {
 function _mostrarResultado(ok, data) {
   const cls = ok ? 'ok' : 'err';
   const icono = ok ? (data.tipo === 'entrada' ? '✅' : '👋') : '❌';
-  const titulo = ok ? data.trabajador_nombre : 'No se pudo registrar';
+  const titulo = ok ? escapeHtml(data.trabajador_nombre) : 'No se pudo registrar';
   const detalle = ok
-    ? `${data.tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada — ${data.hora}`
-    : data.error;
+    ? `${data.tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada — ${escapeHtml(data.hora)}`
+    : escapeHtml(data.error);
   const festivoHTML = (ok && data.festivo_desc)
-    ? `<div class="kiosk-result-detail" style="margin-top:6px;color:var(--gold-primary,#c9a227);">📅 Día festivo oficial: ${data.festivo_desc}</div>`
+    ? `<div class="kiosk-result-detail" style="margin-top:6px;color:var(--gold-primary,#c9a227);">📅 Día festivo oficial: ${escapeHtml(data.festivo_desc)}</div>`
     : '';
 
   eid('kiosk-content').innerHTML = `

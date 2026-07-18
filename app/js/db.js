@@ -36,15 +36,29 @@ const db = {
     return data;
   },
 
-  async updateTrabajador(id, datos) {
-    const { error } = await _q().from('trabajadores').update(datos).eq('id', id);
+  // `expectedUpdatedAt` es opcional: si se pasa, el UPDATE sólo aplica si
+  // nadie más modificó el registro desde que se leyó (optimistic locking).
+  // Si el registro cambió mientras tanto, no se sobreescribe en silencio —
+  // se lanza un error claro para que el usuario recargue y reintente.
+  async updateTrabajador(id, datos, expectedUpdatedAt) {
+    let q = _q().from('trabajadores').update(datos).eq('id', id);
+    if (expectedUpdatedAt) q = q.eq('updated_at', expectedUpdatedAt);
+    const { data, error } = await q.select('id');
     if (error) throw error;
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      throw new Error('Alguien más editó a este trabajador mientras tanto. Recarga la página e intenta de nuevo.');
+    }
   },
 
-  async darDeBaja(id, tipoBaja, fechaBaja) {
-    const { error } = await _q().from('trabajadores')
+  async darDeBaja(id, tipoBaja, fechaBaja, expectedUpdatedAt) {
+    let q = _q().from('trabajadores')
       .update({ estado:'baja', tipo_baja: tipoBaja, fecha_baja: fechaBaja }).eq('id', id);
+    if (expectedUpdatedAt) q = q.eq('updated_at', expectedUpdatedAt);
+    const { data, error } = await q.select('id');
     if (error) throw error;
+    if (expectedUpdatedAt && (!data || data.length === 0)) {
+      throw new Error('Alguien más editó a este trabajador mientras tanto (puede que ya se haya dado de baja). Recarga la página e intenta de nuevo.');
+    }
   },
 
   // Asistencia

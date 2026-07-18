@@ -4,6 +4,23 @@
  */
 
 let CTX = null; // { user, perfil, empresa }
+let _agenteFocusReturn = null; // elemento a restaurar el foco al cerrar el modal Agente IA
+
+// M-6: se incrementa en cada navigate(). Las funciones render* async leen su
+// valor al entrar y lo comparan antes de escribir en el DOM al terminar —
+// si cambió mientras tanto (el usuario ya navegó a otra vista), la función
+// aborta su escritura en vez de pintar contenido obsoleto sobre la vista
+// nueva. Ver helper `_navStale()`.
+let _navGen = 0;
+function _navStale(gen) { return gen !== _navGen; }
+
+// Escapa HTML antes de interpolar datos no confiables (BD, archivos importados, etc.)
+// en innerHTML. Usar SIEMPRE que el valor no sea un literal controlado por el código.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
 
 // ═══════════════════════════════════════════════════════
 //  INIT
@@ -42,11 +59,41 @@ function routeFromHash() {
   navigate(parts[0], parts[1]);
 }
 
+function toggleSidebarMobile() {
+  const sidebar = eid('app-sidebar');
+  if (!sidebar) return;
+  if (sidebar.classList.contains('open')) closeSidebarMobile();
+  else openSidebarMobile();
+}
+function openSidebarMobile() {
+  const sidebar = eid('app-sidebar');
+  const backdrop = eid('sidebar-backdrop');
+  const btn = document.querySelector('.topbar-menu-btn');
+  if (sidebar) sidebar.classList.add('open');
+  if (backdrop) backdrop.classList.add('open');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+}
+function closeSidebarMobile() {
+  const sidebar = eid('app-sidebar');
+  const backdrop = eid('sidebar-backdrop');
+  const btn = document.querySelector('.topbar-menu-btn');
+  if (sidebar) sidebar.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
 function navigate(route, param) {
+  _navGen++;
   window.location.hash = param ? `${route}/${param}` : route;
+  closeSidebarMobile();
   // Update sidebar
   document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.route === route);
+    const isActive = el.dataset.route === route;
+    el.classList.toggle('active', isActive);
+    if (el.dataset.route) {
+      if (isActive) el.setAttribute('aria-current', 'page');
+      else el.removeAttribute('aria-current');
+    }
   });
   const main = document.getElementById('main-view');
   main.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando…</div>`;
@@ -99,10 +146,10 @@ async function busquedaGlobal(q) {
         box.innerHTML = `<div class="global-result-item" style="color:var(--text-muted);cursor:default;">Sin resultados</div>`;
       } else {
         box.innerHTML = lista.slice(0, 8).map(t => `
-          <div class="global-result-item" onclick="eid('global-search').value='';eid('global-results').style.display='none';navigate('empleado','${t.id}')">
+          <div class="global-result-item" onclick="eid('global-search').value='';eid('global-results').style.display='none';navigate('empleado','${t.id}')" role="button" tabindex="0">
             <div style="width:32px;height:32px;border-radius:50%;background:var(--gold-dim);display:grid;place-items:center;font-size:.78rem;font-weight:800;color:var(--gold-primary);flex-shrink:0;">${iniciales(t.nombre)}</div>
             <div>
-              <div class="global-result-name">${t.nombre}</div>
+              <div class="global-result-name">${escapeHtml(t.nombre)}</div>
               <div class="global-result-meta">${t.puesto || '—'} · ${badgeEstado(t.estado)}</div>
             </div>
           </div>`).join('');
@@ -120,20 +167,73 @@ document.addEventListener('click', e => {
   }
 });
 
+// Activa con Enter/Espacio cualquier elemento no interactivo nativo que use
+// role="button" (divs/spans con onclick convertidos a controles accesibles
+// por teclado, ej. sidebar, encabezados colapsables, tarjetas clicables).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest?.('[role="button"]');
+  if (!el) return;
+  e.preventDefault();
+  el.click();
+});
+
 // Escape cierra modales y agente IA
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const mc = eid('modal-container');
   if (mc && mc.innerHTML.trim()) { closeModal(); return; }
   const agente = eid('modal-agente');
-  if (agente && agente.style.display !== 'none') closeModalAgente();
+  if (agente && agente.style.display !== 'none') { closeModalAgente(); return; }
+  const sidebar = eid('app-sidebar');
+  if (sidebar && sidebar.classList.contains('open')) closeSidebarMobile();
 });
+
+let _modalFocusReturn = null;
+let _modalKeydownTrap = null;
+
+const _FOCUSABLE_SEL = 'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 function showModal(html) {
   const c = eid('modal-container');
+  _modalFocusReturn = document.activeElement;
   c.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
+
+  const modal = c.querySelector('.modal-overlay > *');
+  if (!modal) return;
+
+  // ARIA: rol de diálogo + título accesible (usa .modal-title si existe)
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  if (!modal.hasAttribute('tabindex')) modal.setAttribute('tabindex', '-1');
+  const title = modal.querySelector('.modal-title');
+  if (title) {
+    if (!title.id) title.id = 'modal-title-' + Date.now();
+    modal.setAttribute('aria-labelledby', title.id);
+  }
+
+  // Foco inicial: primer campo de formulario, si no hay, el primer elemento enfocable, si no, el propio modal
+  const primerCampo = modal.querySelector('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
+  const primerFocable = primerCampo || modal.querySelector(_FOCUSABLE_SEL) || modal;
+  primerFocable.focus({ preventScroll: true });
+
+  // Atrapa Tab dentro del modal mientras está abierto
+  _modalKeydownTrap = e => {
+    if (e.key !== 'Tab') return;
+    const focosables = Array.from(modal.querySelectorAll(_FOCUSABLE_SEL)).filter(el => el.offsetParent !== null);
+    if (!focosables.length) return;
+    const first = focosables[0], last = focosables[focosables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  modal.addEventListener('keydown', _modalKeydownTrap);
 }
-function closeModal() { eid('modal-container').innerHTML = ''; }
+function closeModal() {
+  eid('modal-container').innerHTML = '';
+  _modalKeydownTrap = null;
+  if (_modalFocusReturn && document.body.contains(_modalFocusReturn)) _modalFocusReturn.focus();
+  _modalFocusReturn = null;
+}
 
 function badgeActa(tipo) {
   const map = { amonestacion:'<span class="badge badge-amon">Amonestación</span>', formal:'<span class="badge badge-formal">Formal</span>', rescisoria:'<span class="badge badge-rescis">Rescisoria</span>' };
@@ -193,6 +293,7 @@ function mesActual() {
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════
 async function renderDashboard() {
+  const _gen = _navGen;
   try {
     // Cargar todo en paralelo
     const [kpis, recientes, alertas, nominaPendiente] = await Promise.all([
@@ -213,44 +314,45 @@ async function renderDashboard() {
 
     const urgentes = alertas.filter(a => a.prioridad === 'critica' || a.prioridad === 'alta').length;
 
+    if (_navStale(_gen)) return;
     const main = eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
         <div>
           <div class="view-title">Panel de Control</div>
-          <div class="view-subtitle">Resumen de ${CTX.empresa.nombre}</div>
+          <div class="view-subtitle">Resumen de ${escapeHtml(CTX.empresa.nombre)}</div>
         </div>
         <button class="btn-secondary btn-sm" onclick="renderDashboard()">Actualizar alertas</button>
       </div>
 
       ${nominaPendiente ? `
       <div class="alert alert-warn animate-in" onclick="navigate('nomina')"
-           style="cursor:pointer;margin-bottom:8px;">
+           role="button" tabindex="0" style="cursor:pointer;margin-bottom:8px;">
         <svg class="ic"><use href="#i-wallet"></use></svg>
-        <span>Nómina pendiente: <strong>${nominaPendiente.nombre}</strong> — vence el <strong>${formatDateShort(nominaPendiente.fecha_fin)}</strong>. Haz clic para ir a Nómina →</span>
+        <span>Nómina pendiente: <strong>${escapeHtml(nominaPendiente.nombre)}</strong> — vence el <strong>${formatDateShort(nominaPendiente.fecha_fin)}</strong>. Haz clic para ir a Nómina →</span>
       </div>` : ''}
 
       <!-- KPIs operativos -->
       <div class="kpi-grid animate-in">
-        <div class="kpi-card kpi-clickable" onclick="navigate('empleados')" title="Ver trabajadores">
+        <div class="kpi-card kpi-clickable" onclick="navigate('empleados')" role="button" tabindex="0" title="Ver trabajadores">
           <div class="kpi-icon"><svg class="ic"><use href="#i-user"></use></svg></div>
           <div class="kpi-num">${kpis.empleadosActivos}</div>
           <div class="kpi-label">Empleados activos</div>
           <div class="kpi-hint">Ver todos los trabajadores →</div>
         </div>
-        <div class="kpi-card kpi-clickable" onclick="navigate('asistencia')" title="Ver asistencia">
+        <div class="kpi-card kpi-clickable" onclick="navigate('asistencia')" role="button" tabindex="0" title="Ver asistencia">
           <div class="kpi-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div>
           <div class="kpi-num">${kpis.faltasMes}</div>
           <div class="kpi-label">Faltas este mes</div>
           <div class="kpi-hint">Ver registro de asistencia →</div>
         </div>
-        <div class="kpi-card kpi-clickable" onclick="navigate('disciplinario')" title="Ver actas">
+        <div class="kpi-card kpi-clickable" onclick="navigate('disciplinario')" role="button" tabindex="0" title="Ver actas">
           <div class="kpi-icon"><svg class="ic"><use href="#i-alert"></use></svg></div>
           <div class="kpi-num">${kpis.actasMes}</div>
           <div class="kpi-label">Actas este mes</div>
           <div class="kpi-hint">Ver actas administrativas →</div>
         </div>
-        <div class="kpi-card kpi-clickable" onclick="navigate('bajas')" title="Ver bajas">
+        <div class="kpi-card kpi-clickable" onclick="navigate('bajas')" role="button" tabindex="0" title="Ver bajas">
           <div class="kpi-icon"><svg class="ic"><use href="#i-exit"></use></svg></div>
           <div class="kpi-num">${kpis.bajasMes}</div>
           <div class="kpi-label">Bajas este mes</div>
@@ -298,7 +400,7 @@ async function renderDashboard() {
               <thead><tr><th>Trabajador</th><th>Tipo</th><th>Fecha</th><th>Justificada</th></tr></thead>
               <tbody>${recientes.map(r => `
                 <tr>
-                  <td><strong>${r.trabajadores?.nombre || '—'}</strong></td>
+                  <td><strong>${escapeHtml(r.trabajadores?.nombre) || '—'}</strong></td>
                   <td><span class="badge ${r.tipo==='falta'?'badge-falta':'badge-retardo'}">${r.tipo==='falta'?'Falta':'Retardo'}</span></td>
                   <td>${formatDateShort(r.fecha)}</td>
                   <td>${r.justificada ? '<span style="color:var(--green-ok)">✓ Sí</span>' : '<span style="color:var(--red-warn)">✗ No</span>'}</td>
@@ -309,12 +411,12 @@ async function renderDashboard() {
 
       <!-- Accesos rápidos -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;" class="animate-in">
-        <div class="card" style="cursor:pointer;" onclick="navigate('empleados')">
+        <div class="card" style="cursor:pointer;" onclick="navigate('empleados')" role="button" tabindex="0">
           <div style="font-size:2rem;margin-bottom:10px;">👤</div>
           <div style="font-weight:700;">Registrar nuevo trabajador</div>
           <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;">Alta + contrato automático</div>
         </div>
-        <div class="card" style="cursor:pointer;" onclick="navigate('disciplinario')">
+        <div class="card" style="cursor:pointer;" onclick="navigate('disciplinario')" role="button" tabindex="0">
           <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
           <div style="font-weight:700;">Levantar acta administrativa</div>
           <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;">Amonestación, formal o rescisoria</div>
@@ -570,7 +672,7 @@ function renderManual() {
         </div>
         ${secciones.map(s=>`
           <div onclick="_manualIrA('${s.id}')"
-               id="toc-${s.id}"
+               id="toc-${s.id}" role="button" tabindex="0"
                style="padding:9px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;
                       border-bottom:1px solid var(--border);font-size:.83rem;
                       transition:background .15s;"
@@ -681,7 +783,7 @@ async function showModalImportacion() {
             La plantilla incluye <strong>6 secciones</strong>: datos personales, laborales, jornada, nómina, historial de prestaciones y contactos.
             La hoja <em>Instrucciones</em> explica cada columna con los valores válidos.
           </p>
-          ${_sucursalesImport.length ? `<p style="font-size:.78rem;color:var(--text-muted);margin:6px 0 12px;">Sucursales disponibles: <strong>Matriz</strong>${_sucursalesImport.map(s=>', '+s.nombre).join('')}</p>` : '<p style="margin-bottom:12px;"></p>'}
+          ${_sucursalesImport.length ? `<p style="font-size:.78rem;color:var(--text-muted);margin:6px 0 12px;">Sucursales disponibles: <strong>Matriz</strong>${_sucursalesImport.map(s=>', '+escapeHtml(s.nombre)).join('')}</p>` : '<p style="margin-bottom:12px;"></p>'}
           <button class="btn-secondary btn-sm" onclick="_descargarPlantillaImport()">⬇ Descargar plantilla completa.xlsx</button>
         </div>
 
@@ -845,7 +947,7 @@ function _importLeerArchivo(file) {
       _importMostrarPreview(rows, file.name);
     } catch(err) {
       const el = document.getElementById('import-preview');
-      if (el) el.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>No se pudo leer el archivo: ${err.message}</span></div>`;
+      if (el) el.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>No se pudo leer el archivo: ${escapeHtml(err.message)}</span></div>`;
     }
   };
   reader.readAsArrayBuffer(file);
@@ -892,7 +994,7 @@ function _importMostrarPreview(rows, fileName) {
     <div style="border-top:1px solid var(--border);padding-top:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
         <div>
-          <strong>${norm.length} trabajador${norm.length!==1?'es':''}</strong> en <em>${fileName}</em>
+          <strong>${norm.length} trabajador${norm.length!==1?'es':''}</strong> en <em>${escapeHtml(fileName)}</em>
           ${errores.length
             ? `<span style="margin-left:8px;color:var(--red-warn);font-size:.82rem;">⚠️ ${errores.length} error${errores.length!==1?'es':''}</span>`
             : '<span style="margin-left:8px;color:var(--green-ok);font-size:.82rem;">✅ Sin errores</span>'}
@@ -929,12 +1031,12 @@ function _importMostrarPreview(rows, fileName) {
             ${norm.map((r,i) => `
               <tr>
                 <td style="color:var(--text-muted);">${i+1}</td>
-                <td><strong>${r.nombre||'—'}</strong></td>
-                <td>${r.puesto||'—'}</td>
-                <td style="font-size:.72rem;">${r.sucursal||'Matriz'}</td>
-                <td>${r.fecha_ingreso||'—'}</td>
+                <td><strong>${escapeHtml(r.nombre||'—')}</strong></td>
+                <td>${escapeHtml(r.puesto||'—')}</td>
+                <td style="font-size:.72rem;">${escapeHtml(r.sucursal||'Matriz')}</td>
+                <td>${escapeHtml(r.fecha_ingreso||'—')}</td>
                 <td>$${parseFloat(r.salario_mensual||0).toLocaleString('es-MX')}</td>
-                <td style="font-size:.72rem;">${r.tipo_contrato||'indeterminado'}</td>
+                <td style="font-size:.72rem;">${escapeHtml(r.tipo_contrato||'indeterminado')}</td>
                 <td style="font-size:.72rem;color:${String(r.infonavit_activo||'').toUpperCase()==='SI'?'var(--green-ok)':'var(--text-muted)'};">${String(r.infonavit_activo||'').toUpperCase()==='SI'?'✓ Sí':'—'}</td>
                 <td style="font-size:.72rem;">${parseFloat(r.vacaciones_pendientes_dias||0)||'—'}</td>
               </tr>
@@ -1137,8 +1239,8 @@ async function switchEmpresa() {
         ${empresas.map(e => `
           <button onclick="_seleccionarEmpresa('${e.id}','${e.nombre.replace(/'/g,"\\'")}','${e.rfc||''}')"
             style="background:${CTX.empresa.id===e.id?'rgba(245,166,35,.1)':'transparent'};border:1.5px solid ${CTX.empresa.id===e.id?'var(--gold-primary)':'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;text-align:left;cursor:pointer;color:var(--text-primary);">
-            <div style="font-weight:700;">${e.nombre}</div>
-            ${e.rfc ? `<div style="font-size:.78rem;color:var(--text-muted);">${e.rfc}</div>` : ''}
+            <div style="font-weight:700;">${escapeHtml(e.nombre)}</div>
+            ${e.rfc ? `<div style="font-size:.78rem;color:var(--text-muted);">${escapeHtml(e.rfc)}</div>` : ''}
             ${CTX.empresa.id===e.id ? '<div style="font-size:.72rem;color:var(--gold-primary);font-weight:700;margin-top:4px;">● Activa</div>' : ''}
           </button>
         `).join('')}
@@ -1149,6 +1251,14 @@ async function switchEmpresa() {
 
 async function _seleccionarEmpresa(empresaId, nombre, rfc) {
   if (CTX.empresa.id === empresaId) { closeModal(); return; }
+  // set_empresa_activa() valida en el servidor que el usuario realmente
+  // pertenece a usuario_empresas antes de mover perfiles.empresa_id, que es
+  // lo que determina el RLS de toda la app — no basta con cambiar CTX local.
+  const { error } = await window.supabase.rpc('set_empresa_activa', { p_empresa_id: empresaId });
+  if (error) {
+    alert('No se pudo cambiar de empresa: ' + error.message);
+    return;
+  }
   CTX.empresa = { id: empresaId, nombre, rfc };
   document.getElementById('topbar-empresa').textContent = nombre;
   closeModal();
@@ -1159,19 +1269,45 @@ async function _seleccionarEmpresa(empresaId, nombre, rfc) {
 async function abrirAgenteIA(trabajadorId, tipoSugerido = null) {
   const modal = document.getElementById('modal-agente');
   if (!modal) return;
+  _agenteFocusReturn = document.activeElement;
   modal.style.display = 'flex';
+  modal.focus({ preventScroll: true });
   await showModalAgente(trabajadorId, tipoSugerido);
 }
 
-function showError(e) {
+// B-1: mapea errores crudos de Postgres/Supabase/red a mensajes genéricos en
+// español — el detalle técnico completo siempre queda en consola para
+// depuración. Los errores que la propia app ya redacta a mano (mensajes de
+// validación, ya en español y sin jerga SQL) se muestran tal cual, sin pasar
+// por ningún patrón.
+const _ERROR_PATTERNS = [
+  [/duplicate key value violates unique constraint/i, 'Ya existe un registro con esos datos — verifica que no esté duplicado.'],
+  [/violates foreign key constraint/i, 'No se puede completar la operación porque hay datos relacionados que lo impiden.'],
+  [/violates .*check constraint/i, 'Uno de los valores capturados no es válido.'],
+  [/violates row-level security policy/i, 'No tienes permiso para realizar esta acción.'],
+  [/permission denied/i, 'No tienes permiso para realizar esta acción.'],
+  [/JWT expired|invalid JWT|refresh_token/i, 'Tu sesión expiró — vuelve a iniciar sesión.'],
+  [/Failed to fetch|NetworkError|ERR_INTERNET|ERR_CONNECTION/i, 'No se pudo conectar con el servidor. Verifica tu conexión a internet e intenta de nuevo.'],
+  [/relation .* does not exist|column .* does not exist|schema cache/i, 'La aplicación necesita una actualización de base de datos pendiente. Contacta a soporte.'],
+];
+function friendlyError(e) {
   console.error(e);
+  const raw = e?.message || String(e);
+  for (const [re, friendly] of _ERROR_PATTERNS) {
+    if (re.test(raw)) return friendly;
+  }
+  return raw;
+}
+
+function showError(e) {
   // Errores de los triggers de plan (PLAN_SOLO_LECTURA, PLAN_LIMITE_*, PLAN_FEATURE_*)
   if (typeof esErrorDePlan === 'function' && esErrorDePlan(e)) {
+    console.error(e);
     showToast('🔒 ' + mensajeErrorPlan(e), 'warn', 6000);
     showModalPlanes('error_plan');
     return;
   }
-  showToast('❌ ' + (e?.message || String(e)), 'error');
+  showToast('❌ ' + friendlyError(e), 'error');
 }
 
 // ─── SISTEMA DE TOASTS (no-bloqueante) ────────────────────────────────────────
@@ -1186,6 +1322,8 @@ function showToast(msg, type = 'info', duration = 4000) {
   if (!container) {
     container = document.createElement('div');
     container.id = '_toast-container';
+    container.setAttribute('role', 'status');
+    container.setAttribute('aria-live', 'polite');
     container.style.cssText =
       'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:360px;';
     document.body.appendChild(container);
@@ -1207,8 +1345,7 @@ function showToast(msg, type = 'info', duration = 4000) {
     `display:flex;align-items:flex-start;gap:10px;cursor:pointer;` +
     `animation:_toastIn .25s ease;max-width:360px;word-break:break-word;`;
 
-  // Sanitizar msg: si viene con HTML (emoji strings), lo usamos directamente
-  const msgStr = String(msg || '').replace(/<script[^>]*>.*?<\/script>/gi, '');
+  const msgStr = escapeHtml(msg);
   toast.innerHTML =
     `<span style="flex-shrink:0;font-size:1rem;">${c.icon}</span>` +
     `<span style="flex:1;">${msgStr}</span>` +
