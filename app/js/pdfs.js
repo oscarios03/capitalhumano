@@ -1363,3 +1363,111 @@ function generateActaPDF(acta, empresa, trab, sucursal = null) {
   doc.text(`Folio ${folio} | Capital Humano MX | Referencial — no sustituye asesoria legal`, pw/2, ph-10, { align:'center' });
   doc.save(`acta-${acta.tipo}.pdf`);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  CONSTANCIA DE VACACIONES (Art. 81 LFT)
+//  Entrada: generateConstanciaVacacionesPDF(empresa, trab, datos, sucursal)
+//  datos = { solicitud, antiguedadAnios, diasCorresponden, diasGozados,
+//            saldo, vigenciaIni, vigenciaFin } — ver vacaciones.js
+// ═══════════════════════════════════════════════════════════════════════════
+function generateConstanciaVacacionesPDF(empresa, trab, datos, sucursal = null) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  const ml = 25, mr = 25;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const tw = pw - ml - mr;
+  const s  = datos.solicitud;
+
+  let y = pdfHeader(doc, 'CONSTANCIA DE VACACIONES', 'Articulo 81 de la Ley Federal del Trabajo', ml, mr);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(80,80,80);
+  doc.text(`${np(empresa.ciudad)}, a ${npDate(new Date().toISOString())}`, pw-mr, y, { align:'right' });
+  y += 10;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text('TRABAJADOR:', ml, y); y += 5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(20,20,20);
+  doc.text(np(trab.nombre), ml, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(70,70,70);
+  [
+    trab.puesto && `Puesto: ${np(trab.puesto)}`,
+    `Fecha de ingreso: ${npDate(trab.fecha_ingreso + 'T00:00:00')}`,
+  ].filter(Boolean).forEach(l => { doc.text(l, ml, y); y += 4.5; });
+  y += 4; y = pdfLine(doc, y, ml, mr) + 6;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(50,50,50);
+  doc.text('PERIODO VACACIONAL', ml, y); y += 6;
+  doc.autoTable({
+    startY: y, margin:{ left:ml, right:mr },
+    body: [
+      ['Antiguedad', `${datos.antiguedadAnios}° año de servicio`],
+      ['Vigencia de este periodo', `${npDate(datos.vigenciaIni + 'T00:00:00')} al ${npDate(datos.vigenciaFin + 'T00:00:00')}`],
+      ['Dias que corresponden (Art. 76 LFT)', `${datos.diasCorresponden} dias`],
+      ['Dias gozados en este periodo', `${datos.diasGozados} dias`],
+      ['Saldo pendiente', `${datos.saldo} dias`],
+      ['Fechas de este disfrute', `${npDate(s.fecha_inicio + 'T00:00:00')} al ${npDate(s.fecha_fin + 'T00:00:00')} (${s.dias} dias habiles)`],
+      parseFloat(s.prima_vacacional || 0) > 0 && ['Prima vacacional (Art. 80 LFT, min. 25%)', fmt(s.prima_vacacional)],
+    ].filter(Boolean).map(row => row.map(np)),
+    styles:{ fontSize:8.5, cellPadding:3, textColor:[40,40,40] },
+    alternateRowStyles:{ fillColor:[248,248,252] },
+    columnStyles:{ 0:{ fontStyle:'bold', cellWidth:75 } },
+    theme:'grid'
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30,30,30);
+  const texto = `Por medio de la presente, ${np(empresa.nombre)} hace constar al C. ${np(trab.nombre)} su antigüedad y, de acuerdo con ella, el periodo de vacaciones que le corresponde conforme al articulo 76 de la Ley Federal del Trabajo, asi como la fecha en que debera disfrutarlo.`;
+  const tl = doc.splitTextToSize(texto, tw); doc.text(tl, ml, y); y += tl.length * 5.2 + 14;
+
+  if (y + 60 > ph - 20) { doc.addPage(); y = 25; }
+  y = pdfSignatures(doc, `${np(empresa.nombre)}${empresa.representante ? '\n' + np(empresa.representante) : ''}`, `${np(trab.nombre)}\n${np(trab.puesto||'')}`, y, ml, mr);
+
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
+  doc.save(`constancia-vacaciones-${np(trab.nombre).replace(/\s+/g,'-').toLowerCase()}.pdf`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NÓMINA EN EFECTIVO (Fase 6.4 — pago mixto)
+//  Entrada: generateNominaEfectivoPDF(empresa, periodo, filas)
+//  filas = [{ nombre, puesto, monto }] — solo quien recibe efectivo (total o
+//  la parte mixta); ver imprimirNominaEfectivo() en nomina.js.
+// ═══════════════════════════════════════════════════════════════════════════
+function generateNominaEfectivoPDF(empresa, periodo, filas) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  const ml = 20, mr = 20;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  let y = pdfHeader(doc, 'NOMINA EN EFECTIVO', np(empresa.nombre), ml, mr);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(80,80,80);
+  doc.text(`Periodo: ${np(periodo?.nombre || '')}  (${npDate((periodo?.fecha_inicio||'')+'T00:00:00')} al ${npDate((periodo?.fecha_fin||'')+'T00:00:00')})`, ml, y);
+  y += 10;
+
+  const total = filas.reduce((s, f) => s + f.monto, 0);
+  doc.autoTable({
+    startY: y, margin:{ left:ml, right:mr },
+    head: [['Trabajador', 'Puesto', 'Monto en efectivo', 'Firma de recibido']],
+    body: filas.map(f => [np(f.nombre), np(f.puesto), fmt(f.monto), '']),
+    foot: [['', '', 'TOTAL', fmt(total)]],
+    styles:{ fontSize:9, cellPadding:4, textColor:[30,30,30] },
+    headStyles:{ fillColor:[15,20,40], textColor:255, fontStyle:'bold' },
+    footStyles:{ fillColor:[240,240,244], textColor:[20,20,20], fontStyle:'bold' },
+    alternateRowStyles:{ fillColor:[248,248,252] },
+    columnStyles:{ 2:{ cellWidth:32, halign:'right' }, 3:{ cellWidth:50, minCellHeight:14 } },
+    theme:'grid'
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  const nota = doc.splitTextToSize('Cada trabajador firma de conformidad haber recibido el monto en efectivo señalado, como comprobante para el patron.', pw - ml - mr);
+  doc.text(nota, ml, y);
+
+  doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Capital Humano MX', pw/2, ph-10, { align:'center' });
+  doc.save(`nomina-efectivo-${(periodo?.nombre||'periodo').replace(/\s+/g,'-').toLowerCase()}.pdf`);
+}

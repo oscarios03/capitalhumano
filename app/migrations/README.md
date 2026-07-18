@@ -18,6 +18,7 @@ correr una migración dos veces no rompe nada.
 | 01 | `01_migration_sucursales.sql` | Redefine `sucursales` (centros de trabajo) y **supersede** `get_or_create_matriz()` |
 | 02 | `02_migration_trabajadores_v2.sql` | Campos adicionales en `trabajadores` (INFONAVIT/pensión planos, etc.) |
 | 11 | `11_migration_trabajadores_v3.sql` | **37 columnas** en `trabajadores` (personales, jornada, contrato, beneficiarios, contacto de emergencia). **Obligatoria en instalaciones nuevas**: sin ella el alta/edición de trabajadores falla |
+| 34 | `34_migration_trabajadores_v4.sql` | `fecha_nacimiento` (sustituye a `edad` como fuente de verdad), `sexo`, `telefono` (WhatsApp), `metodo_pago`/`monto_efectivo`; backfill desde la CURP; amplía `tipo_documento_enum` con `resguardo` y los tipos del semáforo de expediente |
 
 ### ⏱️ Asistencia y checador
 | # | Archivo | Qué hace |
@@ -37,6 +38,8 @@ correr una migración dos veces no rompe nada.
 | 18 | `18_migration_prestaciones_fiscal.sql` | `prestaciones_trabajador` con desglose exento/gravado (previsión social) |
 | 19 | `19_migration_sbc_movimientos.sql` | `movimientos_imss`, `trabajadores.sbc` y factor de integración (Art. 27 LSS) |
 | 22 | `22_migration_nomina_programacion.sql` | `periodos_nomina.fecha_pago`, días de pago quincenal/mensual en `empresas`, función `generar_alertas_nomina()` |
+| 32 | `32_migration_fiscal_patronal.sql` | **Costo patronal**: `empresas.prima_riesgo_pct` / `entidad_federativa` / `isn_pct`; `recibos_nomina.imss_patronal` / `infonavit_patronal` / `isn` / `subsidio_empleo` / `ajuste_anual_isr`; subsidio al empleo 2026 en `config_valores` |
+| 35 | `35_migration_nomina_extras.sql` | **Fase 6 (parcial — layouts bancarios pendientes)**: amplía el CHECK de `descuentos_trabajador.tipo` con `prestamo_caja`; `recibos_nomina.metodo_pago` / `monto_efectivo` (snapshot del pago mixto configurado en `trabajadores`, migración 34) |
 
 ### 🔔 Alertas y notificaciones
 | # | Archivo | Qué hace |
@@ -52,6 +55,11 @@ correr una migración dos veces no rompe nada.
 | 09 | `09_migration_historial_salarios.sql` | `historial_salarios` + índices + RLS |
 | 12 | `12_migration_expediente_digital.sql` | `documentos_trabajador` (expediente digital) |
 | 20 | `20_migration_resguardos.sql` | `resguardos` (equipo/herramienta asignada) |
+
+### 🔐 Roles y permisos
+| # | Archivo | Qué hace |
+|---|---------|----------|
+| 33 | `33_migration_roles.sql` | **Roles** `admin`/`gerente`/`capturista`/`consulta`: `perfiles.sucursal_id`, CHECK de roles, helpers (`get_mi_rol`, `mi_empresa_id`, `puede_gestionar`, `es_admin`), `admin_set_rol()`, `listar_usuarios_empresa()`, tabla `invitaciones`, **supersede** `handle_new_user()` y `zz_perfiles_bloquear_cambio_empresa()`. Sustituye las políticas `FOR ALL` por SELECT/INSERT/UPDATE/DELETE con gate por rol. Cierra dos huecos: auto-vinculación a cualquier empresa vía `usuario_empresas` y la imposibilidad de que un admin viera a sus usuarios |
 
 ### 💳 Planes y suscripciones
 | # | Archivo | Qué hace |
@@ -72,8 +80,16 @@ funciones; para tablas, gana la primera `CREATE` y las posteriores agregan colum
 | función `get_or_create_matriz()` | 00, 01 | **01** |
 | función `registrar_checada()` | 13, 15 | **15** |
 | función `generar_alertas()` | 07, 16 | **16** |
-| función `handle_new_user()` | 00, 21 | **21** |
+| función `handle_new_user()` | 00, 21, **33** | **33** ⚠️ |
 | función `setup_empresa()` | 21 | **21** |
+| función `zz_perfiles_bloquear_cambio_empresa()` | auditoría, **33** | **33** |
+
+> ⚠️ **`handle_new_user()` — cuidado con la 21.** La 33 la supersede para
+> consumir las invitaciones, e incluye el alta de suscripción de prueba de la
+> 21 condicionada a que la tabla `suscripciones` exista (para funcionar con o
+> sin la 21 aplicada). **Si algún día aplicas la 21 por separado, vuelve a
+> correr la 33 después**, o los usuarios invitados dejarán de entrar a la
+> empresa que los invitó.
 | tabla `sucursales` | 00, 01 | **01** (00 es la versión mínima) |
 | tabla `periodos_nomina` | 03, 04 | **04** (03 crea la versión mínima; 04 completa columnas por `ALTER`) |
 
@@ -86,3 +102,17 @@ funciones; para tablas, gana la primera `CREATE` y las posteriores agregan colum
   verdad es esta carpeta.
 - Edge Functions relacionadas: `send-emails/` (migración 10), `checador-kiosco` y
   `checador-webhook` (migración 13). Configurar sus variables de entorno antes de usarlas.
+
+## 📅 Valores que caducan cada año
+
+Estos datos tienen fecha de caducidad legal y hay que actualizarlos a mano. Ver
+`docs/casos-prueba-fiscal.md` para revalidar los cálculos después de cada cambio.
+
+| Valor | Dónde vive | Cuándo cambia |
+|-------|-----------|---------------|
+| UMA diaria | `config_valores` (migración 15) | INEGI la publica ~10 de enero; vigente el 1 de febrero |
+| Salario mínimo | `config_valores` (migración 15) | CONASAMI, vigente el 1 de enero |
+| Subsidio al empleo (% de UMA y límite) | `config_valores` (migración 32) | Decreto en el DOF, cada diciembre |
+| Tarifas ISR mensual y anual | `ISR_MENSUAL_2026` / `ISR_ANUAL_2026` en `app/js/nomina.js` | Anexo 8 de la RMF, cada diciembre. Solo cambian si la inflación acumulada rebasa 10% (Art. 152 LISR) — para 2026 sí cambiaron (13.21%) |
+| Tabla CEAV patronal | `CEAV_PATRONAL_2026` en `app/js/calculo.js` | Sube cada enero hasta 2030 (reforma de pensiones, DOF 16/12/2020) |
+| Prima de riesgo de la empresa | `empresas.prima_riesgo_pct` (la captura el usuario) | Declaración anual ante el IMSS de febrero |
