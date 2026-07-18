@@ -21,3 +21,14 @@ const FACTOR_INTEG_MIN    = 1.0452;   // Factor de integración mínimo LFT
 // ─── Anthropic Claude API ──────────────────────────────────────────────────
 // La API key vive en el servidor: supabase/functions/agente-ia/index.ts
 // Configúrala con: supabase secrets set ANTHROPIC_API_KEY=sk-ant-tukey
+
+// ─── Tracking de marketing (Google Ads + Meta Pixel) ──────────────────────
+// Reemplaza los placeholders con los IDs reales antes de activar campañas.
+// TRACKING_ENABLED en false desactiva toda la carga de scripts de tracking.
+const TRACKING_CONFIG = {
+  GOOGLE_ADS_ID:              'AW-XXXXXXXXXX',                  // ID de cuenta de Google Ads
+  GOOGLE_CONVERSION_REGISTRO: 'AW-XXXXXXXXXX/etiqueta-registro', // Etiqueta de conversión: registro
+  GOOGLE_CONVERSION_PAGO:     'AW-XXXXXXXXXX/etiqueta-pago',     // Etiqueta de conversión: pago
+  META_PIXEL_ID:              'XXXXXXXXXXXXXXX',                 // ID del Pixel de Meta
+  TRACKING_ENABLED:           true,
+};
