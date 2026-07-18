@@ -20,16 +20,20 @@ const TIPO_ASIST = {
   festivo:      { label:'Día festivo oficial',  icono:'🎉', cls:'asist-festivo' },
 };
 
-// Días festivos oficiales México 2026
-const FESTIVOS_2026 = [
+// Respaldo de festivos oficiales SOLO para 2026, por si la migración 15 no
+// está aplicada. La fuente de verdad es la tabla `dias_festivos` vía
+// esFestivo() (festivos.js), que sirve para cualquier año: con este arreglo
+// como única fuente, el módulo dejaría de marcar festivos a partir de 2027.
+const FESTIVOS_2026_FALLBACK = [
   '2026-01-01','2026-02-02','2026-03-16',
   '2026-05-01','2026-09-16','2026-11-16','2026-12-25',
 ];
 
 // ¿Es festivo oficial O festivo particular de la empresa?
 function _esFestivoDia(iso) {
-  return FESTIVOS_2026.includes(iso) ||
-    (typeof esFestivoEmpresa === 'function' && esFestivoEmpresa(iso));
+  if (typeof esFestivo === 'function' && esFestivo(iso)) return true;
+  if (typeof esFestivoEmpresa === 'function' && esFestivoEmpresa(iso)) return true;
+  return FESTIVOS_2026_FALLBACK.includes(iso);
 }
 
 // Info del festivo de empresa para esa fecha (o null)
@@ -67,6 +71,11 @@ async function renderAsistenciaModulo() {
         .eq('empresa_id', CTX.empresa.id).eq('estado','activo').order('nombre'),
       window.supabase.from('sucursales').select('id,nombre')
         .eq('empresa_id', CTX.empresa.id).eq('activa', true).order('nombre'),
+      // Festivos: al entrar directo por URL (#asistencia) el dashboard no
+      // corrió, así que el caché podría estar vacío y no se marcarían.
+      typeof cargarFestivos === 'function'
+        ? cargarFestivos().catch(e => console.warn('dias_festivos:', e.message))
+        : Promise.resolve(),
     ]);
     _A.trabajadores = trabs.data || [];
     _A.sucursales   = sucs.data  || [];
@@ -98,9 +107,10 @@ async function _renderShell() {
     </div>
 
     <div class="tabs animate-in" style="margin-bottom:16px;">
-      <button class="tab-btn ${_A.tab===1?'active':''}" onclick="switchAsistTab(1)">📋 Registro Diario</button>
-      <button class="tab-btn ${_A.tab===2?'active':''}" onclick="switchAsistTab(2)">⚠️ Incidencias</button>
-      <button class="tab-btn ${_A.tab===3?'active':''}" onclick="switchAsistTab(3)">📊 Historial</button>
+      <button class="tab-btn ${_A.tab===1?'active':''}" data-asist-tab="1" onclick="switchAsistTab(1)">📋 Registro Diario</button>
+      <button class="tab-btn ${_A.tab===4?'active':''}" data-asist-tab="4" onclick="switchAsistTab(4)">📅 Vista del mes</button>
+      <button class="tab-btn ${_A.tab===2?'active':''}" data-asist-tab="2" onclick="switchAsistTab(2)">⚠️ Incidencias</button>
+      <button class="tab-btn ${_A.tab===3?'active':''}" data-asist-tab="3" onclick="switchAsistTab(3)">📊 Historial</button>
     </div>
 
     <div id="asist-content" class="animate-in"></div>
@@ -109,7 +119,10 @@ async function _renderShell() {
 
 async function switchAsistTab(tab) {
   _A.tab = tab;
-  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i+1===tab));
+  // Por data-asist-tab y no por índice: el número de pestaña ya no coincide
+  // con su posición desde que "Vista del mes" se insertó en segundo lugar.
+  document.querySelectorAll('.tab-btn[data-asist-tab]').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.asistTab) === tab));
   await _cargarYRenderTab();
 }
 
@@ -119,6 +132,7 @@ async function _cargarYRenderTab() {
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
   if (_A.tab === 1) await _tab1();
   else if (_A.tab === 2) await _tab2();
+  else if (_A.tab === 4) await _tabMatriz();
   else await _tab3();
 }
 
@@ -193,7 +207,10 @@ async function _tab1() {
         </td>
         <td id="td-hora-${t.id}" ${!showHora?'style="display:none"':''}>
           <input type="time" class="form-input form-input-sm" id="hora-${t.id}"
-            value="${reg?.hora_entrada||''}" placeholder="08:00" />
+            value="${(reg?.hora_entrada||'').slice(0,5)}" placeholder="08:00"
+            onchange="_onHoraEntradaCapturada('${t.id}')"
+            title="${t.hora_inicio ? `Entrada de ${t.nombre.split(' ')[0]}: ${String(t.hora_inicio).slice(0,5)} (tolerancia ${_toleranciaMin()} min)` : 'Este trabajador no tiene horario capturado: el retardo no se detecta solo'}" />
+          <div id="hora-aviso-${t.id}" style="display:none;font-size:.68rem;margin-top:2px;"></div>
         </td>
         <td id="td-min-${t.id}" ${!showMin?'style="display:none"':''}>
           <input type="number" class="form-input form-input-sm" id="min-${t.id}"
@@ -265,10 +282,244 @@ async function _tab1() {
   `;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  TAB 4 — VISTA DEL MES (matriz trabajadores × días)
+// ═══════════════════════════════════════════════════════════════════════════
+// El registro diario sirve para capturar, pero no deja ver patrones: quién
+// falta siempre los lunes, quién viene acumulando retardos. Esto es una sola
+// consulta del mes y todo el mes de un vistazo.
+
+async function _tabMatriz() {
+  const el = document.getElementById('asist-content');
+  const base = new Date(_A.fecha + 'T00:00:00');
+  const anio = base.getFullYear(), mes = base.getMonth();
+  const primero = `${anio}-${String(mes+1).padStart(2,'0')}-01`;
+  const diasMes = new Date(anio, mes + 1, 0).getDate();
+  const ultimo  = `${anio}-${String(mes+1).padStart(2,'0')}-${String(diasMes).padStart(2,'0')}`;
+
+  let trabs = _A.trabajadores;
+  if (_A.sucursalId) trabs = trabs.filter(t => t.sucursal_id === _A.sucursalId);
+
+  const { data: registros, error } = await window.supabase
+    .from('asistencia')
+    .select('trabajador_id, fecha, tipo, minutos_retardo, horas_extra')
+    .eq('empresa_id', CTX.empresa.id)
+    .gte('fecha', primero).lte('fecha', ultimo);
+
+  if (error) { el.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${error.message}</span></div>`; return; }
+
+  // Indexar: { trabId: { 'YYYY-MM-DD': registro } }
+  const idx = {};
+  for (const r of (registros || [])) {
+    (idx[r.trabajador_id] = idx[r.trabajador_id] || {})[r.fecha] = r;
+  }
+
+  const iso  = d => `${anio}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const DOW  = ['D','L','M','M','J','V','S'];
+  const dias = Array.from({ length: diasMes }, (_, i) => {
+    const d = i + 1, f = iso(d);
+    const dow = new Date(f + 'T00:00:00').getDay();
+    return { d, f, dow, festivo: _esFestivoDia(f), finde: dow === 0 || dow === 6 };
+  });
+
+  const hoyISO = new Date().toISOString().split('T')[0];
+
+  const cuerpo = trabs.map(t => {
+    const reg = idx[t.id] || {};
+    const celdas = dias.map(dia => {
+      const r   = reg[dia.f];
+      const cfg = r ? TIPO_ASIST[r.tipo] : null;
+      const bg  = dia.festivo ? 'rgba(245,166,35,.10)' : dia.finde ? 'rgba(255,255,255,.03)' : 'transparent';
+      const titulo = r
+        ? `${t.nombre} — ${formatDateShort(dia.f)}: ${cfg?.label || r.tipo}` +
+          (r.minutos_retardo ? ` (${r.minutos_retardo} min)` : '') +
+          (r.horas_extra ? ` · ${r.horas_extra} h extra` : '')
+        : `${t.nombre} — ${formatDateShort(dia.f)}: sin registro${dia.festivo ? ' (festivo)' : dia.finde ? ' (fin de semana)' : ''}`;
+      return `<td class="mtz-celda" style="background:${bg};${dia.f === hoyISO ? 'outline:1.5px solid var(--gold-primary);outline-offset:-1.5px;' : ''}"
+                  title="${titulo}" onclick="_matrizIrADia('${dia.f}')">
+        ${r ? (cfg?.icono || '•') : '<span style="opacity:.18;">·</span>'}
+      </td>`;
+    }).join('');
+
+    // Totales de la fila: lo que el patrón realmente vigila
+    const vals    = Object.values(reg);
+    const faltas  = vals.filter(r => r.tipo === 'falta').length;
+    const retardos= vals.filter(r => r.tipo === 'retardo' || r.tipo === 'retardo_grave').length;
+    const he      = vals.reduce((s, r) => s + (parseFloat(r.horas_extra) || 0), 0);
+
+    return `<tr>
+      <td class="mtz-nombre" title="${t.nombre}">${t.nombre}</td>
+      ${celdas}
+      <td style="font-weight:700;color:${faltas ? 'var(--red-warn)' : 'var(--text-muted)'};">${faltas || '—'}</td>
+      <td style="font-weight:700;color:${retardos ? '#f39c12' : 'var(--text-muted)'};">${retardos || '—'}</td>
+      <td style="font-weight:700;color:var(--text-muted);">${he ? he.toFixed(1) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const nombreMes = typeof MESES !== 'undefined' ? MESES[mes] : '';
+  const totalFaltas = (registros || []).filter(r => r.tipo === 'falta').length;
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn-secondary btn-sm" onclick="_matrizMes(-1)" title="Mes anterior">←</button>
+        <strong style="text-transform:capitalize;min-width:130px;text-align:center;">${nombreMes} ${anio}</strong>
+        <button class="btn-secondary btn-sm" onclick="_matrizMes(1)" title="Mes siguiente">→</button>
+      </div>
+      <div style="font-size:.82rem;color:var(--text-muted);">
+        ${trabs.length} trabajador${trabs.length!==1?'es':''} · ${(registros||[]).length} registro${(registros||[]).length!==1?'s':''}
+        ${totalFaltas ? ` · <strong style="color:var(--red-warn);">${totalFaltas} falta${totalFaltas!==1?'s':''}</strong>` : ''}
+      </div>
+    </div>
+
+    ${!trabs.length
+      ? `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-title">Sin trabajadores${_A.sucursalId?' en esta sucursal':''}</div></div>`
+      : `<div class="table-wrap" style="overflow-x:auto;">
+          <table class="data-table mtz-tabla">
+            <thead>
+              <tr>
+                <th class="mtz-nombre-h">Trabajador</th>
+                ${dias.map(d => `<th class="mtz-dia-h" style="${d.festivo?'color:var(--gold-primary);':d.finde?'opacity:.5;':''}"
+                     title="${d.festivo ? 'Día festivo' : ''}">${d.d}<div style="font-size:.6rem;font-weight:400;opacity:.7;">${DOW[d.dow]}</div></th>`).join('')}
+                <th title="Faltas injustificadas del mes">F</th>
+                <th title="Retardos del mes">R</th>
+                <th title="Horas extra del mes">HE</th>
+              </tr>
+            </thead>
+            <tbody>${cuerpo}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:.75rem;color:var(--text-muted);">
+          ${Object.entries(TIPO_ASIST).map(([k,c]) => `<span>${c.icono} ${c.label}</span>`).join('')}
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px;">
+          Haz clic en cualquier día para capturarlo o corregirlo. Los festivos se sombrean en dorado y los fines de semana en gris.
+        </div>`}
+  `;
+  _injectMatrizCSS();
+}
+
+/** Clic en una celda → abre ese día en el Registro Diario, listo para editar. */
+function _matrizIrADia(fechaISO) {
+  _A.fecha = fechaISO;
+  _A.tab = 1;
+  _renderShell().then(() => _cargarYRenderTab());
+}
+
+function _matrizMes(delta) {
+  const d = new Date(_A.fecha + 'T00:00:00');
+  d.setDate(1);
+  d.setMonth(d.getMonth() + delta);
+  _A.fecha = d.toISOString().split('T')[0];
+  _renderShell().then(() => _cargarYRenderTab());
+}
+
+function _injectMatrizCSS() {
+  if (document.getElementById('mtz-css')) return;
+  const s = document.createElement('style');
+  s.id = 'mtz-css';
+  s.textContent = `
+  .mtz-tabla { border-collapse:separate; border-spacing:0; }
+  .mtz-tabla th, .mtz-tabla td { padding:3px 2px !important; text-align:center; font-size:.78rem; }
+  .mtz-dia-h { min-width:22px; font-size:.68rem !important; }
+  .mtz-nombre, .mtz-nombre-h {
+    position:sticky; left:0; z-index:2; background:var(--bg-card, #1c2634);
+    text-align:left !important; min-width:150px; max-width:180px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    padding-right:8px !important; font-weight:600;
+  }
+  .mtz-nombre-h { z-index:3; }
+  .mtz-celda { cursor:pointer; }
+  .mtz-celda:hover { background:var(--gold-dim, rgba(245,166,35,.18)) !important; }`;
+  document.head.appendChild(s);
+}
+
 function _origenBadge(origen) {
   if (origen === 'kiosco') return '<span title="Registrado por kiosco">📱</span>';
   if (origen === 'checador_fisico') return '<span title="Registrado por checador físico">🔌</span>';
   return '';
+}
+
+/** Tolerancia de retardo de la empresa, en minutos (default 10, igual que la BD). */
+function _toleranciaMin() {
+  const v = parseInt(CTX?.empresa?.tolerancia_retardo_min);
+  return Number.isFinite(v) ? v : 10;
+}
+
+/**
+ * Compara una hora de entrada contra el horario del trabajador.
+ * REPLICA EXACTAMENTE la regla de registrar_checada() (migración 15): retardo
+ * si la entrada supera hora_inicio + tolerancia, y los minutos se cuentan
+ * desde hora_inicio (no desde el fin de la tolerancia). Si las dos vías
+ * clasificaran distinto, el mismo trabajador saldría con retardo o sin él
+ * según hubiera checado en el kiosco o lo hubieran capturado a mano.
+ * @returns {{ esRetardo:boolean, minutos:number }|null} null si no hay con qué comparar
+ */
+function evaluarRetardo(horaEntrada, horaInicio, toleranciaMin) {
+  if (!horaEntrada || !horaInicio) return null;
+  const min = hhmm => {
+    const [h, m] = String(hhmm).slice(0, 5).split(':').map(Number);
+    return (Number.isFinite(h) && Number.isFinite(m)) ? h * 60 + m : null;
+  };
+  const entrada = min(horaEntrada), inicio = min(horaInicio);
+  if (entrada === null || inicio === null) return null;
+
+  const tol = Number.isFinite(toleranciaMin) ? toleranciaMin : 10;
+  return entrada > inicio + tol
+    ? { esRetardo: true,  minutos: Math.max(0, entrada - inicio) }
+    : { esRetardo: false, minutos: 0 };
+}
+
+/**
+ * Al capturar la hora de entrada a mano, clasifica el registro solo. No pisa
+ * una decisión explícita del usuario: si ya marcó falta, incapacidad, etc.,
+ * se respeta; solo ajusta entre asistencia ↔ retardo.
+ */
+function _onHoraEntradaCapturada(trabId) {
+  const hora  = document.getElementById(`hora-${trabId}`)?.value;
+  const sel   = document.getElementById(`tipo-${trabId}`);
+  const aviso = document.getElementById(`hora-aviso-${trabId}`);
+  const trab  = _A.trabajadores.find(t => t.id === trabId);
+  if (!sel || !trab) return;
+
+  const ocultar = () => { if (aviso) { aviso.style.display = 'none'; aviso.textContent = ''; } };
+
+  if (!hora) { ocultar(); return; }
+  if (!trab.hora_inicio) {
+    if (aviso) {
+      aviso.style.display = '';
+      aviso.style.color = 'var(--text-muted)';
+      aviso.textContent = 'Sin horario capturado — no se puede detectar el retardo';
+    }
+    return;
+  }
+  // Solo se autoclasifica entre asistencia y retardo
+  if (!['asistencia','retardo','retardo_grave'].includes(sel.value)) { ocultar(); return; }
+
+  const r = evaluarRetardo(hora, trab.hora_inicio, _toleranciaMin());
+  if (!r) { ocultar(); return; }
+
+  if (r.esRetardo) {
+    // Si ya lo marcaron como grave, se respeta: solo se actualizan los minutos
+    if (sel.value !== 'retardo_grave') sel.value = 'retardo';
+    const min = document.getElementById(`min-${trabId}`);
+    if (min) min.value = r.minutos;
+    if (aviso) {
+      aviso.style.display = '';
+      aviso.style.color = '#f39c12';
+      aviso.textContent = `⏰ ${r.minutos} min tarde (entra ${String(trab.hora_inicio).slice(0,5)})`;
+    }
+  } else {
+    if (sel.value !== 'asistencia') sel.value = 'asistencia';
+    const min = document.getElementById(`min-${trabId}`);
+    if (min) min.value = 0;
+    if (aviso) {
+      aviso.style.display = '';
+      aviso.style.color = 'var(--green-ok)';
+      aviso.textContent = '✓ Dentro de tolerancia';
+    }
+  }
+  onTipoRowChange(trabId);
 }
 
 function onTipoRowChange(trabId) {

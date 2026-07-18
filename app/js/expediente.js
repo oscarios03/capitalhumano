@@ -87,13 +87,21 @@ const expediente = {
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 
+// Los valores deben existir en el ENUM tipo_documento_enum (migraciones 12 y 34).
 const TIPOS_DOCS = {
-  contrato:      { icono: '📝', label: 'Contrato' },
-  identificacion:{ icono: '🪪', label: 'Identificación' },
-  acta:          { icono: '📋', label: 'Acta' },
-  justificante:  { icono: '🏥', label: 'Justificante' },
-  resguardo:     { icono: '🧰', label: 'Carta responsiva (resguardo)' },
-  otro:          { icono: '📎', label: 'Otro' },
+  contrato:             { icono: '📝', label: 'Contrato' },
+  identificacion:       { icono: '🪪', label: 'Identificación oficial (INE/pasaporte)' },
+  curp_doc:             { icono: '📄', label: 'CURP impresa' },
+  nss_doc:              { icono: '🏥', label: 'Constancia de NSS' },
+  csf:                  { icono: '🧾', label: 'Constancia de situación fiscal' },
+  acta_nacimiento:      { icono: '👶', label: 'Acta de nacimiento' },
+  comprobante_domicilio:{ icono: '🏠', label: 'Comprobante de domicilio' },
+  titulo_cedula:        { icono: '🎓', label: 'Título o cédula profesional' },
+  examen_medico:        { icono: '🩺', label: 'Examen médico' },
+  acta:                 { icono: '📋', label: 'Acta administrativa' },
+  justificante:         { icono: '📌', label: 'Justificante' },
+  resguardo:            { icono: '🧰', label: 'Carta responsiva (resguardo)' },
+  otro:                 { icono: '📎', label: 'Otro' },
 };
 
 async function renderTabExpediente(trabajadorId) {

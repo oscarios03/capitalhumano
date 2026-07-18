@@ -110,6 +110,36 @@ async function renderEmpresa() {
           </div>
         </div>
       </div>
+      <div style="margin:18px 0 8px;border-top:1px solid var(--border);padding-top:16px;">
+        <label class="form-label" style="margin-bottom:10px;display:block;">
+          Costo patronal (IMSS e ISN)
+          <span style="font-size:.75rem;color:var(--text-muted);font-weight:400;margin-left:6px;">
+            — Se usan para calcular las cuotas patronales y el costo real de cada nómina
+          </span>
+        </label>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Prima de riesgo de trabajo (%)</label>
+            <input id="emp-prima-riesgo" type="number" class="form-input" min="0.5" max="15" step="0.00001"
+              value="${e.prima_riesgo_pct ?? 0.54355}" />
+            <div class="helper-text">La de tu declaración anual de febrero ante el IMSS. Mínima (clase I): 0.54355%</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Entidad federativa</label>
+            <select id="emp-entidad" class="form-select">
+              <option value="">— Seleccionar —</option>
+              ${['Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México','Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'].map(x =>
+                `<option value="${x}" ${e.entidad_federativa === x ? 'selected' : ''}>${x}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Impuesto Sobre Nómina — ISN (%)</label>
+            <input id="emp-isn" type="number" class="form-input" min="0" max="5" step="0.01"
+              value="${((Number.isFinite(parseFloat(e.isn_pct)) ? parseFloat(e.isn_pct) : 0.03) * 100).toFixed(2)}" />
+            <div class="helper-text">Tasa estatal (típicamente 2%–4%). Consulta la vigente en tu entidad; usa 0 si no aplica.</div>
+          </div>
+        </div>
+      </div>
       <div id="emp-nomina-msg" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button class="btn-primary" onclick="handleGuardarConfigNomina()">💾 Guardar configuración</button>
@@ -352,10 +382,19 @@ async function renderEmpresa() {
       <div class="empty-state-title">Sin sucursales registradas</div>
       <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Usa el botón "+ Agregar Sucursal" para registrar centros de trabajo adicionales.</p>
     </div>`}
+
+    <div class="view-header animate-in" style="margin:32px 0 16px;">
+      <div>
+        <div class="view-title" style="font-size:1.2rem;">👥 Usuarios y permisos</div>
+        <div class="view-subtitle">Quién entra a la plataforma y qué puede hacer</div>
+      </div>
+    </div>
+    <div id="emp-tab-usuarios" class="animate-in"></div>
   `;
 
   _renderFestivosOficiales();
   _renderCostoPrestaciones();
+  if (typeof renderTabUsuarios === 'function') renderTabUsuarios();
 }
 
 async function _renderCostoPrestaciones() {
@@ -519,16 +558,35 @@ async function handleGuardarConfigNomina() {
   msg.style.display = 'none';
   const dia = _diaPagoSeleccionado ?? CTX.empresa.dia_pago_semanal ?? 5;
   const num = (id, def) => { const v = parseInt(eid(id)?.value); return Number.isFinite(v) ? v : def; };
+  const primaRiesgo = parseFloat(eid('emp-prima-riesgo')?.value);
+  const isnPct      = parseFloat(eid('emp-isn')?.value);
+  if (!Number.isFinite(primaRiesgo) || primaRiesgo < 0.5 || primaRiesgo > 15) {
+    msg.textContent = 'La prima de riesgo debe estar entre 0.5% (mínima legal) y 15% (máxima, Art. 74 LSS).';
+    msg.className = 'error-msg'; msg.style.display = ''; return;
+  }
+  if (!Number.isFinite(isnPct) || isnPct < 0 || isnPct > 5) {
+    msg.textContent = 'La tasa de ISN debe estar entre 0% y 5%.';
+    msg.className = 'error-msg'; msg.style.display = ''; return;
+  }
   const cfg = {
     dia_pago_semanal:     dia,
     dia_pago_quincenal_1: num('emp-pago-q1', 15),
     dia_pago_quincenal_2: num('emp-pago-q2', 0),
     dia_pago_mensual:     num('emp-pago-mensual', 0),
+    prima_riesgo_pct:     primaRiesgo,
+    entidad_federativa:   eid('emp-entidad')?.value || null,
+    isn_pct:              parseFloat((isnPct / 100).toFixed(4)),
   };
   try {
-    // Tolerante: si las columnas de la migración 22 aún no existen, guardar solo dia_pago_semanal
+    // Tolerante: si las columnas de la migración 32 aún no existen, guardar sin ellas
     let err;
     ({ error: err } = await _guardarConfigNominaSafe(cfg));
+    if (err && /prima_riesgo|entidad_federativa|isn_pct/i.test(err.message || '')) {
+      console.warn('Columnas patronales no existen — aplica la migración 32_migration_fiscal_patronal.sql');
+      const { prima_riesgo_pct, entidad_federativa, isn_pct, ...sinPatronal } = cfg;
+      ({ error: err } = await _guardarConfigNominaSafe(sinPatronal));
+    }
+    // Tolerante: si las columnas de la migración 22 aún no existen, guardar solo dia_pago_semanal
     if (err && /dia_pago_quincenal|dia_pago_mensual|column/i.test(err.message || '')) {
       console.warn('Columnas de días de pago quincenal/mensual no existen — aplica la migración 22_migration_nomina_programacion.sql');
       ({ error: err } = await _guardarConfigNominaSafe({ dia_pago_semanal: dia }));
