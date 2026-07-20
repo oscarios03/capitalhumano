@@ -285,13 +285,21 @@ async function _sincronizarAsistenciaVAC(s) {
   const cur = new Date(s.fecha_inicio + 'T00:00:00');
   const fin = new Date(s.fecha_fin + 'T00:00:00');
   while (cur <= fin) {
-    rows.push({
-      trabajador_id: s.trabajador_id,
-      empresa_id:    s.empresa_id,
-      fecha:         cur.toISOString().split('T')[0],
-      tipo:          tipoAsist,
-      observaciones: 'Generado automáticamente al aprobar solicitud de vacaciones/permiso',
-    });
+    // Solo días hábiles L-V: mismo criterio con que se cuenta y aprueba la
+    // solicitud (_vacCalcDias/guardarVAC). Si se marcaran también sábado y
+    // domingo, el upsert (onConflict trabajador_id,fecha) sobrescribiría el
+    // descanso semanal — en un permiso SIN goce eso descontaría días de más
+    // en nómina y vulneraría el 7º día pagado (Arts. 69-73 LFT).
+    const dw = cur.getDay();
+    if (dw >= 1 && dw <= 5) {
+      rows.push({
+        trabajador_id: s.trabajador_id,
+        empresa_id:    s.empresa_id,
+        fecha:         cur.toISOString().split('T')[0],
+        tipo:          tipoAsist,
+        observaciones: 'Generado automáticamente al aprobar solicitud de vacaciones/permiso',
+      });
+    }
     cur.setDate(cur.getDate() + 1);
   }
   if (rows.length) await _upsertAsistencia(rows);
