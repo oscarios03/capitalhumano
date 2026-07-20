@@ -14,7 +14,7 @@ async function renderBajas(preselId) {
     const main = eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
-        <div><div class="view-title">🚪 Proceso de Baja</div><div class="view-subtitle">Genera los documentos correspondientes según el tipo de terminación</div></div>
+        <div><div class="view-title">Proceso de Baja</div><div class="view-subtitle">Genera los documentos correspondientes según el tipo de terminación</div></div>
       </div>
 
       <div class="card animate-in" style="max-width:760px;margin:0 auto;">
@@ -30,9 +30,9 @@ async function renderBajas(preselId) {
           <div class="form-group">
             <label class="form-label" for="baja-tipo">Tipo de baja <span class="req">*</span></label>
             <select id="baja-tipo" class="form-select" onchange="actualizarTipoBaja()" required aria-required="true">
-              <option value="injustificada">⚖️ Despido sin justificación (Liquidación)</option>
-              <option value="renuncia">📄 Renuncia voluntaria (Finiquito + Carta)</option>
-              <option value="justificada">🚫 Rescisión justificada Art. 47 (Finiquito)</option>
+              <option value="injustificada">Despido sin justificación (Liquidación)</option>
+              <option value="renuncia">Renuncia voluntaria (Finiquito + Carta)</option>
+              <option value="justificada">Rescisión justificada Art. 47 (Finiquito)</option>
             </select>
           </div>
           <div class="form-group">
@@ -85,12 +85,12 @@ async function renderBajas(preselId) {
         </div>
 
         <div id="baja-tipo-desc" class="alert alert-info" style="margin-bottom:16px;">
-          <span>⚖️</span><span><strong>Despido sin justificación:</strong> Se generará Aviso de Rescisión + Recibo de Liquidación (incluye indemnización constitucional).</span>
+          <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Despido sin justificación:</strong> Se generará Aviso de Rescisión + Recibo de Liquidación (incluye indemnización constitucional).</span>
         </div>
 
         <div id="baja-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;">
-          <button class="btn-primary" onclick="handleProcesarBaja()">⚡ Calcular y generar documentos</button>
+          <button class="btn-primary" onclick="handleProcesarBaja()">Calcular y generar documentos</button>
         </div>
       </div>
     `;
@@ -126,8 +126,7 @@ async function precargarDatosBaja() {
       const valorTotal = pendientes.reduce((s, r) => s + (parseFloat(r.valor_estimado) || 0), 0);
       warnEl.style.display = '';
       warnEl.innerHTML = `
-        <div class="alert alert-warn">
-          <span>⚠️</span>
+        <div class="alert alert-warn"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
           <span>
             <strong>Resguardos pendientes de devolución (${pendientes.length}):</strong> ${valorTotal > 0 ? `valor estimado ${fmt(valorTotal)}. ` : ''}
             ${pendientes.map(r => `${r.articulo}${r.numero_serie ? ' (' + r.numero_serie + ')' : ''}`).join(', ')}.
@@ -148,9 +147,9 @@ function actualizarTipoBaja() {
   if (!desc || !antig) return;
 
   const msgs = {
-    injustificada: `<span>⚖️</span><span><strong>Despido sin justificación:</strong> Se generará Aviso de Rescisión + Recibo de Liquidación (incluye indemnización constitucional de 90 días SDI).</span>`,
-    renuncia:      `<span>📄</span><span><strong>Renuncia voluntaria:</strong> Se generará Carta de Renuncia + Recibo de Finiquito (prestaciones proporcionales).</span>`,
-    justificada:   `<span>🚫</span><span><strong>Rescisión con causa justificada (Art. 47):</strong> Se generará Recibo de Finiquito. Debe existir acta rescisoria previa.</span>`,
+    injustificada: `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Despido sin justificación:</strong> Se generará Aviso de Rescisión + Recibo de Liquidación (incluye indemnización constitucional de 90 días SDI).</span>`,
+    renuncia:      `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Renuncia voluntaria:</strong> Se generará Carta de Renuncia + Recibo de Finiquito (prestaciones proporcionales).</span>`,
+    justificada:   `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Rescisión con causa justificada (Art. 47):</strong> Se generará Recibo de Finiquito. Debe existir acta rescisoria previa.</span>`,
   };
   desc.innerHTML = msgs[tipo] || '';
   desc.className = tipo === 'injustificada' ? 'alert alert-warn' : tipo === 'justificada' ? 'alert alert-danger' : 'alert alert-info';
@@ -201,7 +200,7 @@ async function handleProcesarBaja() {
   showModal(`
     <div class="modal animate-in" style="max-width:480px;">
       <div class="modal-header">
-        <div class="modal-title">⚠️ Confirmar proceso de baja</div>
+        <div class="modal-title">Confirmar proceso de baja</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div style="padding:20px 24px;">
@@ -269,15 +268,15 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
 
   const docsConfig = {
     injustificada: [
-      { icon:'📋', titulo:'Aviso de Rescisión',   desc:'Notificación formal de terminación (Art. 53 LFT)', fn: () => generateAvisoRecision(empresa, trabajadorPdf, result, sucursal) },
-      { icon:'🧾', titulo:'Recibo de Liquidación', desc:'Desglose completo de la liquidación',              fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Aviso de Rescisión',   desc:'Notificación formal de terminación (Art. 53 LFT)', fn: () => generateAvisoRecision(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Recibo de Liquidación', desc:'Desglose completo de la liquidación',              fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
     ],
     renuncia: [
-      { icon:'✍️', titulo:'Carta de Renuncia',    desc:'Renuncia voluntaria e irrevocable (Art. 51 LFT)',   fn: () => generateCartaRenuncia(empresa, trabajadorPdf, sucursal) },
-      { icon:'🧾', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Carta de Renuncia',    desc:'Renuncia voluntaria e irrevocable (Art. 51 LFT)',   fn: () => generateCartaRenuncia(empresa, trabajadorPdf, sucursal) },
+      { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
     ],
     justificada: [
-      { icon:'🧾', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
     ],
   };
   const docs = docsConfig[tipo] || [];
@@ -285,16 +284,16 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
 
   main.innerHTML = `
     <div class="view-header animate-in">
-      <div><div class="view-title">✅ Baja procesada</div></div>
+      <div><div class="view-title">Baja procesada</div></div>
       <button class="btn-secondary" onclick="navigate('empleados')">← Ver empleados</button>
     </div>
 
     <div style="max-width:760px;margin:0 auto;">
       <div class="card animate-in" style="border-color:var(--green-ok);margin-bottom:20px;">
         <div style="display:flex;gap:14px;align-items:center;margin-bottom:20px;">
-          <div style="font-size:2.5rem;">✅</div>
+          <div style="font-size:2.5rem;"></div>
           <div>
-            <div style="font-family:'Montserrat',sans-serif;font-size:1.2rem;font-weight:900;">${escapeHtml(trab.nombre)}</div>
+            <div style="font-size:1.2rem;font-weight:700;">${escapeHtml(trab.nombre)}</div>
             <div style="font-size:.85rem;color:var(--text-secondary);">
               ${{injustificada:'Despido sin justificación',renuncia:'Renuncia voluntaria',justificada:'Rescisión justificada Art. 47'}[tipo]}
               · ${formatDateShort(trabajadorPdf.fecha_baja)}
@@ -306,24 +305,24 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
           <div style="font-size:.78rem;font-weight:700;color:var(--gold-primary);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">
             ${result.type === 'liquidacion' ? 'LIQUIDACIÓN' : 'FINIQUITO'} TOTAL
           </div>
-          <div style="font-family:'Montserrat',sans-serif;font-size:2.4rem;font-weight:900;color:var(--gold-light);">${fmtMx(result.total)}</div>
+          <div style="font-size:2.4rem;font-weight:700;color:var(--gold-light);">${fmtMx(result.total)}</div>
           <div style="font-size:.8rem;color:var(--text-secondary);margin-top:4px;">Monto bruto antes de retenciones fiscales (ISR)</div>
         </div>
 
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
-          <div style="flex:1;min-width:140px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;">
+          <div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;">
             <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Días laborados total</div>
-            <div style="font-size:1.3rem;font-weight:900;font-family:'Montserrat',sans-serif;">${result.diasLaborados.toLocaleString('es-MX')}</div>
+            <div style="font-size:1.3rem;font-weight:700;">${result.diasLaborados.toLocaleString('es-MX')}</div>
             <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">${formatDateShort(trab.fecha_ingreso)} → ${formatDateShort(trabajadorPdf.fecha_baja)}</div>
           </div>
-          <div style="flex:1;min-width:140px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;">
+          <div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;">
             <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Días laborados en ${new Date(trabajadorPdf.fecha_baja+'T00:00:00').getFullYear()}</div>
-            <div style="font-size:1.3rem;font-weight:900;font-family:'Montserrat',sans-serif;">${result.diasEnAnio}</div>
+            <div style="font-size:1.3rem;font-weight:700;">${result.diasEnAnio}</div>
             <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">Del año calendario en curso</div>
           </div>
-          <div style="flex:1;min-width:140px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;">
+          <div style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;">
             <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Antigüedad</div>
-            <div style="font-size:1.3rem;font-weight:900;font-family:'Montserrat',sans-serif;">${result.completed} año${result.completed!==1?'s':''}</div>
+            <div style="font-size:1.3rem;font-weight:700;">${result.completed} año${result.completed!==1?'s':''}</div>
             <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">(${result.frac.toFixed(2)} fracción)</div>
           </div>
         </div>
@@ -338,9 +337,9 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
                   <td style="color:var(--text-muted);font-size:.82rem;">${i.calc}</td>
                   <td style="text-align:right;font-weight:700;color:${i.amount > 0 ? 'var(--green-ok)' : 'var(--text-muted)'};">${fmtMx(i.amount)}</td>
                 </tr>`).join('')}
-              <tr style="background:rgba(245,166,35,.08);">
-                <td colspan="2" style="font-weight:800;font-size:1rem;">TOTAL</td>
-                <td style="text-align:right;font-weight:900;font-size:1rem;color:var(--gold-primary);">${fmtMx(result.total)}</td>
+              <tr style="background:var(--gold-dim);">
+                <td colspan="2" style="font-weight:700;font-size:1rem;">TOTAL</td>
+                <td style="text-align:right;font-weight:700;font-size:1rem;color:var(--gold-primary);">${fmtMx(result.total)}</td>
               </tr>
             </tbody>
           </table>
@@ -349,7 +348,7 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
 
       <div class="card animate-in" style="animation-delay:.1s;">
         <div class="card-header">
-          <span class="card-title">📄 Documentos — haz clic para descargar cada uno</span>
+          <span class="card-title">Documentos — haz clic para descargar cada uno</span>
         </div>
         ${docs.map((doc, i) => `
           <div class="doc-card" style="margin-bottom:${i < docs.length-1 ? '12px' : '0'};">
@@ -362,7 +361,7 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
             </div>
             <div class="doc-card-body">
               <button class="btn-download" onclick="descargarDocBaja(${i}, this)">
-                ⬇️ Descargar — ${doc.titulo}
+                Descargar — ${doc.titulo}
               </button>
             </div>
           </div>
@@ -392,7 +391,7 @@ async function _renderChecklistResguardosBaja(trabajadorId, empresa, trabajadorP
   card.className = 'card animate-in';
   card.style.cssText = 'margin-top:16px;';
   card.innerHTML = `
-    <div class="card-header"><span class="card-title">🧰 Checklist de devolución de equipo</span></div>
+    <div class="card-header"><span class="card-title">Checklist de devolución de equipo</span></div>
     <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px;">
       No se descuenta automáticamente el valor de lo no devuelto del finiquito — la retención unilateral es riesgosa legalmente; solo se documenta.
     </p>
@@ -403,16 +402,16 @@ async function _renderChecklistResguardosBaja(trabajadorId, empresa, trabajadorP
           <td>${r.articulo}${r.numero_serie ? ` (${r.numero_serie})` : ''}</td>
           <td><select class="form-select baja-res-estado" data-resguardo-id="${r.id}" style="max-width:200px;">
             <option value="">— Pendiente —</option>
-            <option value="completo">✅ Completo</option>
-            <option value="danado">⚠️ Dañado</option>
-            <option value="no_devuelto">🔴 No devuelto</option>
+            <option value="completo">Completo</option>
+            <option value="danado">Dañado</option>
+            <option value="no_devuelto">● No devuelto</option>
           </select></td>
         </tr>`).join('')}
       </tbody>
     </table></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-      <button class="btn-primary btn-sm" onclick="_guardarChecklistResguardosBaja(this)">💾 Guardar checklist</button>
-      <button class="btn-secondary btn-sm" onclick="_descargarConstanciaDevolucion()">📄 Generar constancia de devolución</button>
+      <button class="btn-primary btn-sm" onclick="_guardarChecklistResguardosBaja(this)">Guardar checklist</button>
+      <button class="btn-secondary btn-sm" onclick="_descargarConstanciaDevolucion()">Generar constancia de devolución</button>
     </div>
   `;
   wrap.appendChild(card);
@@ -422,15 +421,15 @@ async function _guardarChecklistResguardosBaja(btn) {
   const selects = [...document.querySelectorAll('.baja-res-estado')].filter(s => s.value);
   if (!selects.length) { alert('Selecciona el estado de al menos un artículo.'); return; }
 
-  btn.textContent = 'Guardando…'; btn.disabled = true;
+  btnCargando(btn, 'Guardando…');
   for (const s of selects) {
     await window.supabase.from('resguardos').update({
       estado_devolucion: s.value,
       fecha_devolucion: new Date().toISOString().split('T')[0],
     }).eq('id', s.dataset.resguardoId);
   }
-  btn.textContent = '💾 Guardar checklist'; btn.disabled = false;
-  if (typeof showToast === 'function') showToast('✅ Checklist de devolución guardado', 'success');
+  btnRestaurar(btn);
+  if (typeof showToast === 'function') showToast('Checklist de devolución guardado', 'success');
   else alert('Checklist de devolución guardado.');
 }
 
@@ -448,7 +447,7 @@ function descargarDocBaja(idx, btn) {
     return;
   }
   const orig = btn.innerHTML;
-  btn.textContent = '⏳ Generando PDF…'; btn.disabled = true;
+  btnCargando(btn, 'Generando PDF…');
 
   setTimeout(() => {
     try {
@@ -461,7 +460,7 @@ function descargarDocBaja(idx, btn) {
       const errBox = document.createElement('div');
       errBox.className = 'alert alert-danger animate-in';
       errBox.style.cssText = 'margin-top:12px;';
-      errBox.innerHTML = `<span>❌</span><span><strong>Error al generar PDF:</strong> ${e.message || String(e)}</span>`;
+      errBox.innerHTML = `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Error al generar PDF:</strong> ${e.message || String(e)}</span>`;
       btn.closest('.doc-card-body').appendChild(errBox);
     }
   }, 50);

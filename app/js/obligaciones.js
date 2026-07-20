@@ -183,9 +183,9 @@ function calcularObligaciones(hoy = new Date(), empresa = null) {
 
 function _estadoObligacion(hoy, fecha) {
   const d = _diasEntre(hoy, fecha);
-  if (d < 0)  return { cls:'vencida',  label: d === -1 ? 'Venció ayer' : `Venció hace ${-d} días`, color:'var(--red-warn)',  bg:'rgba(231,76,60,.1)',  borde:'rgba(231,76,60,.3)' };
-  if (d === 0) return { cls:'hoy',     label:'Vence HOY',                                          color:'var(--red-warn)',  bg:'rgba(231,76,60,.12)', borde:'rgba(231,76,60,.35)' };
-  if (d <= 7)  return { cls:'semana',  label: d === 1 ? 'Vence mañana' : `En ${d} días`,           color:'#f39c12',          bg:'rgba(243,156,18,.1)', borde:'rgba(243,156,18,.3)' };
+  if (d < 0)  return { cls:'vencida',  label: d === -1 ? 'Venció ayer' : `Venció hace ${-d} días`, color:'var(--red-warn)',  bg:'rgba(192,57,43,.1)',  borde:'rgba(192,57,43,.3)' };
+  if (d === 0) return { cls:'hoy',     label:'Vence HOY',                                          color:'var(--red-warn)',  bg:'rgba(192,57,43,.12)', borde:'rgba(192,57,43,.35)' };
+  if (d <= 7)  return { cls:'semana',  label: d === 1 ? 'Vence mañana' : `En ${d} días`,           color:'var(--amber-warn)',          bg:'rgba(217,138,43,.1)', borde:'rgba(217,138,43,.3)' };
   return         { cls:'proxima', label:`En ${d} días`,                                            color:'var(--text-muted)',bg:'transparent',         borde:'var(--border)' };
 }
 
@@ -203,7 +203,7 @@ function renderObligacionesHTML(hoy = new Date()) {
         <svg class="ic" style="color:var(--text-muted);"><use href="#i-calendar"></use></svg> Obligaciones del mes
       </span></div>
       <div class="empty-state" style="padding:24px;">
-        <div class="empty-state-icon">✅</div>
+        <div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div>
         <div class="empty-state-title">Sin vencimientos próximos</div>
       </div>
     </div>`;
@@ -215,7 +215,7 @@ function renderObligacionesHTML(hoy = new Date()) {
       <span class="card-title" style="display:inline-flex;align-items:center;gap:8px;">
         <svg class="ic" style="color:var(--text-muted);"><use href="#i-calendar"></use></svg> Obligaciones del mes
         ${vencidas > 0 ? `<span style="background:var(--red-warn);color:#fff;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:100px;">${vencidas} vencida${vencidas !== 1 ? 's' : ''}</span>` : ''}
-        ${porVencer > 0 ? `<span style="background:#f39c12;color:#1a2230;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:100px;">${porVencer} por vencer</span>` : ''}
+        ${porVencer > 0 ? `<span style="background:var(--amber-warn);color:#1a2230;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:100px;">${porVencer} por vencer</span>` : ''}
       </span>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;">
@@ -226,7 +226,7 @@ function renderObligacionesHTML(hoy = new Date()) {
                     border:1px solid ${st.borde};background:${st.bg};${o.ruta ? 'cursor:pointer;' : ''}"
              ${o.ruta ? `onclick="navigate('${o.ruta}')"` : ''} title="${o.fundamento}">
           <div style="min-width:52px;text-align:center;">
-            <div style="font-size:1.1rem;font-weight:800;line-height:1.1;color:${st.color};">${o.fecha.getDate()}</div>
+            <div style="font-size:1.1rem;font-weight:700;line-height:1.1;color:${st.color};">${o.fecha.getDate()}</div>
             <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);">
               ${typeof MESES !== 'undefined' ? MESES[o.fecha.getMonth()].slice(0,3) : ''}
             </div>

@@ -11,7 +11,7 @@ function _labelPrestacion(tipo) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  TABLAS ISR 2026 — Art. 96 LISR / Anexo 8 RMF (DOF 28/12/2025)
 // ═══════════════════════════════════════════════════════════════════════════
-// ⚠️ ACCIÓN REQUERIDA DEL ADMINISTRADOR: el SAT publica el Anexo 8 de la RMF
+// ACCIÓN REQUERIDA DEL ADMINISTRADOR: el SAT publica el Anexo 8 de la RMF
 // cada fin de año. Las tarifas se actualizan cuando la inflación acumulada
 // desde la última actualización rebasa el 10% (Art. 152 LISR, último párrafo).
 // Para 2026 la inflación acumulada nov-2022 → nov-2025 fue de 13.21%, así que
@@ -181,7 +181,7 @@ async function renderNominaModulo() {
     await _cargarTabNomina();
   } catch(e) {
     if (typeof _navStale === 'function' && _navStale(_gen)) return;
-    main.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${e.message}</span></div>`;
+    main.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${e.message}</span></div>`;
   }
 }
 
@@ -190,16 +190,16 @@ function _renderShellNomina() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">💰 Nómina</div>
+        <div class="view-title">Nómina</div>
         <div class="view-subtitle">${escapeHtml(CTX.empresa.nombre)}</div>
       </div>
     </div>
     <div class="tabs animate-in" style="margin-bottom:16px;">
-      <button class="tab-btn ${_N.tab===1?'active':''}" onclick="switchNominaTab(1)">📅 Períodos</button>
+      <button class="tab-btn ${_N.tab===1?'active':''}" onclick="switchNominaTab(1)">Períodos</button>
       <button class="tab-btn ${_N.tab===2?'active':''}" onclick="switchNominaTab(2)"
-        ${!_N.periodoActualId?'disabled':''}>📋 Detalle del Período</button>
-      <button class="tab-btn ${_N.tab===3?'active':''}" onclick="switchNominaTab(3)">👤 Historial por Trabajador</button>
-      <button class="tab-btn ${_N.tab===4?'active':''}" onclick="switchNominaTab(4)" title="Ajuste anual de ISR (Art. 97 LISR)">🧾 Ajuste anual ISR</button>
+        ${!_N.periodoActualId?'disabled':''}>Detalle del Período</button>
+      <button class="tab-btn ${_N.tab===3?'active':''}" onclick="switchNominaTab(3)">Historial por Trabajador</button>
+      <button class="tab-btn ${_N.tab===4?'active':''}" onclick="switchNominaTab(4)" title="Ajuste anual de ISR (Art. 97 LISR)">Ajuste anual ISR</button>
     </div>
     <div id="nomina-content" class="animate-in"></div>
   `;
@@ -247,13 +247,13 @@ async function _tabPeriodos() {
 
   el.innerHTML = `
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-      <button class="btn-secondary" onclick="showModalRevisionSalarios()">🔍 Revisar salarios</button>
-      <button class="btn-secondary" onclick="showModalCalendarioAnual()">🗓️ Calendario anual</button>
-      <button class="btn-primary" onclick="showModalNuevoPeriodo()">+ Nuevo Período</button>
+      <button class="btn-secondary" onclick="showModalRevisionSalarios()">Revisar salarios</button>
+      <button class="btn-secondary" onclick="showModalCalendarioAnual()">Calendario anual</button>
+      <button class="btn-primary" onclick="showModalNuevoPeriodo()">+ Nuevo período</button>
     </div>
 
     ${_N.periodos.length === 0 ? `
-      <div class="empty-state"><div class="empty-state-icon">💰</div>
+      <div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div>
         <div class="empty-state-title">Sin períodos de nómina</div>
         <p style="margin-top:8px;font-size:.82rem;color:var(--text-muted);">
           Crea el primer período para comenzar a generar recibos.
@@ -284,7 +284,7 @@ async function _tabPeriodos() {
                       <button class="btn-secondary btn-sm" onclick="exportarSPEI('${p.id}')">SPEI</button>
                       <button class="btn-secondary btn-sm" onclick="descargarZIPRecibos('${p.id}')">ZIP</button>` : ''}
                     ${!p.cerrado ? `<button class="btn-secondary btn-sm" onclick="cerrarPeriodo('${p.id}', this)">✓ Cerrar</button>` : ''}
-                    <button class="btn-sm" style="background:rgba(231,76,60,.12);color:var(--red-warn);border:1px solid rgba(231,76,60,.3);" onclick="confirmarEliminarPeriodo('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${cnt.n})">🗑️</button>
+                    <button class="btn-sm" style="background:rgba(192,57,43,.12);color:var(--red-warn);border:1px solid rgba(192,57,43,.3);" onclick="confirmarEliminarPeriodo('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${cnt.n})"><svg class="ic"><use href="#i-trash"></use></svg></button>
                   </div>
                 </td>
               </tr>`;
@@ -313,7 +313,7 @@ function showModalRevisionSalarios() {
     const mens   = diario * 30;
     const alerta = per !== 'mensual'; // resaltar los más propensos a error de captura
     return `
-      <tr style="${alerta ? 'background:rgba(245,166,35,.05);' : ''}">
+      <tr style="${alerta ? 'background:var(--gold-dim);' : ''}">
         <td><strong>${escapeHtml(t.nombre)}</strong><div style="font-size:.72rem;color:var(--text-muted);">${escapeHtml(t.puesto) || ''}</div></td>
         <td>
           <select class="form-select" style="min-width:110px;" id="rec-per-${t.id}" onchange="_previewSalarioReconc('${t.id}')">
@@ -326,14 +326,14 @@ function showModalRevisionSalarios() {
                    id="rec-sal-${t.id}" value="${monto}" oninput="_previewSalarioReconc('${t.id}')" /></td>
         <td style="text-align:right;"><span id="rec-diario-${t.id}">${fmt(diario)}</span></td>
         <td style="text-align:right;"><span id="rec-mens-${t.id}">${fmt(mens)}</span></td>
-        <td><button class="btn-secondary btn-sm" id="rec-btn-${t.id}" onclick="guardarSalarioReconciliacion('${t.id}')">💾</button></td>
+        <td><button class="btn-secondary btn-sm" id="rec-btn-${t.id}" onclick="guardarSalarioReconciliacion('${t.id}')"></button></td>
       </tr>`;
   }).join('');
 
   showModal(`
     <div class="modal animate-in" style="max-width:820px;width:96vw;">
       <div class="modal-header">
-        <div class="modal-title">🔍 Revisión de salarios por frecuencia de pago</div>
+        <div class="modal-title">Revisión de salarios por frecuencia de pago</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 12px;">
@@ -373,7 +373,7 @@ async function guardarSalarioReconciliacion(id) {
   const per   = document.getElementById(`rec-per-${id}`)?.value || 'mensual';
   const monto = parseFloat(document.getElementById(`rec-sal-${id}`)?.value);
   if (!(monto > 0)) { if (typeof showToast === 'function') showToast('El salario debe ser mayor a 0.', 'error'); return; }
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
   try {
     const { error } = await _sbN().from('trabajadores')
       .update({ salario_mensual: monto, periodo_salario: per })
@@ -382,10 +382,10 @@ async function guardarSalarioReconciliacion(id) {
     // Reflejar en estado local para que la generación use el dato corregido
     const t = (_N.trabajadores || []).find(x => x.id === id);
     if (t) { t.salario_mensual = monto; t.periodo_salario = per; }
-    if (btn) { btn.textContent = '✅'; btn.disabled = false; }
+    btnRestaurar(btn);
     if (typeof showToast === 'function') showToast('Salario actualizado.', 'success', 2500);
   } catch(e) {
-    if (btn) { btn.textContent = '💾'; btn.disabled = false; }
+    btnRestaurar(btn);
     if (typeof showToast === 'function') showToast('Error: ' + e.message, 'error');
   }
 }
@@ -501,7 +501,7 @@ function showModalCalendarioAnual() {
   showModal(`
     <div class="modal animate-in" style="max-width:520px;">
       <div class="modal-header">
-        <div class="modal-title">🗓️ Generar calendario anual de nómina</div>
+        <div class="modal-title">Generar calendario anual de nómina</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 14px;">
@@ -536,7 +536,7 @@ async function generarCalendarioAnual() {
   const anio = parseInt(document.getElementById('cal-anio')?.value) || new Date().getFullYear();
   const msg  = document.getElementById('cal-msg');
   const btn  = document.getElementById('cal-btn');
-  if (btn) { btn.textContent = '⏳ Creando…'; btn.disabled = true; }
+  btnCargando(btn, 'Creando…');
 
   try {
     const candidatos = _construirCalendarioAnual(tipo, anio);
@@ -551,7 +551,7 @@ async function generarCalendarioAnual() {
 
     if (nuevos.length === 0) {
       if (msg) { msg.textContent = 'Todos los períodos de ese año ya existen.'; msg.className = 'alert'; msg.style.display = ''; }
-      if (btn) { btn.textContent = 'Crear períodos'; btn.disabled = false; }
+      btnRestaurar(btn);
       return;
     }
 
@@ -574,8 +574,8 @@ async function generarCalendarioAnual() {
     await _tabPeriodos();
     if (typeof showToast === 'function') showToast(`Se crearon ${nuevos.length} período(s) ${tipo} de ${anio}.`, 'success', 5000);
   } catch(e) {
-    if (msg) { msg.textContent = '❌ ' + e.message; msg.className = 'alert alert-danger'; msg.style.display = ''; }
-    if (btn) { btn.textContent = 'Crear períodos'; btn.disabled = false; }
+    if (msg) { msg.textContent = '' + e.message; msg.className = 'alert alert-danger'; msg.style.display = ''; }
+    btnRestaurar(btn);
   }
 }
 
@@ -601,7 +601,7 @@ function showModalNuevoPeriodo(prefill = null) {
   showModal(`
     <div class="modal animate-in" style="max-width:580px;">
       <div class="modal-header">
-        <div class="modal-title">💰 Nuevo Período de Nómina</div>
+        <div class="modal-title">Nuevo Período de Nómina</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div class="form-grid">
@@ -637,11 +637,11 @@ function showModalNuevoPeriodo(prefill = null) {
           <label class="form-label">Modo de generación</label>
           <div style="display:flex;gap:10px;margin-top:4px;">
             <label style="display:flex;align-items:flex-start;gap:8px;flex:1;cursor:pointer;padding:10px 12px;
-                   border:1.5px solid var(--gold-primary);border-radius:8px;background:rgba(245,166,35,.06);">
+                   border:1.5px solid var(--gold-primary);border-radius:8px;background:var(--gold-dim);">
               <input type="radio" name="np-modo" value="auto" checked
                      style="margin-top:2px;accent-color:var(--gold-primary);" />
               <div>
-                <div style="font-weight:700;font-size:.85rem;">⚡ Automático</div>
+                <div style="font-weight:700;font-size:.85rem;">Automático</div>
                 <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">
                   Genera recibos para todos los trabajadores activos según sus especificaciones contractuales (salario, IMSS, ISR, deducciones).
                 </div>
@@ -652,7 +652,7 @@ function showModalNuevoPeriodo(prefill = null) {
               <input type="radio" name="np-modo" value="manual"
                      style="margin-top:2px;" onchange="_toggleModoCard()" />
               <div>
-                <div style="font-weight:700;font-size:.85rem;">✏️ Manual</div>
+                <div style="font-weight:700;font-size:.85rem;">Manual</div>
                 <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px;">
                   Crea el período vacío. Podrás agregar y ajustar cada recibo desde el detalle.
                 </div>
@@ -672,15 +672,15 @@ function showModalNuevoPeriodo(prefill = null) {
           </div>
         </div>
       </div>
-      <div id="np-aviso" style="margin:0 0 8px;padding:8px 12px;background:rgba(245,166,35,.1);
-           border:1px solid rgba(245,166,35,.3);border-radius:6px;font-size:.78rem;
+      <div id="np-aviso" style="margin:0 0 8px;padding:8px 12px;background:var(--gold-dim);
+           border:1px solid var(--gold-dim);border-radius:6px;font-size:.78rem;
            color:var(--gold-primary);display:none;">
-        ⚠️ La fecha fin es anterior a la fecha inicio. Por favor corrígela.
+        La fecha fin es anterior a la fecha inicio. Por favor corrígela.
       </div>
       <div id="np-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" id="np-btn-crear" onclick="handleCrearPeriodo()">⚡ Crear y generar nómina</button>
+        <button class="btn-primary" id="np-btn-crear" onclick="handleCrearPeriodo()">Crear y generar nómina</button>
       </div>
     </div>
   `);
@@ -727,13 +727,13 @@ function _toggleModoCard() {
     const card = r.closest('label');
     if (r.checked) {
       card.style.borderColor = 'var(--gold-primary)';
-      card.style.background  = 'rgba(245,166,35,.06)';
+      card.style.background  = 'var(--gold-dim)';
     } else {
       card.style.borderColor = 'var(--border)';
       card.style.background  = '';
     }
   });
-  if (btn) btn.textContent = modo === 'auto' ? '⚡ Crear y generar nómina' : '📁 Crear período vacío';
+  if (btn) btn.textContent = modo === 'auto' ? 'Crear y generar nómina' : 'Crear período vacío';
 }
 
 async function handleCrearPeriodo() {
@@ -750,19 +750,19 @@ async function handleCrearPeriodo() {
     err.style.display = ''; return;
   }
   if (fin < ini) {
-    err.textContent = `❌ La fecha fin (${fin}) es anterior a la fecha inicio (${ini}). Verifica las fechas del período.`;
+    err.textContent = `La fecha fin (${fin}) es anterior a la fecha inicio (${ini}). Verifica las fechas del período.`;
     err.style.display = ''; return;
   }
   // Validar que no sea un rango absurdo (> 35 días)
   const diasRango = Math.round((new Date(fin) - new Date(ini)) / 86400000) + 1;
   if (diasRango > 35) {
-    err.textContent = `⚠️ El período tiene ${diasRango} días. ¿Es correcto? Los períodos normales son 7, 15 o 30 días.`;
+    err.textContent = `El período tiene ${diasRango} días. ¿Es correcto? Los períodos normales son 7, 15 o 30 días.`;
     err.style.display = ''; return;
   }
 
   const modo = document.querySelector('[name="np-modo"]:checked')?.value || 'auto';
   const btn  = document.getElementById('np-btn-crear');
-  if (btn) { btn.textContent = '⏳ Creando…'; btn.disabled = true; }
+  btnCargando(btn, 'Creando…');
 
   const pago = document.getElementById('np-pago')?.value || null;
 
@@ -787,7 +787,7 @@ async function handleCrearPeriodo() {
     // Generar recibos solo en modo automático
     let avisoExcluidos = null;
     if (modo === 'auto') {
-      if (btn) btn.textContent = '⏳ Generando recibos…';
+      if (btn) btn.textContent = 'Generando recibos…';
       const incluirTodos = document.getElementById('np-incluir-todos')?.checked || false;
       await generarNominaPeriodo(periodo.id, ini, fin, sucId, { tipoPeriodo: tipo, incluirTodos });
 
@@ -817,7 +817,7 @@ async function handleCrearPeriodo() {
     if (avisoExcluidos && typeof showToast === 'function') showToast(avisoExcluidos, 'warn', 8000);
   } catch(e) {
     err.textContent = e.message; err.style.display = '';
-    if (btn) { btn.textContent = modo === 'auto' ? '⚡ Crear y generar nómina' : '📁 Crear período vacío'; btn.disabled = false; }
+    if (btn) { btnRestaurar(btn); btn.textContent = modo === 'auto' ? 'Crear y generar nómina' : 'Crear período vacío'; }
   }
 }
 
@@ -829,7 +829,7 @@ async function verDetallePeriodo(periodoId) {
 }
 
 async function cerrarPeriodo(periodoId, btn) {
-  if (!confirm('¿Marcar este período como pagado y cerrado?')) return;
+  if (!(await showConfirmacion('¿Marcar este período como pagado y cerrado?'))) return;
   if (btn) btn.disabled = true;
   try {
     await _sbN().from('periodos_nomina').update({ cerrado: true }).eq('id', periodoId);
@@ -841,7 +841,7 @@ async function cerrarPeriodo(periodoId, btn) {
   await _tabPeriodos();
 
   // Ofrecer crear el siguiente período con las fechas ya calculadas
-  if (p && confirm(`Período cerrado. ¿Crear el siguiente período ${p.tipo || ''} con las fechas calculadas?`)) {
+  if (p && await showConfirmacion(`Período cerrado. ¿Crear el siguiente período ${p.tipo || ''} con las fechas calculadas?`)) {
     const finD = new Date((p.fecha_fin || '') + 'T00:00:00');
     finD.setDate(finD.getDate() + 1); // anclar en el día siguiente al fin
     const sug = _sugerirFechasPeriodo(p.tipo || 'quincenal', finD);
@@ -851,24 +851,24 @@ async function cerrarPeriodo(periodoId, btn) {
 
 function confirmarEliminarPeriodo(periodoId, nombrePeriodo, numRecibos) {
   const detalle = numRecibos > 0
-    ? `<div style="margin:12px 0;padding:10px 14px;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:8px;font-size:.83rem;">
-        ⚠️ Este período tiene <strong>${numRecibos} recibo${numRecibos!==1?'s':''} de nómina</strong> que también serán eliminados permanentemente.
+    ? `<div style="margin:12px 0;padding:10px 14px;background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.3);border-radius:8px;font-size:.83rem;">
+        Este período tiene <strong>${numRecibos} recibo${numRecibos!==1?'s':''} de nómina</strong> que también serán eliminados permanentemente.
        </div>`
-    : `<div style="margin:12px 0;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;font-size:.83rem;color:var(--text-muted);">
+    : `<div style="margin:12px 0;padding:8px 12px;border-radius:8px;font-size:.83rem;color:var(--text-muted);">
         Este período no tiene recibos generados.
        </div>`;
 
   showModal(`
     <div class="modal animate-in" style="max-width:440px;">
-      <div class="modal-header" style="background:rgba(231,76,60,.15);border-bottom:1px solid rgba(231,76,60,.3);">
-        <div class="modal-title" style="color:var(--red-warn);">🗑️ Eliminar período de nómina</div>
+      <div class="modal-header" style="background:rgba(192,57,43,.15);border-bottom:1px solid rgba(192,57,43,.3);">
+        <div class="modal-title" style="color:var(--red-warn);">Eliminar período de nómina</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div style="padding:18px 20px;">
         <p style="font-size:.9rem;margin:0 0 4px;">¿Estás seguro de que deseas eliminar el período:</p>
-        <p style="font-weight:800;font-size:1rem;margin:0 0 4px;">${nombrePeriodo}</p>
+        <p style="font-weight:700;font-size:1rem;margin:0 0 4px;">${nombrePeriodo}</p>
         ${detalle}
-        <p style="font-size:.8rem;color:var(--red-warn);margin:0;">⛔ Esta acción es <strong>irreversible</strong>. No se podrá recuperar la información.</p>
+        <p style="font-size:.8rem;color:var(--red-warn);margin:0;">Esta acción es <strong>irreversible</strong>. No se podrá recuperar la información.</p>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -881,7 +881,7 @@ function confirmarEliminarPeriodo(periodoId, nombrePeriodo, numRecibos) {
 
 async function eliminarPeriodo(periodoId) {
   const btn = document.querySelector('#modal-container [onclick^="eliminarPeriodo"]');
-  if (btn) { btn.textContent = '⏳ Eliminando…'; btn.disabled = true; }
+  btnCargando(btn, 'Eliminando…');
   try {
     // Eliminar recibos primero (FK constraint)
     const { error: e1 } = await _sbN().from('recibos_nomina').delete().eq('periodo_id', periodoId);
@@ -895,7 +895,7 @@ async function eliminarPeriodo(periodoId) {
     _renderShellNomina();
     await _cargarTabNomina();
   } catch(e) {
-    if (btn) { btn.textContent = 'Sí, eliminar definitivamente'; btn.disabled = false; }
+    btnRestaurar(btn);
     alert('Error al eliminar: ' + e.message);
   }
 }
@@ -906,7 +906,7 @@ async function eliminarPeriodo(periodoId) {
 async function _tabDetalle() {
   const el = document.getElementById('nomina-content');
   if (!_N.periodoActualId) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📅</div>
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div>
       <div class="empty-state-title">Selecciona un período desde la pestaña Períodos</div></div>`;
     return;
   }
@@ -940,7 +940,7 @@ async function _tabDetalle() {
     <!-- Resumen del período -->
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
       <button class="btn-secondary btn-sm" onclick="switchNominaTab(1)">← Períodos</button>
-      <div style="font-weight:800;font-size:1.1rem;">${escapeHtml(periodo?.nombre) || ''}</div>
+      <div style="font-weight:700;font-size:1.1rem;">${escapeHtml(periodo?.nombre) || ''}</div>
       <div style="font-size:.8rem;color:var(--text-muted);">
         ${formatDateShort(periodo?.fecha_inicio)} — ${formatDateShort(periodo?.fecha_fin)}
       </div>
@@ -975,11 +975,11 @@ async function _tabDetalle() {
       <button class="btn-secondary" onclick="recalcularTodo(this)">Recalcular todo</button>
       <button class="btn-secondary" onclick="exportarSPEI('${_N.periodoActualId}')">Exportar SPEI</button>
       <button class="btn-secondary" onclick="descargarZIPRecibos('${_N.periodoActualId}')">Descargar todos los recibos (ZIP)</button>
-      <button class="btn-secondary" onclick="imprimirNominaEfectivo('${_N.periodoActualId}')" title="Listado con línea de firma para quien recibe pago en efectivo o mixto">💵 Nómina en efectivo</button>
+      <button class="btn-secondary" onclick="imprimirNominaEfectivo('${_N.periodoActualId}')" title="Listado con línea de firma para quien recibe pago en efectivo o mixto">Nómina en efectivo</button>
     </div>
 
     ${_N.recibos.length === 0 ? `
-      <div class="empty-state"><div class="empty-state-icon">📋</div>
+      <div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div>
         <div class="empty-state-title">Sin recibos — usa "Recalcular todo" para generarlos</div>
       </div>` :
 
@@ -987,7 +987,7 @@ async function _tabDetalle() {
         <table class="data-table">
           <thead><tr>
             <th scope="col">Trabajador</th><th scope="col">Días lab.</th><th scope="col">Salario base</th>
-            <th scope="col">💰 Comisiones</th><th scope="col">Extras</th><th scope="col">Faltas</th>
+            <th scope="col">Comisiones</th><th scope="col">Extras</th><th scope="col">Faltas</th>
             <th scope="col">IMSS</th><th scope="col">ISR</th>
             <th scope="col" title="INFONAVIT: aportación patronal 5% SBC (informativo) + descuento crédito si aplica">INFONAVIT</th>
             <th scope="col" style="color:var(--green-ok);">NETO</th><th scope="col">Acciones</th>
@@ -1011,10 +1011,10 @@ async function _tabDetalle() {
                   ${comTotal > 0 ? fmt(comTotal) : '—'}
                 </td>
                 <td style="font-size:.82rem;">
-                  ${r.vales_despensa>0?`🛒 ${fmt(r.vales_despensa)}`:''}
-                  ${r.bonos>0?`🎯 ${fmt(r.bonos)}`:''}
-                  ${r.monto_horas_extra>0?`⏱ ${fmt(r.monto_horas_extra)}`:''}
-                  ${r.prima_vacacional>0?`🏖 ${fmt(r.prima_vacacional)}`:''}
+                  ${r.vales_despensa>0?`${fmt(r.vales_despensa)}`:''}
+                  ${r.bonos>0?`${fmt(r.bonos)}`:''}
+                  ${r.monto_horas_extra>0?`${fmt(r.monto_horas_extra)}`:''}
+                  ${r.prima_vacacional>0?`${fmt(r.prima_vacacional)}`:''}
                   ${!r.vales_despensa&&!r.bonos&&!r.monto_horas_extra&&!r.prima_vacacional?'—':''}
                 </td>
                 <td style="color:${r.monto_faltas>0?'var(--red-warn)':'inherit'};">
@@ -1024,18 +1024,18 @@ async function _tabDetalle() {
                 <td>-${fmt(r.isr_retenido)}</td>
                 <td style="font-size:.78rem;line-height:1.6;">
                   <span style="color:var(--text-muted);" title="Aportación patronal 5% SBC — costo del patrón, no se descuenta al trabajador">
-                    🏛 ${fmt(infPatronal)}
+                    ${fmt(infPatronal)}
                   </span>
                   ${infonavitDed > 0 ? `<br><span style="color:var(--red-warn);" title="Descuento crédito INFONAVIT activo">-${fmt(infonavitDed)}</span>` : ''}
                 </td>
-                <td style="font-weight:800;color:var(--green-ok);font-size:1rem;">${fmt(r.neto_pagar)}</td>
+                <td style="font-weight:700;color:var(--green-ok);font-size:1rem;">${fmt(r.neto_pagar)}</td>
                 <td>
                   <div class="actions">
                     <button class="btn-primary btn-sm" onclick="descargarReciboNomina('${r.id}')"
                       title="${r.estado === 'aprobado' ? 'Recibo aprobado — descargar PDF' : 'Previsualizar y aprobar'}">
-                      ${r.estado === 'aprobado' ? '✅ PDF' : '📋 Ver'}
+                      ${r.estado === 'aprobado' ? 'PDF' : 'Ver'}
                     </button>
-                    <button class="btn-secondary btn-sm" onclick="editarReciboInline('${r.id}')">✏️</button>
+                    <button class="btn-secondary btn-sm" onclick="editarReciboInline('${r.id}')"><svg class="ic"><use href="#i-pencil"></use></svg></button>
                     ${htmlBotonWhatsApp(r.trabajadores?.telefono, `Hola ${r.trabajadores?.nombre||''}, tu recibo de nómina del período ${periodo?.nombre||''} (${formatDateShort(periodo?.fecha_inicio)} – ${formatDateShort(periodo?.fecha_fin)}) ya está listo. Neto a pagar: ${fmt(r.neto_pagar)}. Descárgalo desde la plataforma.`, { ocultarSiFalta: true })}
                   </div>
                 </td>
@@ -1052,7 +1052,7 @@ async function _tabDetalle() {
 async function recalcularTodo(btn) {
   if (btn) { if (btn.disabled) return; btn.disabled = true; }
   const msg = document.getElementById('detalle-msg');
-  if (msg) { msg.textContent = '⏳ Recalculando nómina…'; msg.style.display = ''; msg.className = ''; }
+  if (msg) { msg.textContent = 'Recalculando nómina…'; msg.style.display = ''; msg.className = ''; }
   try {
     const { data: periodo } = await _sbN().from('periodos_nomina').select('*').eq('id', _N.periodoActualId).single();
     // Regenerar solo los trabajadores que ya tienen recibo en este período
@@ -1060,10 +1060,10 @@ async function recalcularTodo(btn) {
     const idsExistentes = (_N.recibos || []).map(r => r.trabajador_id);
     await generarNominaPeriodo(_N.periodoActualId, periodo.fecha_inicio, periodo.fecha_fin, periodo.sucursal_id,
       idsExistentes.length ? { soloTrabajadorIds: idsExistentes } : { tipoPeriodo: periodo.tipo });
-    if (msg) { msg.textContent = '✅ Nómina recalculada correctamente.'; msg.className = 'alert alert-success'; }
+    if (msg) { msg.textContent = 'Nómina recalculada correctamente.'; msg.className = 'alert alert-success'; }
     await _tabDetalle();
   } catch(e) {
-    if (msg) { msg.textContent = '❌ ' + e.message; msg.className = 'alert alert-danger'; }
+    if (msg) { msg.textContent = '' + e.message; msg.className = 'alert alert-danger'; }
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -1086,7 +1086,7 @@ async function editarReciboInline(reciboId) {
     <div class="modal animate-in" style="max-width:600px;width:96vw;">
       <div class="modal-header" style="background:var(--navy-deep);border-radius:var(--radius-md) var(--radius-md) 0 0;padding:14px 18px;">
         <div>
-          <div class="modal-title" style="color:#fff;font-size:.95rem;">✏️ Editar recibo</div>
+          <div class="modal-title" style="color:#fff;font-size:.95rem;">Editar recibo</div>
           <div style="font-size:.75rem;color:rgba(255,255,255,.5);margin-top:1px;">
             ${escapeHtml(t.nombre)} &nbsp;·&nbsp; Salario base: <strong style="color:var(--gold-primary);">${fmt(nv('salario_base'))}</strong>
           </div>
@@ -1097,11 +1097,11 @@ async function editarReciboInline(reciboId) {
       <!-- Sub-tabs -->
       <div style="display:flex;border-bottom:1px solid var(--border);">
         <button id="retab-1" class="tab-btn active" style="flex:1;border-radius:0;border-bottom:none;"
-          onclick="_reTab(1)">💰 Comisiones</button>
+          onclick="_reTab(1)">Comisiones</button>
         <button id="retab-2" class="tab-btn" style="flex:1;border-radius:0;border-bottom:none;"
-          onclick="_reTab(2)">📤 Deducciones</button>
+          onclick="_reTab(2)">Deducciones</button>
         <button id="retab-3" class="tab-btn" style="flex:1;border-radius:0;border-bottom:none;"
-          onclick="_reTab(3)">⏱ Extras</button>
+          onclick="_reTab(3)">Extras</button>
       </div>
 
       <div style="padding:16px 18px;max-height:55vh;overflow-y:auto;">
@@ -1242,13 +1242,13 @@ async function editarReciboInline(reciboId) {
       <div style="background:var(--bg-surface);border-top:1px solid var(--border);
                   padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <div style="flex:1;display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;">
-          <span>📥 <strong style="color:var(--green-ok);" id="re-preview-perc">${fmt(nv('total_percepciones'))}</strong> percepciones</span>
-          <span>📤 <strong style="color:var(--red-warn);" id="re-preview-ded">${fmt(nv('total_deducciones'))}</strong> deducciones</span>
-          <span style="font-size:.95rem;">💵 <strong style="color:var(--gold-primary);font-size:1rem;" id="re-preview-neto">${fmt(nv('neto_pagar'))}</strong> neto</span>
+          <span><strong style="color:var(--green-ok);" id="re-preview-perc">${fmt(nv('total_percepciones'))}</strong> percepciones</span>
+          <span><strong style="color:var(--red-warn);" id="re-preview-ded">${fmt(nv('total_deducciones'))}</strong> deducciones</span>
+          <span style="font-size:.95rem;"><strong style="color:var(--gold-primary);font-size:1rem;" id="re-preview-neto">${fmt(nv('neto_pagar'))}</strong> neto</span>
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn-secondary btn-sm" onclick="closeModal()">Cancelar</button>
-          <button class="btn-primary" onclick="guardarEdicionRecibo('${reciboId}')">💾 Guardar</button>
+          <button class="btn-primary" onclick="guardarEdicionRecibo('${reciboId}')">Guardar</button>
         </div>
       </div>
     </div>
@@ -1396,7 +1396,7 @@ async function guardarEdicionRecibo(reciboId) {
   const neto = parseFloat((totalPerc - totalDed).toFixed(2));
 
   const btn = document.querySelector('#modal-container .btn-primary');
-  if (btn) { btn.textContent = '⏳ Guardando…'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
 
   try {
     const datosRecibo = {
@@ -1445,7 +1445,7 @@ async function guardarEdicionRecibo(reciboId) {
     await _tabDetalle();
   } catch(e) {
     alert('Error al guardar: ' + e.message);
-    if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }
 
@@ -1483,7 +1483,7 @@ async function cargarHistorialTrabajador(trabId) {
     .order('created_at', { ascending:false });
 
   if (!recibos?.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Sin recibos de nómina para este trabajador</div></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div><div class="empty-state-title">Sin recibos de nómina para este trabajador</div></div>`;
     return;
   }
 
@@ -1500,7 +1500,7 @@ async function cargarHistorialTrabajador(trabId) {
   el.innerHTML = `
     <!-- Acumulados año -->
     <div class="card animate-in" style="margin-bottom:14px;border-color:var(--gold-border);">
-      <div class="card-header"><span class="card-title">📊 Acumulado ${anoActual}</span></div>
+      <div class="card-header"><span class="card-title">Acumulado ${anoActual}</span></div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:10px;text-align:center;">
         ${[
           ['Total percibido',   fmt(acumAnio.perc), 'var(--green-ok)'],
@@ -1509,7 +1509,7 @@ async function cargarHistorialTrabajador(trabId) {
           ['Neto recibido',     fmt(acumAnio.neto), 'var(--gold-primary)'],
         ].map(([lbl,val,col])=>`
           <div style="padding:10px;background:var(--bg-surface);border-radius:var(--radius-sm);">
-            <div style="font-family:'Montserrat',sans-serif;font-size:1.1rem;font-weight:900;color:${col};">${val}</div>
+            <div style="font-size:1.1rem;font-weight:700;color:${col};">${val}</div>
             <div style="font-size:.7rem;color:var(--text-muted);">${lbl}</div>
           </div>`).join('')}
       </div>
@@ -1531,10 +1531,10 @@ async function cargarHistorialTrabajador(trabId) {
               <td style="text-align:center;">${r.dias_laborados}</td>
               <td>${fmt(r.total_percepciones)}</td>
               <td style="color:var(--red-warn);">-${fmt(r.total_deducciones)}</td>
-              <td style="font-weight:800;color:var(--green-ok);">${fmt(r.neto_pagar)}</td>
+              <td style="font-weight:700;color:var(--green-ok);">${fmt(r.neto_pagar)}</td>
               <td><button class="btn-primary btn-sm" onclick="descargarReciboNomina('${r.id}')"
                 title="${r.estado === 'aprobado' ? 'Recibo aprobado' : 'Previsualizar'}">
-                ${r.estado === 'aprobado' ? '✅ PDF' : '📋 Ver'}
+                ${r.estado === 'aprobado' ? 'PDF' : 'Ver'}
               </button></td>
             </tr>`).join('')}
           </tbody>
@@ -2153,11 +2153,11 @@ async function exportarSPEI(periodoId) {
     .map(r => ({ ...r, monto_transferencia: parseFloat(r.neto_pagar || 0) - parseFloat(r.monto_efectivo || 0) }));
 
   if (!recibos.length) {
-    alert('Todos los trabajadores de este período se pagan en efectivo. Usa "💵 Nómina en efectivo" para generar su listado.');
+    alert('Todos los trabajadores de este período se pagan en efectivo. Usa "Nómina en efectivo" para generar su listado.');
     return;
   }
   if (enEfectivoTotal.length) {
-    alert(`${enEfectivoTotal.length} trabajador(es) se pagan en efectivo y no se incluyen en este archivo. Usa "💵 Nómina en efectivo" para ellos.`);
+    alert(`${enEfectivoTotal.length} trabajador(es) se pagan en efectivo y no se incluyen en este archivo. Usa "Nómina en efectivo" para ellos.`);
   }
 
   if (typeof XLSX !== 'undefined') {
@@ -2230,7 +2230,7 @@ async function descargarZIPRecibos(periodoId) {
   if (!recibos?.length) { alert('Sin recibos para descargar.'); return; }
 
   const btn = document.querySelector(`[onclick="descargarZIPRecibos('${periodoId}')"]`);
-  if (btn) { btn.textContent = '⏳ Generando ZIP…'; btn.disabled = true; }
+  btnCargando(btn, 'Generando ZIP…');
 
   try {
     const zip = new JSZip();
@@ -2248,7 +2248,7 @@ async function descargarZIPRecibos(periodoId) {
     a.click(); URL.revokeObjectURL(url);
   } catch(e) { alert('Error: ' + e.message); }
   finally {
-    if (btn) { btn.textContent = '📦 Descargar todos los recibos (ZIP)'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }
 
@@ -2256,7 +2256,7 @@ async function descargarZIPRecibos(periodoId) {
 async function descargarReciboNomina(reciboId) {
   // Mostrar spinner en el botón mientras cargamos datos
   const btn = document.querySelector(`[onclick="descargarReciboNomina('${reciboId}')"]`);
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
 
   try {
     const { recibo, empresa } = await window._getNominaData(reciboId);
@@ -2341,7 +2341,7 @@ async function descargarReciboNomina(reciboId) {
         <!-- Header -->
         <div class="modal-header" style="background:var(--navy-deep);border-radius:var(--radius-md) var(--radius-md) 0 0;padding:16px 20px;">
           <div>
-            <div class="modal-title" style="color:#fff;font-size:1rem;">📋 Previsualización del Recibo</div>
+            <div class="modal-title" style="color:#fff;font-size:1rem;">Previsualización del Recibo</div>
             <div style="font-size:.75rem;color:rgba(255,255,255,.55);margin-top:2px;">
               Folio: ${recibo.folio || reciboId.slice(-8)}
             </div>
@@ -2358,7 +2358,7 @@ async function descargarReciboNomina(reciboId) {
             <div>
               <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;
                           color:var(--text-muted);margin-bottom:3px;">Trabajador</div>
-              <div style="font-weight:800;font-size:.95rem;">${escapeHtml(t.nombre) || '—'}</div>
+              <div style="font-weight:700;font-size:.95rem;">${escapeHtml(t.nombre) || '—'}</div>
               <div style="font-size:.78rem;color:var(--text-muted);margin-top:2px;">
                 ${[t.puesto, t.departamento].filter(Boolean).map(escapeHtml).join(' · ')}
               </div>
@@ -2382,7 +2382,7 @@ async function descargarReciboNomina(reciboId) {
           <div style="border:1px solid #27ae6044;border-radius:var(--radius-sm);overflow:hidden;margin-bottom:10px;">
             <div style="background:#1e8449;color:#fff;padding:7px 10px;
                         font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
-              📥 Percepciones
+              Percepciones
             </div>
             <table style="width:100%;border-collapse:collapse;">
               <colgroup>
@@ -2400,10 +2400,10 @@ async function descargarReciboNomina(reciboId) {
               </tbody>
               <tfoot>
                 <tr style="background:rgba(39,174,96,.12);border-top:2px solid #27ae6044;">
-                  <td colspan="2" style="padding:8px 10px;font-weight:800;font-size:.83rem;">
+                  <td colspan="2" style="padding:8px 10px;font-weight:700;font-size:.83rem;">
                     SUBTOTAL PERCEPCIONES
                   </td>
-                  <td style="padding:8px 10px;text-align:right;font-weight:900;
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;
                              font-size:.95rem;color:var(--green-ok);">
                     ${fmt(recibo.total_percepciones)}
                   </td>
@@ -2416,7 +2416,7 @@ async function descargarReciboNomina(reciboId) {
           <div style="border:1px solid #c0392b44;border-radius:var(--radius-sm);overflow:hidden;margin-bottom:16px;">
             <div style="background:#922b21;color:#fff;padding:7px 10px;
                         font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
-              📤 Deducciones
+              Deducciones
             </div>
             <table style="width:100%;border-collapse:collapse;">
               <colgroup>
@@ -2436,10 +2436,10 @@ async function descargarReciboNomina(reciboId) {
               </tbody>
               <tfoot>
                 <tr style="background:rgba(192,57,43,.12);border-top:2px solid #c0392b44;">
-                  <td colspan="2" style="padding:8px 10px;font-weight:800;font-size:.83rem;">
+                  <td colspan="2" style="padding:8px 10px;font-weight:700;font-size:.83rem;">
                     SUBTOTAL DEDUCCIONES
                   </td>
-                  <td style="padding:8px 10px;text-align:right;font-weight:900;
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;
                              font-size:.95rem;color:var(--red-warn);">
                     -${fmt(recibo.total_deducciones)}
                   </td>
@@ -2455,8 +2455,8 @@ async function descargarReciboNomina(reciboId) {
                         text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">
               Neto a Pagar
             </div>
-            <div style="font-family:'Montserrat',sans-serif;font-size:1.8rem;
-                        font-weight:900;color:var(--gold-primary);">
+            <div style="font-size:1.8rem;
+                        font-weight:700;color:var(--gold-primary);">
               ${fmt(recibo.neto_pagar)}
             </div>
             <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:4px;">
@@ -2473,7 +2473,7 @@ async function descargarReciboNomina(reciboId) {
             ].map(([lbl, val, col]) => `
               <div style="background:var(--bg-surface);border:1px solid var(--border);
                           border-radius:var(--radius-sm);padding:8px;text-align:center;">
-                <div style="font-size:.85rem;font-weight:800;color:${col};">${val}</div>
+                <div style="font-size:.85rem;font-weight:700;color:${col};">${val}</div>
                 <div style="font-size:.65rem;color:var(--text-muted);margin-top:2px;">${lbl}</div>
               </div>`).join('')}
           </div>
@@ -2482,7 +2482,7 @@ async function descargarReciboNomina(reciboId) {
           <div style="font-size:.7rem;color:var(--text-muted);
                       border-top:1px solid var(--border);padding-top:10px;margin-top:10px;
                       line-height:1.5;">
-            ℹ️ Al aprobar, el recibo quedará marcado como <strong>aprobado</strong>
+            Al aprobar, el recibo quedará marcado como <strong>aprobado</strong>
             y se generará el PDF para firma. Este documento tiene validez conforme
             a los Arts. 82, 88 y 132 Fracc. VII de la LFT.
           </div>
@@ -2491,12 +2491,12 @@ async function descargarReciboNomina(reciboId) {
         <!-- Footer con acciones -->
         <div class="modal-footer" style="border-top:1px solid var(--border);gap:10px;">
           <button class="btn-secondary" onclick="closeModal()">
-            ✏️ Cerrar y editar
+            Cerrar y editar
           </button>
           <button class="btn-primary" id="btn-aprobar-recibo"
             onclick="aprobarYGenerarPDF('${reciboId}')"
             style="background:var(--green-ok);border-color:var(--green-ok);">
-            ✅ Aprobar y Generar PDF
+            Aprobar y Generar PDF
           </button>
         </div>
       </div>
@@ -2505,14 +2505,14 @@ async function descargarReciboNomina(reciboId) {
   } catch(e) {
     alert('Error al cargar el recibo: ' + e.message);
   } finally {
-    if (btn) { btn.textContent = '📄 PDF'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }
 
 // ── Aprobación + generación del PDF ─────────────────────────────────────────
 async function aprobarYGenerarPDF(reciboId) {
   const btn = document.getElementById('btn-aprobar-recibo');
-  if (btn) { btn.textContent = '⏳ Generando…'; btn.disabled = true; }
+  btnCargando(btn, 'Generando…');
   try {
     // Marcar como aprobado en Supabase
     await _sbN().from('recibos_nomina')
@@ -2541,7 +2541,7 @@ async function aprobarYGenerarPDF(reciboId) {
 
   } catch(e) {
     alert('Error al generar PDF: ' + e.message);
-    if (btn) { btn.textContent = '✅ Aprobar y Generar PDF'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }
 
@@ -2574,7 +2574,7 @@ async function _generarReciboNominaBlob(reciboId) {
 
   // 1. ENCABEZADO
   doc.setFillColor(15, 20, 40); doc.rect(0, 0, pw, 36, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(245,166,35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
   doc.text(np(empresa.nombre || ''), pw/2, 11, { align:'center' });
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
   doc.text(np([empresa.rfc, empresa.domicilio].filter(Boolean).join(' | ')), pw/2, 18, { align:'center' });
@@ -2670,7 +2670,7 @@ async function _generarReciboNominaBlob(reciboId) {
   doc.setFillColor(15,20,40); doc.rect(ml, y, tw, 22, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text('NETO A PAGAR', pw/2, y+7, { align:'center' });
-  doc.setFontSize(15); doc.setTextColor(245,166,35);
+  doc.setFontSize(15); doc.setTextColor(21,128,61);
   doc.text(np(`${fmt(recibo.neto_pagar)}   (${numToWords(recibo.neto_pagar)} PESOS M.N.)`), pw/2, y+17, { align:'center' });
   y += 30;
 

@@ -110,7 +110,7 @@ async function renderAjusteAnual(el) {
   try {
     _AA.filas = await calcularAjusteAnual(_AA.anio);
   } catch(e) {
-    cont.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${e.message}</span></div>`;
+    cont.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${e.message}</span></div>`;
     return;
   }
 
@@ -123,12 +123,12 @@ async function renderAjusteAnual(el) {
   cont.innerHTML = `
     <div class="card animate-in" style="margin-bottom:16px;">
       <div class="card-header">
-        <span class="card-title">🧾 Ajuste anual de ISR — Art. 97 LISR</span>
+        <span class="card-title">Ajuste anual de ISR — Art. 97 LISR</span>
         <div style="display:flex;gap:8px;align-items:center;">
           <select id="aa-anio" class="form-select" style="width:auto;" onchange="_aaCambiarAnio(this.value)">
             ${anios.map(a => `<option value="${a}" ${_AA.anio === a ? 'selected' : ''}>Ejercicio ${a}</option>`).join('')}
           </select>
-          <button class="btn-secondary btn-sm" onclick="_aaExportarXLSX()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_aaExportarXLSX()">Excel</button>
         </div>
       </div>
       <p style="font-size:.85rem;color:var(--text-muted);margin-top:10px;">
@@ -140,7 +140,7 @@ async function renderAjusteAnual(el) {
 
     ${!_AA.filas.length ? `
       <div class="empty-state">
-        <div class="empty-state-icon">🧾</div>
+        <div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div>
         <div class="empty-state-title">Sin recibos de nómina en ${_AA.anio}</div>
         <p style="font-size:.85rem;color:var(--text-muted);margin-top:8px;">Genera la nómina del ejercicio antes de calcular el ajuste anual.</p>
       </div>` : `
@@ -207,8 +207,7 @@ async function renderAjusteAnual(el) {
           </tbody>
         </table>
       </div>
-      <div class="alert alert-info" style="margin-top:14px;">
-        <span>ℹ️</span>
+      <div class="alert alert-info" style="margin-top:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
         <span>Al aplicar, la diferencia se escribe en el recibo de diciembre de cada trabajador
         (se recalcula su neto). Si después regeneras la nómina de diciembre, el ajuste se borra
         y hay que volver a aplicarlo.</span>
@@ -329,7 +328,7 @@ async function _aaConfirmarAplicar(periodoId) {
     total_neto: parseFloat((refrescados || []).reduce((s, r) => s + parseFloat(r.neto_pagar || 0), 0).toFixed(2)),
   }).eq('id', periodoId);
 
-  showToast(`✅ Ajuste anual aplicado a ${aplicados} trabajador${aplicados !== 1 ? 'es' : ''}.` +
+  showToast(`Ajuste anual aplicado a ${aplicados} trabajador${aplicados !== 1 ? 'es' : ''}.` +
     (sinRecibo ? ` ${sinRecibo} sin recibo en diciembre (omitidos).` : ''), 'success', 6000);
   await renderAjusteAnual();
 }

@@ -49,7 +49,7 @@ async function renderTabResguardos(trabajadorId) {
       <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(r.numero_serie) || '—'}</td>
       <td>${r.cantidad}</td>
       <td>${r.valor_estimado ? fmt(r.valor_estimado) : '—'}</td>
-      <td style="font-size:.82rem;">Devuelto: ${{completo:'✅ Completo',danado:'⚠️ Dañado',no_devuelto:'🔴 No devuelto'}[r.estado_devolucion] || r.estado_devolucion || '—'}</td>
+      <td style="font-size:.82rem;">Devuelto: ${{completo:'Completo',danado:'Dañado',no_devuelto:'● No devuelto'}[r.estado_devolucion] || r.estado_devolucion || '—'}</td>
       <td style="font-size:.82rem;">${formatDateShort(r.fecha_devolucion)}</td>
       <td></td>
     </tr>`;
@@ -58,7 +58,7 @@ async function renderTabResguardos(trabajadorId) {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
       <strong>Resguardos de herramienta/equipo <span style="font-size:.8rem;font-weight:400;color:var(--text-muted);">(${activos.length} activo${activos.length!==1?'s':''})</span></strong>
       <div style="display:flex;gap:8px;">
-        <button class="btn-secondary btn-sm" onclick="_generarCartaDeSeleccion('${trabajadorId}')">📄 Generar carta responsiva</button>
+        <button class="btn-secondary btn-sm" onclick="_generarCartaDeSeleccion('${trabajadorId}')">Generar carta responsiva</button>
         <button class="btn-primary btn-sm" onclick="_mostrarFormEntrega('${trabajadorId}')">+ Nueva entrega</button>
       </div>
     </div>
@@ -67,9 +67,9 @@ async function renderTabResguardos(trabajadorId) {
       <tbody>${activos.map(filaActivo).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:16px;">Sin resguardos activos</td></tr>'}
       ${devueltos.map(filaDevuelto).join('')}</tbody>
     </table></div>
-    <div id="form-entrega-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:rgba(255,255,255,.02);"></div>
-    <div id="form-devolucion-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:rgba(255,255,255,.02);"></div>
-    <div id="form-carta-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:rgba(255,255,255,.02);"></div>
+    <div id="form-entrega-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
+    <div id="form-devolucion-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
+    <div id="form-carta-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
   `;
 }
 
@@ -84,13 +84,13 @@ function _mostrarFormEntrega(trabajadorId) {
   form.style.display = '';
   _filasEntregaResguardo = 0;
   form.innerHTML = `
-    <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">📦 Nueva entrega de artículos</div>
+    <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">Nueva entrega de artículos</div>
     <div id="filas-entrega-resguardo"></div>
     <button class="btn-secondary btn-sm" onclick="_agregarFilaEntrega()" style="margin-top:8px;">+ Agregar artículo</button>
     <div id="entr-error" class="error-msg" role="alert" style="display:none;margin:10px 0;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
       <button class="btn-secondary btn-sm" onclick="_cerrarFormEntrega()">Cancelar</button>
-      <button id="entr-btn-guardar" class="btn-primary btn-sm" onclick="_guardarEntregaResguardos('${trabajadorId}')">💾 Guardar entrega</button>
+      <button id="entr-btn-guardar" class="btn-primary btn-sm" onclick="_guardarEntregaResguardos('${trabajadorId}')">Guardar entrega</button>
     </div>
   `;
   _agregarFilaEntrega();
@@ -116,7 +116,7 @@ function _agregarFilaEntrega() {
         <option value="usado">Usado</option>
       </select>
     </div>
-    <button class="btn-danger btn-sm" onclick="this.parentElement.remove()">🗑</button>
+    <button class="btn-danger btn-sm" onclick="this.parentElement.remove()"><svg class="ic"><use href="#i-trash"></use></svg></button>
   `;
   cont.appendChild(row);
 }
@@ -145,14 +145,14 @@ async function _guardarEntregaResguardos(trabajadorId) {
   }
 
   const btn = eid('entr-btn-guardar');
-  if (btn) { btn.textContent = 'Guardando…'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
 
   const fechaEntrega = new Date().toISOString().split('T')[0];
   const { data: creados, error } = await window.supabase.from('resguardos')
     .insert(filas.map(f => ({ ...f, empresa_id: CTX.empresa.id, trabajador_id: trabajadorId, fecha_entrega: fechaEntrega })))
     .select();
 
-  if (btn) { btn.textContent = '💾 Guardar entrega'; btn.disabled = false; }
+  btnRestaurar(btn);
 
   if (error) {
     errEl.textContent = 'Error al guardar: ' + friendlyError(error);
@@ -162,7 +162,7 @@ async function _guardarEntregaResguardos(trabajadorId) {
 
   _cerrarFormEntrega();
   await renderTabResguardos(trabajadorId);
-  if (confirm(`Se registraron ${creados.length} artículo(s). ¿Generar la carta responsiva ahora?`)) {
+  if (await showConfirmacion(`Se registraron ${creados.length} artículo(s). ¿Generar la carta responsiva ahora?`, { titulo:'Entrega registrada', textoOk:'Generar carta', textoCancelar:'Ahora no' })) {
     await _generarCartaResponsiva(trabajadorId, creados.map(r => r.id));
   }
 }
@@ -188,7 +188,7 @@ async function _generarCartaResponsiva(trabajadorId, resguardoIds) {
   if (form) {
     form.style.display = '';
     form.innerHTML = `
-      <div style="font-weight:700;font-size:.9rem;margin-bottom:10px;">📎 Subir carta responsiva firmada (opcional)</div>
+      <div style="font-weight:700;font-size:.9rem;margin-bottom:10px;">Subir carta responsiva firmada (opcional)</div>
       <div class="form-grid">
         <div class="form-group span-2">
           <label class="form-label" for="carta-res-archivo">Archivo escaneado</label>
@@ -198,7 +198,7 @@ async function _generarCartaResponsiva(trabajadorId, resguardoIds) {
       <div id="carta-res-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
         <button class="btn-secondary btn-sm" onclick="eid('form-carta-resguardo').style.display='none'">Cerrar</button>
-        <button class="btn-primary btn-sm" onclick='_subirCartaFirmada("${trabajadorId}", ${JSON.stringify(resguardoIds)})'>💾 Subir al expediente</button>
+        <button class="btn-primary btn-sm" onclick='_subirCartaFirmada("${trabajadorId}", ${JSON.stringify(resguardoIds)})'>Subir al expediente</button>
       </div>
     `;
     form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -222,7 +222,7 @@ async function _subirCartaFirmada(trabajadorId, resguardoIds) {
   await window.supabase.from('resguardos').update({ documento_url: data.storage_path }).in('id', resguardoIds);
   eid('form-carta-resguardo').style.display = 'none';
   await renderTabResguardos(trabajadorId);
-  if (typeof showToast === 'function') showToast('✅ Carta responsiva guardada en el expediente digital', 'success');
+  if (typeof showToast === 'function') showToast('Carta responsiva guardada en el expediente digital', 'success');
 }
 
 function generarCartaResponsivaPDF(empresa, trab, items) {
@@ -296,9 +296,9 @@ function _mostrarFormDevolucion(resguardoId, trabajadorId) {
       <div class="form-group">
         <label class="form-label" for="dev-estado">Estado de devolución <span class="req">*</span></label>
         <select id="dev-estado" class="form-select" required aria-required="true">
-          <option value="completo">✅ Completo</option>
-          <option value="danado">⚠️ Dañado</option>
-          <option value="no_devuelto">🔴 No devuelto</option>
+          <option value="completo">Completo</option>
+          <option value="danado">Dañado</option>
+          <option value="no_devuelto">● No devuelto</option>
         </select>
       </div>
       <div class="form-group">
@@ -312,7 +312,7 @@ function _mostrarFormDevolucion(resguardoId, trabajadorId) {
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
       <button class="btn-secondary btn-sm" onclick="eid('form-devolucion-resguardo').style.display='none'">Cancelar</button>
-      <button class="btn-primary btn-sm" onclick="_guardarDevolucion('${resguardoId}','${trabajadorId}')">💾 Guardar</button>
+      <button class="btn-primary btn-sm" onclick="_guardarDevolucion('${resguardoId}','${trabajadorId}')">Guardar</button>
     </div>
   `;
   form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

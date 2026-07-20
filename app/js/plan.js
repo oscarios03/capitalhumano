@@ -86,7 +86,7 @@ function aplicarGatesUI() {
     const feat = ROUTE_FEATURE[el.dataset.route];
     if (feat && !puedeUsar(feat) && !el.querySelector('.nav-lock')) {
       el.classList.add('nav-locked');
-      el.insertAdjacentHTML('beforeend', '<span class="nav-lock">🔒</span>');
+      el.insertAdjacentHTML('beforeend', '<span class="nav-lock"></span>');
     }
   });
 
@@ -106,7 +106,7 @@ function renderBannerPlan() {
   let html = '';
   if (esSoloLectura()) {
     html = `<div id="plan-banner" class="plan-banner plan-banner-error">
-      🔒 Tu cuenta está en <b>modo solo lectura</b> — tu periodo de prueba terminó o tu
+      Tu cuenta está en <b>modo solo lectura</b> — tu periodo de prueba terminó o tu
       suscripción está inactiva. Tus datos están a salvo.
       <button class="plan-banner-cta" onclick="showModalPlanes('reactivar')">Activar un plan</button>
     </div>`;
@@ -114,7 +114,7 @@ function renderBannerPlan() {
     if (sessionStorage.getItem('_plan_banner_ok')) return;
     const dias = CTX.plan.dias_trial_restantes;
     html = `<div id="plan-banner" class="plan-banner plan-banner-warn">
-      🕐 Periodo de prueba: ${dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}.
+      Periodo de prueba: ${dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}.
       <button class="plan-banner-cta" onclick="showModalPlanes('trial')">Ver planes</button>
       <button class="plan-banner-x" onclick="this.parentNode.remove();sessionStorage.setItem('_plan_banner_ok','1')" title="Ocultar">×</button>
     </div>`;
@@ -126,7 +126,7 @@ function renderBannerPlan() {
 function htmlVistaBloqueada(feature) {
   const planNecesario = feature === 'agente_ia' ? 'Full o Despacho' : 'Pyme o superior';
   return `<div class="empty-state" style="padding:60px 20px;text-align:center;">
-    <div class="empty-state-icon" style="font-size:2.6rem;">🔒</div>
+    <div class="empty-state-icon"><svg class="ic" style="width:38px;height:38px;"><use href="#i-lock"></use></svg></div>
     <h3 style="margin:12px 0 6px;color:var(--text-primary);font-family:var(--font-serif);">Función no incluida en tu plan</h3>
     <p style="color:var(--text-muted);max-width:420px;margin:0 auto 18px;">
       Esta sección está disponible en el plan <b>${planNecesario}</b>.
@@ -159,14 +159,14 @@ async function showModalPlanes(motivo) {
       <div class="plan-card-nombre">${p.nombre}</div>
       <div class="plan-card-precio">${fmtPrecio(p.precio_mensual)}</div>
       <ul class="plan-card-feats">
-        <li>👥 Trabajadores: <b>${fmtLim(p.max_trabajadores)}</b></li>
-        <li>🏢 Sucursales: <b>${fmtLim(p.max_sucursales)}</b></li>
-        <li>🏛️ Empresas: <b>${p.max_empresas}</b></li>
-        <li>${f.contratos ? '✅' : '➖'} Contratos</li>
-        <li>${f.nomina ? '✅' : '➖'} Nómina (ISR/IMSS)</li>
-        <li>${f.asistencia ? '✅' : '➖'} Asistencia y checador</li>
-        <li>${f.agente_ia ? '✅' : '➖'} Agente IA</li>
-        <li>✅ Actas administrativas y bajas</li>
+        <li>Trabajadores: <b>${fmtLim(p.max_trabajadores)}</b></li>
+        <li>Sucursales: <b>${fmtLim(p.max_sucursales)}</b></li>
+        <li>Empresas: <b>${p.max_empresas}</b></li>
+        <li>${f.contratos ? '' : ''} Contratos</li>
+        <li>${f.nomina ? '' : ''} Nómina (ISR/IMSS)</li>
+        <li>${f.asistencia ? '' : ''} Asistencia y checador</li>
+        <li>${f.agente_ia ? '' : ''} Agente IA</li>
+        <li>Actas administrativas y bajas</li>
       </ul>
       ${p.trial_dias ? `<div style="font-size:.75rem;color:var(--text-muted);">Prueba de ${p.trial_dias} días</div>` : ''}
     </div>`;
@@ -200,8 +200,8 @@ function _injectPlanCSS() {
   .plan-banner { position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:800;
     padding:8px 16px; border-radius:8px; font-size:.82rem; display:flex; align-items:center; gap:10px;
     box-shadow:0 4px 18px rgba(0,0,0,.25); max-width:92vw; }
-  .plan-banner-warn  { background:#3a3320; border:1px solid rgba(243,156,18,.55); color:#f5d489; }
-  .plan-banner-error { background:#3a2020; border:1px solid rgba(231,76,60,.55);  color:#f2b0a8; }
+  .plan-banner-warn  { background:#3a3320; border:1px solid rgba(217,138,43,.55); color:#f5d489; }
+  .plan-banner-error { background:#3a2020; border:1px solid rgba(192,57,43,.55);  color:#f2b0a8; }
   .plan-banner-cta { background:var(--accent, #c9a34e); color:#1a2230; border:none; border-radius:6px;
     padding:4px 12px; font-size:.78rem; font-weight:600; cursor:pointer; }
   .plan-banner-x { background:none; border:none; color:inherit; font-size:1.1rem; cursor:pointer; line-height:1; }

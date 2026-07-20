@@ -5,13 +5,13 @@
  */
 
 const TIPOS_DESCUENTO = {
-  infonavit:           { icono: '🏠', label: 'INFONAVIT' },
-  fonacot:             { icono: '🛍️', label: 'FONACOT' },
-  pension_alimenticia: { icono: '⚖️', label: 'Pensión alimenticia' },
-  prestamo_empresa:    { icono: '💵', label: 'Préstamo de la empresa' },
-  caja_ahorro:         { icono: '🐷', label: 'Caja de ahorro' },
-  prestamo_caja:       { icono: '🏦', label: 'Préstamo de caja de ahorro' },
-  otro:                { icono: '📎', label: 'Otro' },
+  infonavit:           { icono: '', label: 'INFONAVIT' },
+  fonacot:             { icono: '', label: 'FONACOT' },
+  pension_alimenticia: { icono: '', label: 'Pensión alimenticia' },
+  prestamo_empresa:    { icono: '', label: 'Préstamo de la empresa' },
+  caja_ahorro:         { icono: '', label: 'Caja de ahorro' },
+  prestamo_caja:       { icono: '', label: 'Préstamo de caja de ahorro' },
+  otro:                { icono: '', label: 'Otro' },
 };
 
 const MODALIDADES_DESCUENTO = {
@@ -74,16 +74,16 @@ async function renderTabDescuentos(trabajadorId) {
       : fmt(d.valor);
     return `
       <tr>
-        <td>${cfg.icono} ${cfg.label}${d.tipo === 'pension_alimenticia' ? ' <span style="font-size:.68rem;color:var(--gold-primary);" title="Prioridad absoluta, sin tope de ley (orden judicial, Art. 110 fr. V LFT)">⚖️ prioritario</span>' : ''}</td>
+        <td>${cfg.icono} ${cfg.label}${d.tipo === 'pension_alimenticia' ? ' <span style="font-size:.68rem;color:var(--gold-primary);" title="Prioridad absoluta, sin tope de ley (orden judicial, Art. 110 fr. V LFT)">prioritario</span>' : ''}</td>
         <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(d.numero_credito) || '—'}</td>
         <td style="font-size:.82rem;">${MODALIDADES_DESCUENTO[d.modalidad] || d.modalidad}<br><strong>${valorLabel}</strong></td>
         <td style="font-size:.82rem;">${d.saldo_restante != null ? fmt(d.saldo_restante) : '<span style="color:var(--text-muted);">Sin fin</span>'}</td>
         <td>
           <div class="actions">
-            <button class="btn-secondary btn-sm" onclick="_verHistorialDescuento('${d.id}','${trabajadorId}')">🕘 Historial</button>
+            <button class="btn-secondary btn-sm" onclick="_verHistorialDescuento('${d.id}','${trabajadorId}')">Historial</button>
             ${d.activo ? `
-              <button class="btn-secondary btn-sm" onclick="_liquidarDescuento('${d.id}','${trabajadorId}')">✅ Liquidar</button>
-              <button class="btn-danger btn-sm" onclick="_suspenderDescuento('${d.id}','${trabajadorId}')">⏸ Suspender</button>
+              <button class="btn-secondary btn-sm" onclick="_liquidarDescuento('${d.id}','${trabajadorId}')">Liquidar</button>
+              <button class="btn-danger btn-sm" onclick="_suspenderDescuento('${d.id}','${trabajadorId}')">Suspender</button>
             ` : `<span style="font-size:.75rem;color:var(--text-muted);">Inactivo</span>`}
           </div>
         </td>
@@ -91,7 +91,7 @@ async function renderTabDescuentos(trabajadorId) {
   };
 
   const tabla = (items, vacioTxt) => items.length === 0
-    ? `<div class="empty-state" style="padding:20px;"><div class="empty-state-icon">💳</div><div class="empty-state-title">${vacioTxt}</div></div>`
+    ? `<div class="empty-state" style="padding:20px;"><div class="empty-state-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="empty-state-title">${vacioTxt}</div></div>`
     : `<div class="table-wrap"><table class="data-table">
         <thead><tr><th>Tipo</th><th>Núm. crédito/expediente</th><th>Modalidad</th><th>Saldo restante</th><th>Acciones</th></tr></thead>
         <tbody>${items.map(filaDescuento).join('')}</tbody>
@@ -103,8 +103,7 @@ async function renderTabDescuentos(trabajadorId) {
       <button class="btn-primary btn-sm" onclick="_mostrarFormDescuento('${trabajadorId}')">+ Nuevo descuento</button>
     </div>
     ${cajasAhorro.length ? `
-      <div class="alert alert-info" style="margin-bottom:14px;">
-        <span>🐷</span><span>Acumulado en caja de ahorro a la fecha: <strong>${fmt(acumuladoCajaAhorro)}</strong> (suma de lo descontado en nómina).</span>
+      <div class="alert alert-info" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg><span>Acumulado en caja de ahorro a la fecha: <strong>${fmt(acumuladoCajaAhorro)}</strong> (suma de lo descontado en nómina).</span>
       </div>` : ''}
     ${tabla(activos, 'Sin descuentos activos')}
     ${inactivos.length ? `
@@ -112,7 +111,7 @@ async function renderTabDescuentos(trabajadorId) {
         <strong style="font-size:.85rem;color:var(--text-muted);">Descuentos liquidados/suspendidos</strong>
         ${tabla(inactivos, '')}
       </div>` : ''}
-    <div id="form-descuento" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:rgba(255,255,255,.02);"></div>
+    <div id="form-descuento" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
     <div id="historial-descuento" style="display:none;margin-top:18px;"></div>
   `;
 }
@@ -122,7 +121,7 @@ function _mostrarFormDescuento(trabajadorId) {
   if (!form) return;
   form.style.display = '';
   form.innerHTML = `
-    <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">💳 Nuevo descuento / préstamo</div>
+    <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">Nuevo descuento / préstamo</div>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label" for="dsc-tipo">Tipo <span class="req">*</span></label>
@@ -159,7 +158,7 @@ function _mostrarFormDescuento(trabajadorId) {
     <div id="dsc-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
       <button class="btn-secondary btn-sm" onclick="_cerrarFormDescuento()">Cancelar</button>
-      <button id="dsc-btn-guardar" class="btn-primary btn-sm" onclick="_guardarDescuento('${trabajadorId}')">💾 Guardar</button>
+      <button id="dsc-btn-guardar" class="btn-primary btn-sm" onclick="_guardarDescuento('${trabajadorId}')">Guardar</button>
     </div>
   `;
   _ayudaTipoDescuento();
@@ -173,7 +172,7 @@ function _ayudaTipoDescuento() {
   const textos = {
     infonavit: 'Captura el número de crédito INFONAVIT. La modalidad "veces UMA" es la más común para créditos en factor de descuento.',
     fonacot: 'Captura el número de crédito FONACOT. Normalmente es una cuota fija mensual/quincenal.',
-    pension_alimenticia: '⚖️ Tiene prioridad absoluta sobre cualquier otro descuento y NO le aplican los topes del Art. 110 LFT (deriva de una orden judicial, Art. 110 fr. V LFT). Captura el número de expediente judicial.',
+    pension_alimenticia: 'Tiene prioridad absoluta sobre cualquier otro descuento y NO le aplican los topes del Art. 110 LFT (deriva de una orden judicial, Art. 110 fr. V LFT). Captura el número de expediente judicial.',
     prestamo_empresa: 'Sujeto al tope del Art. 110 fr. I LFT: no puede exceder el 30% del excedente del salario sobre el salario mínimo del periodo. El sistema recorta automáticamente si se excede.',
     caja_ahorro: 'Descuento recurrente para una caja de ahorro (distinto del fondo de ahorro configurado en el expediente del trabajador). Deja el "Monto total del crédito" vacío para una aportación sin fin — así nunca se marca como "liquidado" ni se desactiva sola.',
     prestamo_caja: 'Préstamo que el trabajador toma contra su propia caja de ahorro (no lo presta la empresa). Captura el monto prestado en "Monto total del crédito" para que el sistema calcule cuándo queda liquidado.',
@@ -205,7 +204,7 @@ async function _guardarDescuento(trabajadorId) {
   }
 
   const btn = eid('dsc-btn-guardar');
-  if (btn) { btn.textContent = 'Guardando…'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
 
   const { error } = await window.supabase.from('descuentos_trabajador').insert({
     empresa_id:     CTX.empresa.id,
@@ -219,7 +218,7 @@ async function _guardarDescuento(trabajadorId) {
     prioridad:      tipo === 'pension_alimenticia' ? 1 : 100,
   });
 
-  if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
+  btnRestaurar(btn);
 
   if (error) {
     errEl.textContent = 'Error al guardar: ' + error.message;
@@ -230,14 +229,14 @@ async function _guardarDescuento(trabajadorId) {
 }
 
 async function _suspenderDescuento(descuentoId, trabajadorId) {
-  if (!confirm('¿Suspender este descuento? Dejará de aplicarse en las próximas nóminas.')) return;
+  if (!(await showConfirmacion('¿Suspender este descuento? Dejará de aplicarse en las próximas nóminas.', { peligro:true, textoOk:'Suspender' }))) return;
   const { error } = await window.supabase.from('descuentos_trabajador').update({ activo: false }).eq('id', descuentoId);
   if (error) { alert('Error: ' + error.message); return; }
   await renderTabDescuentos(trabajadorId);
 }
 
 async function _liquidarDescuento(descuentoId, trabajadorId) {
-  if (!confirm('¿Marcar este descuento como liquidado? Se desactivará y no se aplicará en próximas nóminas.')) return;
+  if (!(await showConfirmacion('¿Marcar este descuento como liquidado? Se desactivará y no se aplicará en próximas nóminas.'))) return;
   const { error } = await window.supabase.from('descuentos_trabajador')
     .update({ activo: false, saldo_restante: 0 }).eq('id', descuentoId);
   if (error) { alert('Error: ' + error.message); return; }
@@ -255,7 +254,7 @@ async function _verHistorialDescuento(descuentoId, trabajadorId) {
 
   cont.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <strong style="font-size:.85rem;">🕘 Historial de aplicaciones</strong>
+      <strong style="font-size:.85rem;">Historial de aplicaciones</strong>
       <button class="btn-secondary btn-sm" onclick="eid('historial-descuento').style.display='none'">Cerrar</button>
     </div>
     ${historial.length === 0

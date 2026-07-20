@@ -14,13 +14,13 @@ async function renderChecador() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">⏱ Reloj Checador</div>
+        <div class="view-title">Reloj Checador</div>
         <div class="view-subtitle">${escapeHtml(CTX.empresa.nombre)}</div>
       </div>
     </div>
     <div class="tabs animate-in" style="margin-bottom:16px;">
-      <button class="tab-btn ${_CHK.tab===1?'active':''}" onclick="switchChecadorTab(1)">📱 Modo Kiosco</button>
-      <button class="tab-btn ${_CHK.tab===2?'active':''}" onclick="switchChecadorTab(2)">🔌 Checadores Físicos</button>
+      <button class="tab-btn ${_CHK.tab===1?'active':''}" onclick="switchChecadorTab(1)">Modo Kiosco</button>
+      <button class="tab-btn ${_CHK.tab===2?'active':''}" onclick="switchChecadorTab(2)">Checadores Físicos</button>
     </div>
     <div id="chk-content" class="animate-in"></div>
   `;
@@ -50,15 +50,14 @@ function _errorChecador(e) {
   const faltaMigracion = /column .* does not exist|relation .* does not exist|pin_checador|codigo_checador|kiosco_token|integraciones_checador|checadas/i.test(msg);
   if (faltaMigracion) {
     return `
-      <div class="alert alert-warn" style="margin-bottom:12px;">
-        <span>⚠️</span>
+      <div class="alert alert-warn" style="margin-bottom:12px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
         <span><strong>Falta aplicar la migración de base de datos.</strong>
         Ejecuta <code>app/migrations/13_migration_checador.sql</code> en el
         SQL Editor de Supabase y recarga esta página.</span>
       </div>
       <div style="font-size:.75rem;color:var(--text-muted);">Detalle técnico: ${escapeHtml(msg)}</div>`;
   }
-  return `<div class="alert alert-danger"><span>❌</span><span>${escapeHtml(msg)}</span></div>`;
+  return `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${escapeHtml(msg)}</span></div>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -75,7 +74,7 @@ async function _tabKiosco() {
 
   el.innerHTML = `
     <div class="card" style="margin-bottom:24px;">
-      <div class="card-header"><span class="card-title">📱 Pantalla de kiosco por sucursal</span></div>
+      <div class="card-header"><span class="card-title">Pantalla de kiosco por sucursal</span></div>
       <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px;">
         Abre el enlace de tu sucursal en una laptop o tablet fija de recepción.
         Cada trabajador checa entrada/salida él mismo con su PIN o su gafete QR.
@@ -92,7 +91,7 @@ async function _tabKiosco() {
                   : '<span style="color:var(--text-muted);">Sin generar</span>'}</td>
                 <td style="white-space:nowrap;">
                   ${s.kiosco_token ? `<button class="btn-secondary btn-sm" onclick="_verQrKiosco('${s.id}','${s.kiosco_token}','${(s.nombre||'').replace(/'/g,"\\'")}')">Ver QR</button>` : ''}
-                  <button class="btn-secondary btn-sm" onclick="_generarTokenKiosco('${s.id}')">${s.kiosco_token?'🔄 Regenerar':'➕ Generar'}</button>
+                  <button class="btn-secondary btn-sm" onclick="_generarTokenKiosco('${s.id}')">${s.kiosco_token?'Regenerar':'Generar'}</button>
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -101,7 +100,7 @@ async function _tabKiosco() {
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="card-title">🪪 Credenciales de checado por trabajador</span></div>
+      <div class="card-header"><span class="card-title">Credenciales de checado por trabajador</span></div>
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>Trabajador</th><th>Puesto</th><th>PIN</th><th>Código QR</th><th></th></tr></thead>
@@ -111,10 +110,10 @@ async function _tabKiosco() {
                 <td>${escapeHtml(t.nombre)}</td>
                 <td>${escapeHtml(t.puesto)||'—'}</td>
                 <td>${t.pin_checador ? `<code>${t.pin_checador}</code>` : '<span style="color:var(--text-muted);">—</span>'}</td>
-                <td>${t.codigo_checador ? '✅ Asignado' : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td>${t.codigo_checador ? 'Asignado' : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td style="white-space:nowrap;">
-                  <button class="btn-secondary btn-sm" onclick="_asignarPin('${t.id}')">${t.pin_checador?'🔄 PIN':'➕ PIN'}</button>
-                  <button class="btn-secondary btn-sm" onclick="_asignarQr('${t.id}','${(t.nombre||'').replace(/'/g,"\\'")}')">${t.codigo_checador?'🖨 Gafete':'➕ Gafete'}</button>
+                  <button class="btn-secondary btn-sm" onclick="_asignarPin('${t.id}')">${t.pin_checador?'PIN':'PIN'}</button>
+                  <button class="btn-secondary btn-sm" onclick="_asignarQr('${t.id}','${(t.nombre||'').replace(/'/g,"\\'")}')">${t.codigo_checador?'Reimprimir gafete':'Generar gafete'}</button>
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -145,7 +144,7 @@ function _verQrKiosco(sucursalId, token, nombreSucursal) {
   showModal(`
     <div class="modal animate-in" style="max-width:380px;text-align:center;">
       <div class="modal-header">
-        <div class="modal-title">📱 Kiosco — ${nombreSucursal}</div>
+        <div class="modal-title">Kiosco — ${nombreSucursal}</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div id="qr-kiosco" style="margin:16px auto;width:220px;height:220px;"></div>
@@ -175,12 +174,12 @@ async function _asignarQr(trabId, nombre) {
   showModal(`
     <div class="modal animate-in" style="max-width:340px;text-align:center;">
       <div class="modal-header">
-        <div class="modal-title">🪪 Gafete — ${nombre}</div>
+        <div class="modal-title">Gafete — ${nombre}</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div id="qr-gafete" style="margin:16px auto;width:200px;height:200px;"></div>
       <div style="font-weight:600;margin-bottom:16px;">${nombre}</div>
-      <button class="btn-primary" onclick="window.print()">🖨 Imprimir</button>
+      <button class="btn-primary" onclick="window.print()">Imprimir</button>
     </div>
   `);
   if (window.QRCode) new QRCode(eid('qr-gafete'), { text: codigo, width: 200, height: 200 });
@@ -200,15 +199,15 @@ async function _tabIntegraciones() {
   el.innerHTML = `
     <div class="card" style="margin-bottom:24px;">
       <div class="card-header">
-        <span class="card-title">🔌 Checadores físicos conectados</span>
-        <button class="btn-primary btn-sm" onclick="_crearApiKey()">➕ Generar API Key</button>
+        <span class="card-title">Checadores físicos conectados</span>
+        <button class="btn-primary btn-sm" onclick="_crearApiKey()">Generar API key</button>
       </div>
       <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px;">
         Conecta tu reloj checador de huella/facial (ZKTeco, Anviz, Hikvision, etc.) mediante un pequeño
         agente que corre en una PC de tu oficina. La guía y un script de ejemplo están en
         <a href="../docs/checador-fisico-integracion.md" target="_blank">docs/checador-fisico-integracion.md</a>.
       </p>
-      ${!(integraciones||[]).length ? `<div class="empty-state"><div class="empty-state-icon">🔌</div><p>Aún no has generado ninguna API key</p></div>` : `
+      ${!(integraciones||[]).length ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-clock"></use></svg></div><p>Aún no has generado ninguna API key</p></div>` : `
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>Nombre</th><th>API Key</th><th>Estado</th><th>Última conexión</th><th></th></tr></thead>
@@ -248,16 +247,15 @@ async function _crearApiKey() {
   showModal(`
     <div class="modal animate-in" style="max-width:460px;">
       <div class="modal-header">
-        <div class="modal-title">🔑 API Key generada</div>
+        <div class="modal-title">API Key generada</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
-      <div class="alert alert-warn" style="margin-bottom:14px;">
-        <span>⚠️</span><span>Guárdala ahora — no volverá a mostrarse completa.</span>
+      <div class="alert alert-warn" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>Guárdala ahora — no volverá a mostrarse completa.</span>
       </div>
       <div style="background:var(--bg-surface);padding:12px;border-radius:8px;word-break:break-all;font-family:monospace;margin-bottom:14px;">
         ${rawKey}
       </div>
-      <button class="btn-primary" onclick="navigator.clipboard.writeText('${rawKey}');showToast('Copiada','success')">📋 Copiar</button>
+      <button class="btn-primary" onclick="navigator.clipboard.writeText('${rawKey}');showToast('Copiada','success')">Copiar</button>
     </div>
   `);
   await _cargarTabChecador();

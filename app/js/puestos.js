@@ -48,10 +48,10 @@ async function renderPuestosCatalogo() {
     cont.innerHTML = `
       <div class="view-header animate-in" style="margin-bottom:16px;">
         <div>
-          <div class="view-title" style="font-size:1.2rem;">💼 Puestos</div>
+          <div class="view-title" style="font-size:1.2rem;">Puestos</div>
           <div class="view-subtitle">Plantillas de puesto reutilizables para dar de alta trabajadores</div>
         </div>
-        <button class="btn-primary" ${readOnly ? 'disabled title="Plan en solo lectura"' : ''} onclick="showModalPuesto(null)">+ Crear Puesto</button>
+        <button class="btn-primary" ${readOnly ? 'disabled title="Plan en solo lectura"' : ''} onclick="showModalPuesto(null)">+ Nuevo puesto</button>
       </div>
 
       ${orden.length > 0 ? `
@@ -66,25 +66,25 @@ async function renderPuestosCatalogo() {
               ${p.activo === false ? '<span class="badge-inactiva">Inactivo</span>' : ''}
             </div>
             <div class="sucursal-meta">
-              ${p.departamento ? `🏢 ${p.departamento}` : ''}
-              ${p.salario_sugerido ? `<br>💰 Sugerido: <strong>${_fmtMoneda(p.salario_sugerido)}</strong> <span style="color:var(--text-muted);">/ ${p.periodo_salario || 'mensual'}</span>` : ''}
+              ${p.departamento ? `${p.departamento}` : ''}
+              ${p.salario_sugerido ? `<br>Sugerido: <strong>${_fmtMoneda(p.salario_sugerido)}</strong> <span style="color:var(--text-muted);">/ ${p.periodo_salario || 'mensual'}</span>` : ''}
               ${rango(p) ? `<br><span style="color:var(--text-muted);">${rango(p)}</span>` : ''}
               ${p.reporta_a ? `<br>↳ Reporta a: ${p.reporta_a}` : ''}
               ${p.funciones ? `<br><span style="color:var(--text-muted);font-size:.78rem;">${p.funciones.length > 120 ? p.funciones.slice(0, 120) + '…' : p.funciones}</span>` : ''}
-              <br>👥 <strong>${conteo[p.id] || 0}</strong> trabajador${(conteo[p.id] || 0) !== 1 ? 'es' : ''}
+              <br><strong>${conteo[p.id] || 0}</strong> trabajador${(conteo[p.id] || 0) !== 1 ? 'es' : ''}
             </div>
             <div class="sucursal-footer">
-              <button class="btn-secondary btn-sm" ${readOnly ? 'disabled' : ''} onclick="showModalPuesto('${p.id}')">✏️ Editar</button>
+              <button class="btn-secondary btn-sm" ${readOnly ? 'disabled' : ''} onclick="showModalPuesto('${p.id}')">Editar</button>
               <button class="btn-${p.activo === false ? 'secondary' : 'danger'} btn-sm" ${readOnly ? 'disabled' : ''}
                 onclick="togglePuestoStatus('${p.id}', ${p.activo === false})">
-                ${p.activo === false ? '🟢 Activar' : '🔴 Desactivar'}
+                ${p.activo === false ? '● Activar' : '● Desactivar'}
               </button>
             </div>
           </div>
         `).join('')}
       </div>` : `
       <div class="empty-state animate-in" style="padding:32px;">
-        <div class="empty-state-icon">💼</div>
+        <div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div>
         <div class="empty-state-title">Sin puestos registrados</div>
         <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Crea plantillas de puesto para reutilizarlas al dar de alta trabajadores. También puedes crearlas directamente desde el alta.</p>
       </div>`}
@@ -105,7 +105,7 @@ async function showModalPuesto(id) {
     <div class="modal animate-in" style="max-width:680px;">
       <div class="modal-header">
         <div>
-          <div class="modal-title">${esEdicion ? '✏️ Editar Puesto' : '💼 Nuevo Puesto'}</div>
+          <div class="modal-title">${esEdicion ? 'Editar Puesto' : 'Nuevo Puesto'}</div>
           <p style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Plantilla del puesto (no de la persona). Se usa como base al dar de alta trabajadores.</p>
         </div>
         <button class="modal-close" onclick="closeModal()">×</button>
@@ -192,7 +192,7 @@ async function showModalPuesto(id) {
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="handleGuardarPuesto('${id || ''}')">
-          💾 ${esEdicion ? 'Guardar cambios' : 'Crear Puesto'}
+          ${esEdicion ? 'Guardar cambios' : 'Crear Puesto'}
         </button>
       </div>
     </div>
@@ -235,7 +235,7 @@ async function handleGuardarPuesto(id) {
     return;
   }
   const btn = document.querySelector('#modal-container .btn-primary');
-  if (btn) { btn.textContent = 'Guardando…'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
   try {
     if (id) await db.updatePuesto(id, datos);
     else    await db.createPuesto(datos, CTX.empresa.id);
@@ -243,13 +243,13 @@ async function handleGuardarPuesto(id) {
     renderPuestosCatalogo();
   } catch (e) {
     if (err) { err.textContent = e.message; err.style.display = ''; }
-    if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }
 
 async function togglePuestoStatus(id, activar) {
   const accion = activar ? 'activar' : 'desactivar';
-  if (!confirm(`¿Deseas ${accion} este puesto?`)) return;
+  if (!(await showConfirmacion(`¿Deseas ${accion} este puesto?`))) return;
   try {
     await db.togglePuesto(id, activar);
     renderPuestosCatalogo();

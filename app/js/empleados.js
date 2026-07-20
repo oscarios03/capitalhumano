@@ -36,7 +36,7 @@ function _actualizarPreviewSalario() {
   if (typeof costoTotalEmpleado === 'function') {
     const ingreso = eid('n-ingreso')?.value || new Date().toISOString().split('T')[0];
     const c = costoTotalEmpleado({ salario_mensual: monto, periodo_salario: periodo, fecha_ingreso: ingreso });
-    costoHTML = `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(245,166,35,.35);"
+    costoHTML = `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--gold-dim);"
         title="Salario + cuotas patronales IMSS (${fmt(c.imssPatronal)}) + INFONAVIT 5% (${fmt(c.infonavit)}) + ISN (${fmt(c.isn)}) + provisiones de aguinaldo, vacaciones y prima vacacional (${fmt(c.provAguinaldo + c.provVacaciones + c.provPrimaVac)})">
       Costo real mensual para la empresa: <strong>${fmt(c.total)}</strong>
       <span style="color:var(--text-secondary);">(× ${c.factorSobreSalario} del salario)</span>
@@ -65,10 +65,12 @@ function switchEmpleadosTab(sub) {
 
 async function renderEmpleados() {
   const sub = _empleadosSubvista;
+  const segBtn = (id, label) => `
+      <button class="btn-sm" style="border:${sub===id?'1px solid var(--border)':'1px solid transparent'};border-radius:7px;padding:7px 16px;font-weight:${sub===id?'600':'500'};cursor:pointer;background:${sub===id?'#fff':'transparent'};color:${sub===id?'var(--text-primary)':'var(--text-secondary)'};" onclick="switchEmpleadosTab('${id}')">${label}</button>`;
   const seg = `
-    <div class="seg-control animate-in" style="display:inline-flex;gap:4px;background:var(--surface-2,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:16px;">
-      <button class="btn-sm" style="border:none;border-radius:7px;padding:7px 16px;font-weight:700;cursor:pointer;background:${sub==='trabajadores'?'var(--gold-primary)':'transparent'};color:${sub==='trabajadores'?'#1a1a1a':'var(--text-secondary)'};" onclick="switchEmpleadosTab('trabajadores')">👤 Trabajadores</button>
-      <button class="btn-sm" style="border:none;border-radius:7px;padding:7px 16px;font-weight:700;cursor:pointer;background:${sub==='puestos'?'var(--gold-primary)':'transparent'};color:${sub==='puestos'?'#1a1a1a':'var(--text-secondary)'};" onclick="switchEmpleadosTab('puestos')">💼 Puestos</button>
+    <div class="seg-control animate-in" style="display:inline-flex;gap:4px;background:#f1f4f7;border-radius:10px;padding:4px;margin-bottom:16px;">
+      ${segBtn('trabajadores', 'Trabajadores')}
+      ${segBtn('puestos', 'Puestos')}
     </div>`;
   const main = eid('main-view');
   main.innerHTML = `${seg}<div id="empleados-sub"></div>`;
@@ -89,11 +91,11 @@ async function renderTrabajadoresLista() {
     const bajas   = trabajadores.filter(t => t.estado !== 'activo');
 
     const filasTrabajador = (lista) => {
-      if (!lista.length) return `<tr><td colspan="6"><div class="empty-state" style="padding:20px 0;"><div class="empty-state-icon" style="font-size:1.6rem;">👤</div><div class="empty-state-title" style="font-size:.9rem;">Sin registros</div></div></td></tr>`;
+      if (!lista.length) return `<tr><td colspan="6"><div class="empty-state" style="padding:20px 0;"><div class="empty-state-title" style="font-size:.9rem;">Sin registros</div></div></td></tr>`;
       return lista.map(t => {
         const dias = diasParaVencimiento(t.fecha_vencimiento_contrato);
         const vencBadge = dias !== null && dias <= 15
-          ? `<br><span style="font-size:.72rem;font-weight:700;color:${dias<=3?'var(--red-warn)':'#f39c12'};">⏰ ${dias<0?'VENCIDO':dias===0?'Vence hoy':'Vence en '+dias+'d'}</span>`
+          ? `<br><span style="font-size:.72rem;font-weight:700;color:${dias<=3?'var(--red-warn)':'var(--amber-warn)'};">${dias<0?'VENCIDO':dias===0?'Vence hoy':'Vence en '+dias+'d'}</span>`
           : '';
         return `<tr data-nombre="${escapeHtml((t.nombre||'').toLowerCase())}" data-sucursal="${escapeHtml(t.sucursal_id || 'matriz')}">
           <td><strong>${escapeHtml(t.nombre)}</strong></td>
@@ -186,7 +188,7 @@ async function showModalAltaEmpleado() {
     const trabs = await db.getTrabajadores();
     const activos = trabs.filter(t => t.estado === 'activo').length;
     if (activos >= max) {
-      showToast(`🔒 Tu plan permite máximo ${max} trabajadores activos.`, 'warn', 6000);
+      showToast(`Tu plan permite máximo ${max} trabajadores activos.`, 'warn', 6000);
       showModalPlanes('limite_trabajadores');
       return;
     }
@@ -231,7 +233,7 @@ async function showModalTrabajador(id = null) {
       <!-- Header -->
       <div class="modal-header" style="padding:18px 24px 14px;flex-shrink:0;">
         <div>
-          <div class="modal-title">${esEdicion ? '✏️ Editar Trabajador' : '+ Alta de Trabajador'}</div>
+          <div class="modal-title">${esEdicion ? 'Editar Trabajador' : '+ Alta de Trabajador'}</div>
           <p style="font-size:.82rem;color:var(--text-muted);margin-top:3px;">${esEdicion ? escapeHtml(trab.nombre) : 'El contrato PDF se genera automáticamente'}</p>
         </div>
         <button class="modal-close" onclick="closeModal()">×</button>
@@ -239,10 +241,10 @@ async function showModalTrabajador(id = null) {
 
       <!-- Tabs nav -->
       <div class="modal-tabs">
-        <button class="modal-tab active" onclick="switchModalTab(this,'mtab-personal')">👤 Personal</button>
-        <button class="modal-tab" onclick="switchModalTab(this,'mtab-laboral')">💼 Laboral</button>
-        <button class="modal-tab" onclick="switchModalTab(this,'mtab-jornada')">🕐 Jornada</button>
-        <button class="modal-tab" onclick="switchModalTab(this,'mtab-contactos')">📞 Contactos</button>
+        <button class="modal-tab active" onclick="switchModalTab(this,'mtab-personal')">Personal</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'mtab-laboral')">Laboral</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'mtab-jornada')">Jornada</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'mtab-contactos')">Contactos</button>
       </div>
 
       <!-- ── TAB 1: PERSONAL ── -->
@@ -261,7 +263,7 @@ async function showModalTrabajador(id = null) {
             <input id="n-curp" type="text" class="form-input" value="${escapeHtml(v('curp'))}" placeholder="LOHM900415MDFPRL09" maxlength="18"
                    style="text-transform:uppercase;" oninput="_onCURPCapturada()" />
             <div class="helper-text">Al capturarla se llenan solos la fecha de nacimiento y el sexo.</div>
-            <div id="n-curp-aviso" class="helper-text" style="display:none;color:#f39c12;"></div>
+            <div id="n-curp-aviso" class="helper-text" style="display:none;color:var(--amber-warn);"></div>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-nss">NSS (IMSS)</label>
@@ -335,8 +337,8 @@ async function showModalTrabajador(id = null) {
             </div>
             <div class="helper-text">Elige una plantilla de puesto o crea una nueva.</div>
           </div>
-          <div class="form-group span-2" id="n-nuevo-puesto-panel" style="display:none;background:rgba(245,166,35,.05);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);padding:14px 16px;">
-            <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-primary);margin-bottom:10px;">＋ Nuevo puesto</div>
+          <div class="form-group span-2" id="n-nuevo-puesto-panel" style="display:none;background:var(--gold-dim);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);padding:14px 16px;">
+            <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-primary);margin-bottom:10px;">＋ Nuevo puesto</div>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label" for="np-nombre">Nombre del puesto <span class="req">*</span></label>
@@ -366,7 +368,7 @@ async function showModalTrabajador(id = null) {
             <div id="np-error" class="error-msg" style="display:none;margin:6px 0;"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;">
               <button type="button" class="btn-secondary btn-sm" onclick="_toggleNuevoPuestoPanel(false)">Cancelar</button>
-              <button type="button" class="btn-primary btn-sm" onclick="_guardarNuevoPuestoInline()">💾 Guardar puesto</button>
+              <button type="button" class="btn-primary btn-sm" onclick="_guardarNuevoPuestoInline()">Guardar puesto</button>
             </div>
           </div>
           <div class="form-group">
@@ -399,7 +401,7 @@ async function showModalTrabajador(id = null) {
           </div>
           <div class="form-group span-2">
             <div id="n-salario-preview" style="font-size:.78rem;color:var(--text-muted);padding:8px 12px;
-                 background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:6px;">
+                 background:var(--gold-dim);border:1px solid var(--gold-dim);border-radius:6px;">
               Captura el <strong>salario del periodo de pago seleccionado</strong>. Abajo verás el salario diario y el equivalente mensual.
             </div>
           </div>
@@ -470,9 +472,9 @@ async function showModalTrabajador(id = null) {
         </div>
 
         <!-- ── Configuración de Nómina ── -->
-        <div style="margin-top:18px;padding:14px 16px;background:rgba(245,166,35,.05);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);">
-          <div style="font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-primary);margin-bottom:14px;">
-            ⚙️ Configuración de Nómina
+        <div style="margin-top:18px;padding:14px 16px;background:var(--gold-dim);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);">
+          <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-primary);margin-bottom:14px;">
+            Configuración de Nómina
           </div>
           <div class="form-grid">
             <div class="form-group">
@@ -678,7 +680,7 @@ async function showModalTrabajador(id = null) {
 
       <!-- ── TAB 4: CONTACTOS ── -->
       <div id="mtab-contactos" class="modal-tab-content" style="display:none;">
-        <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">📱 Datos del trabajador</div>
+        <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">Datos del trabajador</div>
         <div class="form-grid">
           <div class="form-group span-2">
             <label class="form-label">Teléfono (WhatsApp)</label>
@@ -687,7 +689,7 @@ async function showModalTrabajador(id = null) {
           </div>
         </div>
         <div style="height:1px;background:var(--border);margin:20px 0;"></div>
-        <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">🚨 Contacto de Emergencia</div>
+        <div style="font-weight:700;font-size:.92rem;margin-bottom:14px;">Contacto de Emergencia</div>
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label" for="n-em-nombre">Nombre Completo</label>
@@ -703,7 +705,7 @@ async function showModalTrabajador(id = null) {
           </div>
         </div>
         <div style="height:1px;background:var(--border);margin:20px 0;"></div>
-        <div style="font-weight:700;font-size:.92rem;margin-bottom:4px;">📋 Beneficiarios (Art. 25 fracc. X LFT)</div>
+        <div style="font-weight:700;font-size:.92rem;margin-bottom:4px;">Beneficiarios (Art. 25 fracc. X LFT)</div>
         <div class="helper-text" style="margin-bottom:16px;">Personas que recibirán las prestaciones laborales en caso de fallecimiento del trabajador</div>
         <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Beneficiario 1</div>
         <div class="form-grid">
@@ -742,7 +744,7 @@ async function showModalTrabajador(id = null) {
       <div class="modal-footer" style="flex-shrink:0;">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="handleGuardarTrabajador('${id||''}')">
-          💾 ${esEdicion ? 'Guardar cambios' : 'Guardar y generar contrato'}
+          ${esEdicion ? 'Guardar cambios' : 'Guardar y generar contrato'}
         </button>
       </div>
     </div>
@@ -842,7 +844,7 @@ function agregarTemporada(data = {}) {
     <input type="text" class="form-input" name="temp-nombre" placeholder="Ej. Temporada Alta" value="${escapeHtml(data.nombre)||''}" />
     <input type="date" class="form-input" name="temp-inicio" value="${data.inicio||''}" />
     <input type="date" class="form-input" name="temp-fin" value="${data.fin||''}" />
-    <button class="btn-danger btn-sm dyn-row" onclick="this.closest('.dyn-row').remove()" title="Eliminar">🗑</button>
+    <button class="btn-danger btn-sm dyn-row" onclick="this.closest('.dyn-row').remove()" title="Eliminar"><svg class="ic"><use href="#i-trash"></use></svg></button>
   `;
   c.appendChild(div);
 }
@@ -855,7 +857,7 @@ function agregarComision(data = {}) {
   div.innerHTML = `
     <input type="text" class="form-input" name="com-rango" placeholder="Ej. De 1 a 3 ventas" value="${escapeHtml(data.rango)||''}" />
     <input type="text" class="form-input" name="com-valor" placeholder="Ej. $50 por venta" value="${escapeHtml(data.comision)||''}" />
-    <button class="btn-danger btn-sm dyn-row" onclick="this.closest('.dyn-row').remove()" title="Eliminar">🗑</button>
+    <button class="btn-danger btn-sm dyn-row" onclick="this.closest('.dyn-row').remove()" title="Eliminar"><svg class="ic"><use href="#i-trash"></use></svg></button>
   `;
   c.appendChild(div);
 }
@@ -929,7 +931,7 @@ function _mostrarAvisosLegales(avisos, trabId) {
   cont.innerHTML = `
     <div class="modal animate-in" style="max-width:520px;">
       <div class="modal-header">
-        <div class="modal-title">⚠️ Revisa estos datos</div>
+        <div class="modal-title">Revisa estos datos</div>
       </div>
       <div style="padding:18px 24px;">
         <p style="font-size:.88rem;color:var(--text-secondary);margin-bottom:14px;">
@@ -938,7 +940,7 @@ function _mostrarAvisosLegales(avisos, trabId) {
         </p>
         <div style="display:flex;flex-direction:column;gap:10px;">
           ${avisos.map(a => `
-            <div style="border-left:3px solid #f39c12;background:rgba(243,156,18,.08);padding:10px 12px;border-radius:0 6px 6px 0;">
+            <div style="border-left:3px solid var(--amber-warn);background:rgba(217,138,43,.08);padding:10px 12px;border-radius:0 6px 6px 0;">
               <div style="font-weight:700;font-size:.82rem;">${a.campo}</div>
               <div style="font-size:.8rem;color:var(--text-muted);margin-top:2px;">${a.motivo}</div>
             </div>`).join('')}
@@ -970,7 +972,7 @@ function _actualizarEdadCalculada() {
   if (!out) return;
   const edad = typeof edadDesdeFecha === 'function' ? edadDesdeFecha(fn) : null;
   if (edad == null) { out.textContent = ''; return; }
-  out.innerHTML = `${edad} años${edad < 18 ? ' — <strong style="color:#f39c12;">menor de edad: requiere autorización (Art. 23 LFT) y jornada máxima de 6 h</strong>' : ''}`;
+  out.innerHTML = `${edad} años${edad < 18 ? ' — <strong style="color:var(--amber-warn);">menor de edad: requiere autorización (Art. 23 LFT) y jornada máxima de 6 h</strong>' : ''}`;
 }
 
 // ── Puestos dentro del alta: cache, autollenado y creación inline ───────────
@@ -1038,7 +1040,7 @@ async function _guardarNuevoPuestoInline() {
     }
     _toggleNuevoPuestoPanel(false);
     _onPuestoSeleccionado();
-    if (typeof showToast === 'function') showToast('✅ Puesto creado y guardado en el catálogo.', 'success', 3500);
+    if (typeof showToast === 'function') showToast('Puesto creado y guardado en el catálogo.', 'success', 3500);
   } catch (e) {
     if (err) { err.textContent = e.message; err.style.display = ''; }
   }
@@ -1190,7 +1192,7 @@ async function handleGuardarTrabajador(id = '') {
   };
 
   const btn = document.querySelector('#modal-container .btn-primary');
-  if (btn) { btn.textContent = 'Guardando…'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
 
   try {
     if (id) {
@@ -1249,7 +1251,7 @@ async function handleGuardarTrabajador(id = '') {
   } catch(e) {
     err.textContent = friendlyError(e);
     err.style.display = '';
-    if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }
 
@@ -1293,26 +1295,26 @@ async function renderPerfilEmpleado(id) {
             <div class="perfil-meta">${escapeHtml(trab.puesto) || '—'}${trab.departamento ? ' · ' + escapeHtml(trab.departamento) : ''} · Ingreso: ${formatDateShort(trab.fecha_ingreso)} · ${antiguedad}</div>
             ${trab.fecha_vencimiento_contrato && dias !== null ? `
             <div style="margin-top:6px;font-size:.82rem;">
-              📅 Vencimiento: <strong>${formatDateShort(trab.fecha_vencimiento_contrato)}</strong>
-              <span style="margin-left:8px;font-weight:700;color:${dias<=3?'var(--red-warn)':dias<=7?'#f39c12':'var(--gold-primary)'};">
-                ${dias < 0 ? '⚠️ VENCIDO' : dias === 0 ? '⚠️ Vence HOY' : `⏰ ${dias} día${dias!==1?'s':''} restante${dias!==1?'s':''}`}
+              Vencimiento: <strong>${formatDateShort(trab.fecha_vencimiento_contrato)}</strong>
+              <span style="margin-left:8px;font-weight:700;color:${dias<=3?'var(--red-warn)':dias<=7?'var(--amber-warn)':'var(--gold-primary)'};">
+                ${dias < 0 ? 'VENCIDO' : dias === 0 ? 'Vence HOY' : `${dias} día${dias!==1?'s':''} restante${dias!==1?'s':''}`}
               </span>
             </div>` : ''}
           </div>
         </div>
         <div class="perfil-actions">
-          <button class="btn-secondary" onclick="showModalTrabajador('${id}')">✏️ Editar datos</button>
+          <button class="btn-secondary" onclick="showModalTrabajador('${id}')">Editar datos</button>
           <button class="btn-secondary" onclick="showModalKitDefensa('${id}')"
                   title="Arma un ZIP con contrato, recibos, asistencia, actas y expediente — la documentación con la que te defiendes (Art. 784 LFT)">
-            🛡️ Kit de defensa
+            Kit de defensa
           </button>
           ${necesitaRenovar ? `
             <button class="btn-secondary" style="border-color:var(--green-ok);color:var(--green-ok);"
-              onclick="renovarAPlanta('${id}')">🏭 Renovar a Planta</button>
+              onclick="renovarAPlanta('${id}')">Renovar a Planta</button>
           ` : ''}
           ${trab.estado === 'activo' ? `
-            <button class="btn-secondary" onclick="showModalActa('${id}')">⚠️ Nueva acta</button>
-            <button class="btn-primary" onclick="navigate('bajas','${id}')">🚪 Procesar baja</button>
+            <button class="btn-secondary" onclick="showModalActa('${id}')">Nueva acta</button>
+            <button class="btn-primary" onclick="navigate('bajas','${id}')">Procesar baja</button>
           ` : '<span class="badge badge-baja" style="padding:8px 14px;">Dado de baja</span>'}
         </div>
       </div>
@@ -1321,23 +1323,22 @@ async function renderPerfilEmpleado(id) {
       ${_semaforoExpedienteHTML(trab, docsExp)}
 
       ${faltas30.length >= 3 ? `
-        <div class="alert alert-danger animate-in">
-          <span>⚠️</span>
+        <div class="alert alert-danger animate-in"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
           <span><strong>Atención:</strong> ${escapeHtml(trab.nombre)} acumula <strong>${faltas30.length} faltas injustificadas</strong> en los últimos 30 días (Art. 47 Fracc. X LFT).
           <button class="btn-danger btn-sm" style="margin-left:12px;" onclick="showModalActa('${id}','rescisoria','asistencia')">Generar acta</button></span>
         </div>
       ` : ''}
 
       <div class="tabs animate-in">
-        <button class="tab-btn active" onclick="switchTab(this,'tab-datos')">📋 Datos</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-asistencia')">🗓 Asistencia (${asistencia.length})</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-actas')">⚠️ Actas (${actas.length})</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-contratos')">📄 Contratos (${contratos.length})</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-salarios')">💵 Salarios (${histSalarios.length})</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-expediente');renderTabExpediente('${id}')">🗂️ Expediente</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-descuentos');renderTabDescuentos('${id}')">💳 Descuentos</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-prestaciones');renderTabPrestaciones('${id}')">🎁 Prestaciones</button>
-        <button class="tab-btn" onclick="switchTab(this,'tab-resguardos');renderTabResguardos('${id}')">🧰 Resguardos</button>
+        <button class="tab-btn active" onclick="switchTab(this,'tab-datos')">Datos</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-asistencia')">Asistencia (${asistencia.length})</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-actas')">Actas (${actas.length})</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-contratos')">Contratos (${contratos.length})</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-salarios')">Salarios (${histSalarios.length})</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-expediente');renderTabExpediente('${id}')">Expediente</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-descuentos');renderTabDescuentos('${id}')">Descuentos</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-prestaciones');renderTabPrestaciones('${id}')">Prestaciones</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-resguardos');renderTabResguardos('${id}')">Resguardos</button>
       </div>
 
       <div id="tab-datos" class="animate-in">
@@ -1364,7 +1365,7 @@ async function renderPerfilEmpleado(id) {
                 ${typeof calcularFactorIntegracion === 'function' ? 'Factor ' + calcularFactorIntegracion(trab).toFixed(4) : ''}
                 ${trab.fecha_ultimo_sbc ? ' · actualizado ' + formatDateShort(trab.fecha_ultimo_sbc) : ''}
               </span>
-              <button class="btn-secondary btn-sm" style="margin-left:8px;" onclick="_recalcularSBCYRefrescar('${id}')">🔄 Recalcular SBC</button>
+              <button class="btn-secondary btn-sm" style="margin-left:8px;" onclick="_recalcularSBCYRefrescar('${id}')">Recalcular SBC</button>
             `)}
             ${filaInfo('Tipo de contrato', {indeterminado:'Tiempo Indeterminado',indefinido:'Tiempo Indeterminado',determinado:'Tiempo Determinado',obra:'Obra o Servicio',temporada:'Temporada',comision:'Por Comisión'}[trab.tipo_contrato]||trab.tipo_contrato)}
             ${filaInfo('Zona SMG', trab.smg_zone === 'frontera' ? 'Frontera Norte' : 'Área General')}
@@ -1409,10 +1410,10 @@ async function renderPerfilEmpleado(id) {
       <div id="tab-contratos" style="display:none;" class="animate-in">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
           <strong>Contratos generados</strong>
-          <button class="btn-secondary btn-sm" onclick="reGenerarContrato('${id}')">🖨 Re-generar contrato</button>
+          <button class="btn-secondary btn-sm" onclick="reGenerarContrato('${id}')">Re-generar contrato</button>
         </div>
         ${contratos.length === 0
-          ? `<div class="empty-state"><div class="empty-state-icon">📄</div><div class="empty-state-title">Sin contratos registrados</div></div>`
+          ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div><div class="empty-state-title">Sin contratos registrados</div></div>`
           : `<div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Tipo</th><th scope="col">Fecha generación</th></tr></thead><tbody>
               ${contratos.map(c=>`<tr><td>${{indefinido:'Tiempo Indeterminado',determinado:'Tiempo Determinado',obra:'Obra o Servicio',temporada:'Temporada'}[c.tipo]||c.tipo}</td><td>${formatDateShort(c.fecha_generacion)}</td></tr>`).join('')}
             </tbody></table></div>`
@@ -1425,7 +1426,7 @@ async function renderPerfilEmpleado(id) {
           <div style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Se registra automáticamente cada vez que se modifica el salario del trabajador.</div>
         </div>
         ${histSalarios.length === 0
-          ? `<div class="empty-state"><div class="empty-state-icon">💵</div><div class="empty-state-title">Sin ajustes salariales registrados</div><p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Los cambios futuros al salario quedarán registrados aquí.</p></div>`
+          ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="empty-state-title">Sin ajustes salariales registrados</div><p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Los cambios futuros al salario quedarán registrados aquí.</p></div>`
           : `<div class="table-wrap"><table class="data-table">
               <thead><tr><th scope="col">Fecha</th><th scope="col">Salario anterior</th><th scope="col">Salario nuevo</th><th scope="col">Variación</th><th scope="col">Motivo</th></tr></thead>
               <tbody>${histSalarios.map(h => {
@@ -1467,13 +1468,12 @@ function _semaforoExpedienteHTML(trab, docs) {
   if (typeof completitudExpediente !== 'function') return '';
   const r = completitudExpediente(trab, docs);
   if (r.nivel === 'completo') {
-    return `<div class="alert alert-success animate-in" style="margin-bottom:14px;">
-      <span>✅</span><span>Expediente completo (${r.pct}%). Tienes con qué defenderte.</span>
+    return `<div class="alert alert-success animate-in" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-check-circle"></use></svg><span>Expediente completo (${r.pct}%). Tienes con qué defenderte.</span>
     </div>`;
   }
 
-  const color = r.nivel === 'incompleto' ? 'var(--red-warn)' : '#f39c12';
-  const bg    = r.nivel === 'incompleto' ? 'rgba(231,76,60,.08)' : 'rgba(243,156,18,.08)';
+  const color = r.nivel === 'incompleto' ? 'var(--red-warn)' : 'var(--amber-warn)';
+  const bg    = r.nivel === 'incompleto' ? 'rgba(192,57,43,.08)' : 'rgba(217,138,43,.08)';
   const datos = r.faltantes.filter(f => f.grupo === 'datos');
   const docsF = r.faltantes.filter(f => f.grupo === 'docs');
 
@@ -1481,7 +1481,7 @@ function _semaforoExpedienteHTML(trab, docs) {
     <div class="card animate-in" style="margin-bottom:14px;border-color:${color};background:${bg};">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <div style="min-width:96px;">
-          <div style="font-size:1.6rem;font-weight:800;color:${color};line-height:1;">${r.pct}%</div>
+          <div style="font-size:1.6rem;font-weight:700;color:${color};line-height:1;">${r.pct}%</div>
           <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:2px;">Expediente</div>
         </div>
         <div style="flex:1;min-width:240px;">
@@ -1528,7 +1528,7 @@ function _cardCostoYSalida(trab) {
     <div style="flex:1;min-width:240px;border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;">
       <div style="font-weight:700;">${titulo}</div>
       <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:8px;">${sub}</div>
-      <div style="font-size:1.35rem;font-weight:800;color:${color};">${fmt(r.total)}</div>
+      <div style="font-size:1.35rem;font-weight:700;color:${color};">${fmt(r.total)}</div>
       <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px;">
         ${r.items.filter(i => i.amount > 0).map(i => `${i.name.replace(/\s*\(Art[^)]*\)/,'')}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
       </div>
@@ -1537,7 +1537,7 @@ function _cardCostoYSalida(trab) {
   return `
     <div class="card" style="margin-bottom:14px;">
       <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">
-        💰 Costo y escenarios de salida <span style="font-weight:400;text-transform:none;letter-spacing:0;">(informativo — cifras de hoy)</span>
+        Costo y escenarios de salida <span style="font-weight:400;text-transform:none;letter-spacing:0;">(informativo — cifras de hoy)</span>
       </div>
       <div class="form-grid" style="margin-bottom:14px;">
         ${filaInfo('Costo real mensual para la empresa', `${fmt(c.total)} <span style="font-size:.75rem;color:var(--text-muted);">(× ${c.factorSobreSalario} del salario)</span>`)}
@@ -1556,26 +1556,26 @@ function _cardCostoYSalida(trab) {
 }
 
 function tablaAsistencia(items) {
-  if (!items.length) return `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin incidencias este mes</div></div>`;
+  if (!items.length) return `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin incidencias este mes</div></div>`;
   return `<div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Fecha</th><th scope="col">Tipo</th><th scope="col">Justificada</th><th scope="col">Observaciones</th><th scope="col"></th></tr></thead><tbody>
     ${items.map(a=>`<tr>
       <td>${formatDateShort(a.fecha)}</td>
       <td><span class="badge ${a.tipo==='falta'?'badge-falta':'badge-retardo'}">${a.tipo==='falta'?'Falta':'Retardo'}</span></td>
       <td>${a.justificada?'<span style="color:var(--green-ok)">✓ Sí</span>':'<span style="color:var(--red-warn)">✗ No</span>'}</td>
       <td style="color:var(--text-muted);font-size:.82rem;">${escapeHtml(a.observaciones)||'—'}</td>
-      <td><button class="btn-danger btn-sm" onclick="eliminarAsistencia('${a.id}')">🗑</button></td>
+      <td><button class="btn-danger btn-sm" onclick="eliminarAsistencia('${a.id}')"><svg class="ic"><use href="#i-trash"></use></svg></button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
 }
 
 function tablaActas(items, trab) {
-  if (!items.length) return `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin actas registradas</div></div>`;
+  if (!items.length) return `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin actas registradas</div></div>`;
   return `<div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Fecha</th><th scope="col">Tipo</th><th scope="col">Falta</th><th scope="col">Acciones</th></tr></thead><tbody>
     ${items.map(a=>`<tr>
       <td>${formatDateShort(a.fecha)}</td>
       <td>${badgeActa(a.tipo)}</td>
       <td style="font-size:.82rem;color:var(--text-muted);">${escapeHtml(a.tipo_falta_label||a.tipo_falta)||'—'}</td>
-      <td><button class="btn-secondary btn-sm" onclick="reDescargarActa('${a.id}','${trab.id}')">⬇ PDF</button></td>
+      <td><button class="btn-secondary btn-sm" onclick="reDescargarActa('${a.id}','${trab.id}')">PDF</button></td>
     </tr>`).join('')}
   </tbody></table></div>`;
 }
@@ -1594,7 +1594,7 @@ async function reGenerarContrato(trabId) {
 }
 
 async function renovarAPlanta(trabId) {
-  if (!confirm('¿Confirmas renovar al trabajador como empleado De Planta (Tiempo Indeterminado)?\n\nSe actualizará su perfil y se generará el contrato correspondiente.')) return;
+  if (!(await showConfirmacion('¿Confirmas renovar al trabajador como empleado De Planta (Tiempo Indeterminado)?\n\nSe actualizará su perfil y se generará el contrato correspondiente.'))) return;
   try {
     await db.updateTrabajador(trabId, {
       tipo_contrato:              'indeterminado',
@@ -1614,7 +1614,7 @@ async function reDescargarActa(actaId, trabId) {
 }
 
 async function eliminarAsistencia(id) {
-  if (!confirm('¿Eliminar este registro de asistencia?')) return;
+  if (!(await showConfirmacion('¿Eliminar este registro de asistencia?', { peligro:true, textoOk:'Eliminar' }))) return;
   await db.deleteAsistencia(id);
   navigate('empleado', window._perfilActivoId);
 }

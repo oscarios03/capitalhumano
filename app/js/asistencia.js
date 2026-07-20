@@ -7,17 +7,17 @@
 //  CONSTANTES
 // ═══════════════════════════════════════════════════════════════════════════
 const TIPO_ASIST = {
-  asistencia:   { label:'Asistencia',          icono:'✅', cls:'asist-ok'       },
-  falta:        { label:'Falta injustificada',  icono:'❌', cls:'asist-falta'    },
-  falta_justif: { label:'Falta justificada',    icono:'📋', cls:'asist-fjust'    },
-  retardo:      { label:'Retardo',              icono:'⏰', cls:'asist-retardo'  },
-  retardo_grave:{ label:'Retardo grave',        icono:'⚠️', cls:'asist-rgrave'  },
-  incapacidad:  { label:'Incapacidad IMSS',     icono:'🏥', cls:'asist-incap'   },
-  vacaciones:   { label:'Vacaciones',           icono:'🌴', cls:'asist-vac'     },
-  permiso_goce: { label:'Permiso c/ goce',      icono:'✋', cls:'asist-pgoce'   },
-  permiso_sin:  { label:'Permiso s/ goce',      icono:'✋', cls:'asist-psin'    },
-  descanso:     { label:'Descanso semanal',     icono:'😴', cls:'asist-desc'    },
-  festivo:      { label:'Día festivo oficial',  icono:'🎉', cls:'asist-festivo' },
+  asistencia:   { label:'Asistencia',          icono:'', cls:'asist-ok'       },
+  falta:        { label:'Falta injustificada',  icono:'', cls:'asist-falta'    },
+  falta_justif: { label:'Falta justificada',    icono:'', cls:'asist-fjust'    },
+  retardo:      { label:'Retardo',              icono:'', cls:'asist-retardo'  },
+  retardo_grave:{ label:'Retardo grave',        icono:'', cls:'asist-rgrave'  },
+  incapacidad:  { label:'Incapacidad IMSS',     icono:'', cls:'asist-incap'   },
+  vacaciones:   { label:'Vacaciones',           icono:'', cls:'asist-vac'     },
+  permiso_goce: { label:'Permiso c/ goce',      icono:'', cls:'asist-pgoce'   },
+  permiso_sin:  { label:'Permiso s/ goce',      icono:'', cls:'asist-psin'    },
+  descanso:     { label:'Descanso semanal',     icono:'', cls:'asist-desc'    },
+  festivo:      { label:'Día festivo oficial',  icono:'', cls:'asist-festivo' },
 };
 
 // Respaldo de festivos oficiales SOLO para 2026, por si la migración 15 no
@@ -85,7 +85,7 @@ async function renderAsistenciaModulo() {
     await _cargarYRenderTab();
   } catch(e) {
     if (typeof _navStale === 'function' && _navStale(_gen)) return;
-    main.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${escapeHtml(e.message)}</span></div>`;
+    main.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${escapeHtml(e.message)}</span></div>`;
   }
 }
 
@@ -101,7 +101,7 @@ async function _renderShell() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">🗓 Control de Asistencia</div>
+        <div class="view-title">Asistencia</div>
         <div class="view-subtitle">${escapeHtml(CTX.empresa.nombre)}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -112,10 +112,10 @@ async function _renderShell() {
     </div>
 
     <div class="tabs animate-in" style="margin-bottom:16px;">
-      <button class="tab-btn ${_A.tab===1?'active':''}" data-asist-tab="1" onclick="switchAsistTab(1)">📋 Registro Diario</button>
-      <button class="tab-btn ${_A.tab===4?'active':''}" data-asist-tab="4" onclick="switchAsistTab(4)">📅 Vista del mes</button>
-      <button class="tab-btn ${_A.tab===2?'active':''}" data-asist-tab="2" onclick="switchAsistTab(2)">⚠️ Incidencias</button>
-      <button class="tab-btn ${_A.tab===3?'active':''}" data-asist-tab="3" onclick="switchAsistTab(3)">📊 Historial</button>
+      <button class="tab-btn ${_A.tab===1?'active':''}" data-asist-tab="1" onclick="switchAsistTab(1)">Registro Diario</button>
+      <button class="tab-btn ${_A.tab===4?'active':''}" data-asist-tab="4" onclick="switchAsistTab(4)">Vista del mes</button>
+      <button class="tab-btn ${_A.tab===2?'active':''}" data-asist-tab="2" onclick="switchAsistTab(2)">Incidencias</button>
+      <button class="tab-btn ${_A.tab===3?'active':''}" data-asist-tab="3" onclick="switchAsistTab(3)">Historial</button>
     </div>
 
     <div id="asist-content" class="animate-in"></div>
@@ -231,7 +231,7 @@ async function _tab1() {
             value="${escapeHtml(reg?.observaciones)||''}" placeholder="Observaciones…" style="min-width:140px;" />
         </td>
         <td>
-          <button class="btn-secondary btn-sm" onclick="guardarFilaAsistencia('${t.id}')">💾</button>
+          <button class="btn-secondary btn-sm" onclick="guardarFilaAsistencia('${t.id}')"></button>
         </td>
       </tr>`;
   }).join('');
@@ -239,35 +239,35 @@ async function _tab1() {
   el.innerHTML = `
     ${trabsSinReg > 0 ? `
     <div class="banner-pendiente animate-in">
-      <span class="banner-pendiente-icon">📭</span>
+      <span class="banner-pendiente-icon"></span>
       <div>
         <strong>${trabsSinReg} trabajador${trabsSinReg!==1?'es':''} sin registro</strong>
         en este día laborable.
         <span style="font-size:.8rem;opacity:.8;"> Captura la asistencia y guarda para completar.</span>
       </div>
       <button class="btn-primary btn-sm" onclick="guardarDiaCompleto()" style="margin-left:auto;flex-shrink:0;">
-        💾 Guardar todo
+        Guardar todo
       </button>
     </div>` : ''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <div style="font-size:.85rem;color:var(--text-muted);">
         ${esFestivo
           ? (festEmp
-              ? `🎉 Día festivo de la empresa${festEmp.descripcion ? ' — ' + escapeHtml(festEmp.descripcion) : ''}`
-              : '🎉 Día festivo oficial')
+              ? `Día festivo de la empresa${festEmp.descripcion ? ' — ' + escapeHtml(festEmp.descripcion) : ''}`
+              : 'Día festivo oficial')
           : `${diaSemana} — ${formatDateShort(_A.fecha)}`}
         — <strong>${trabs.length}</strong> trabajadores
         ${trabsSinReg === 0 && !esFestivo && !esFinSem
-          ? `<span style="color:#4caf50;font-weight:700;margin-left:6px;">✅ Registro completo</span>` : ''}
+          ? `<span style="color:#4caf50;font-weight:700;margin-left:6px;">Registro completo</span>` : ''}
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn-secondary btn-sm" onclick="marcarTodosAsistencia()">✅ Todos asistencia</button>
-        <button class="btn-primary btn-sm" onclick="guardarDiaCompleto()">💾 Guardar todo el día</button>
+        <button class="btn-secondary btn-sm" onclick="marcarTodosAsistencia()">Todos asistencia</button>
+        <button class="btn-primary btn-sm" onclick="guardarDiaCompleto()">Guardar todo el día</button>
       </div>
     </div>
 
     ${trabs.length === 0
-      ? `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-title">Sin trabajadores ${_A.sucursalId?'en esta sucursal':''}</div></div>`
+      ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-user"></use></svg></div><div class="empty-state-title">Sin trabajadores ${_A.sucursalId?'en esta sucursal':''}</div></div>`
       : `<div class="table-wrap">
           <table class="data-table asist-table">
             <thead><tr>
@@ -311,7 +311,7 @@ async function _tabMatriz() {
     .eq('empresa_id', CTX.empresa.id)
     .gte('fecha', primero).lte('fecha', ultimo);
 
-  if (error) { el.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${error.message}</span></div>`; return; }
+  if (error) { el.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${error.message}</span></div>`; return; }
 
   // Indexar: { trabId: { 'YYYY-MM-DD': registro } }
   const idx = {};
@@ -334,7 +334,7 @@ async function _tabMatriz() {
     const celdas = dias.map(dia => {
       const r   = reg[dia.f];
       const cfg = r ? TIPO_ASIST[r.tipo] : null;
-      const bg  = dia.festivo ? 'rgba(245,166,35,.10)' : dia.finde ? 'rgba(255,255,255,.03)' : 'transparent';
+      const bg  = dia.festivo ? 'var(--gold-dim)' : dia.finde ? 'rgba(148,160,172,.08)' : 'transparent';
       const titulo = r
         ? `${t.nombre} — ${formatDateShort(dia.f)}: ${cfg?.label || r.tipo}` +
           (r.minutos_retardo ? ` (${r.minutos_retardo} min)` : '') +
@@ -356,7 +356,7 @@ async function _tabMatriz() {
       <td class="mtz-nombre" title="${t.nombre}">${t.nombre}</td>
       ${celdas}
       <td style="font-weight:700;color:${faltas ? 'var(--red-warn)' : 'var(--text-muted)'};">${faltas || '—'}</td>
-      <td style="font-weight:700;color:${retardos ? '#f39c12' : 'var(--text-muted)'};">${retardos || '—'}</td>
+      <td style="font-weight:700;color:${retardos ? 'var(--amber-warn)' : 'var(--text-muted)'};">${retardos || '—'}</td>
       <td style="font-weight:700;color:var(--text-muted);">${he ? he.toFixed(1) : '—'}</td>
     </tr>`;
   }).join('');
@@ -378,7 +378,7 @@ async function _tabMatriz() {
     </div>
 
     ${!trabs.length
-      ? `<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-title">Sin trabajadores${_A.sucursalId?' en esta sucursal':''}</div></div>`
+      ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-user"></use></svg></div><div class="empty-state-title">Sin trabajadores${_A.sucursalId?' en esta sucursal':''}</div></div>`
       : `<div class="table-wrap" style="overflow-x:auto;">
           <table class="data-table mtz-tabla">
             <thead>
@@ -435,13 +435,13 @@ function _injectMatrizCSS() {
   }
   .mtz-nombre-h { z-index:3; }
   .mtz-celda { cursor:pointer; }
-  .mtz-celda:hover { background:var(--gold-dim, rgba(245,166,35,.18)) !important; }`;
+  .mtz-celda:hover { background:var(--gold-dim, var(--gold-dim)) !important; }`;
   document.head.appendChild(s);
 }
 
 function _origenBadge(origen) {
-  if (origen === 'kiosco') return '<span title="Registrado por kiosco">📱</span>';
-  if (origen === 'checador_fisico') return '<span title="Registrado por checador físico">🔌</span>';
+  if (origen === 'kiosco') return '<span title="Registrado por kiosco"></span>';
+  if (origen === 'checador_fisico') return '<span title="Registrado por checador físico"></span>';
   return '';
 }
 
@@ -511,8 +511,8 @@ function _onHoraEntradaCapturada(trabId) {
     if (min) min.value = r.minutos;
     if (aviso) {
       aviso.style.display = '';
-      aviso.style.color = '#f39c12';
-      aviso.textContent = `⏰ ${r.minutos} min tarde (entra ${String(trab.hora_inicio).slice(0,5)})`;
+      aviso.style.color = 'var(--amber-warn)';
+      aviso.textContent = `${r.minutos} min tarde (entra ${String(trab.hora_inicio).slice(0,5)})`;
     }
   } else {
     if (sel.value !== 'asistencia') sel.value = 'asistencia';
@@ -564,7 +564,7 @@ function _leerFila(trabId) {
 
 async function guardarFilaAsistencia(trabId) {
   const btn = document.querySelector(`#row-${trabId} button`);
-  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
   try {
     const datos = _leerFila(trabId);
     await _upsertAsistencia(datos);
@@ -573,10 +573,10 @@ async function guardarFilaAsistencia(trabId) {
       await window.supabase.from('trabajadores')
         .update({ ultima_fecha_vacaciones: datos.fecha }).eq('id', trabId);
     }
-    if (btn) { btn.textContent = '✅'; setTimeout(()=>{ if(btn){btn.textContent='💾';btn.disabled=false;} },1500); }
+    if (btn) { btn.textContent = '✓ Listo'; setTimeout(()=>{ if(btn){btn.textContent='Guardar';btn.disabled=false;} },1500); }
     await _verificarRiesgoArt47(trabId);
   } catch(e) {
-    if (btn) { btn.textContent = '❌'; btn.disabled = false; }
+    btnRestaurar(btn);
     alert('Error: ' + e.message);
   }
 }
@@ -584,7 +584,7 @@ async function guardarFilaAsistencia(trabId) {
 async function guardarDiaCompleto() {
   const trabs = _A.trabajadores.filter(t => !_A.sucursalId || t.sucursal_id === _A.sucursalId);
   const msg   = document.getElementById('asist-msg');
-  if (msg) { msg.textContent = '⏳ Guardando…'; msg.style.display = ''; msg.className = ''; }
+  if (msg) { msg.textContent = 'Guardando…'; msg.style.display = ''; msg.className = ''; }
 
   try {
     const batch = trabs.map(t => _leerFila(t.id));
@@ -595,13 +595,13 @@ async function guardarDiaCompleto() {
         .update({ ultima_fecha_vacaciones: d.fecha }).eq('id', d.trabajador_id);
     }
     await _upsertAsistencia(batch);
-    if (msg) { msg.textContent = `✅ ${batch.length} registros guardados correctamente`; msg.className = 'alert alert-success'; }
+    if (msg) { msg.textContent = `${batch.length} registros guardados correctamente`; msg.className = 'alert alert-success'; }
     // Verificar riesgos Art. 47
     for (const d of batch.filter(x => x.tipo === 'falta')) {
       await _verificarRiesgoArt47(d.trabajador_id);
     }
   } catch(e) {
-    if (msg) { msg.textContent = '❌ Error: ' + e.message; msg.className = 'alert alert-danger'; }
+    if (msg) { msg.textContent = 'Error: ' + e.message; msg.className = 'alert alert-danger'; }
   }
 }
 
@@ -774,11 +774,11 @@ async function _tab2() {
   // ── Render ────────────────────────────────────────────────────────────────
   const seccionA = enRiesgo.length === 0 ? `
     <div class="empty-state" style="padding:24px;">
-      <div class="empty-state-icon">✅</div>
+      <div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div>
       <div class="empty-state-title">Sin trabajadores en riesgo</div>
     </div>` : enRiesgo.map(([trabId, {info, fechas}]) => {
       const pct   = Math.min(100, (fechas.length / 3) * 100);
-      const color = fechas.length >= 3 ? 'var(--red-warn)' : fechas.length === 2 ? '#f39c12' : 'var(--gold-primary)';
+      const color = fechas.length >= 3 ? 'var(--red-warn)' : fechas.length === 2 ? 'var(--amber-warn)' : 'var(--gold-primary)';
       return `
         <div class="incid-card ${fechas.length>=3?'incid-critica':'incid-riesgo'}">
           <div class="incid-header">
@@ -789,10 +789,10 @@ async function _tab2() {
             <div style="display:flex;gap:6px;">
               ${fechas.length >= 3
                 ? `<button class="btn-danger btn-sm" onclick="generarActaDesdeAsistencia('${trabId}','rescisoria','falta',${JSON.stringify(fechas)})">
-                    🚫 Generar Acta Rescisoria
+                    Generar Acta Rescisoria
                   </button>`
                 : `<button class="btn-secondary btn-sm" onclick="generarActaDesdeAsistencia('${trabId}','formal','falta',${JSON.stringify(fechas)})">
-                    ⚠️ Generar Acta Formal
+                    Generar Acta Formal
                   </button>`}
               <button class="btn-secondary btn-sm" onclick="navigate('empleado','${trabId}')">Ver expediente</button>
             </div>
@@ -803,21 +803,21 @@ async function _tab2() {
           <div style="font-size:.78rem;color:var(--text-muted);margin-top:6px;">
             <strong style="color:${color};">${fechas.length} falta${fechas.length!==1?'s':''}</strong> en 30 días
             · Fechas: ${fechas.map(f=>formatDateShort(f)).join(', ')}
-            ${fechas.length>=3?' · <strong style="color:var(--red-warn);">⚠️ Art. 47 Fracc. X LFT — causal de rescisión</strong>':''}
+            ${fechas.length>=3?' · <strong style="color:var(--red-warn);">Art. 47 Fracc. X LFT — causal de rescisión</strong>':''}
           </div>
         </div>`;
     }).join('');
 
   const seccionB = conRetardos.length === 0 ? `
     <div class="empty-state" style="padding:16px;">
-      <div class="empty-state-icon">✅</div><div class="empty-state-title">Sin retardos acumulados</div>
+      <div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin retardos acumulados</div>
     </div>` : conRetardos.map(([trabId, {info, registros}]) => `
       <div class="incid-card">
         <div class="incid-header">
-          <div><strong>${escapeHtml(info?.nombre||trabId)}</strong> — <span style="color:#f39c12;font-weight:700;">${registros.length} retardos</span> este mes</div>
+          <div><strong>${escapeHtml(info?.nombre||trabId)}</strong> — <span style="color:var(--amber-warn);font-weight:700;">${registros.length} retardos</span> este mes</div>
           <div style="display:flex;gap:6px;">
             <button class="btn-secondary btn-sm" onclick="generarActaDesdeAsistencia('${trabId}','amonestacion','retardo',[])">
-              📋 Acta Amonestación
+              Acta Amonestación
             </button>
             <button class="btn-secondary btn-sm" onclick="navigate('empleado','${trabId}')">Ver expediente</button>
           </div>
@@ -828,11 +828,11 @@ async function _tab2() {
       </div>`).join('');
 
   const seccionC = Object.entries(incapPorTrab).length === 0
-    ? `<div class="empty-state" style="padding:16px;"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin incapacidades activas</div></div>`
+    ? `<div class="empty-state" style="padding:16px;"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin incapacidades activas</div></div>`
     : Object.entries(incapPorTrab).map(([id,{info,dias}]) => `
         <div class="incid-card">
           <div class="incid-header">
-            <div><strong>${escapeHtml(info?.nombre||id)}</strong> · 🏥 ${dias.length} día${dias.length!==1?'s':''} de incapacidad</div>
+            <div><strong>${escapeHtml(info?.nombre||id)}</strong> · ${dias.length} día${dias.length!==1?'s':''} de incapacidad</div>
             <button class="btn-secondary btn-sm" onclick="navigate('empleado','${id}')">Ver expediente</button>
           </div>
           <div style="font-size:.78rem;color:var(--text-muted);margin-top:4px;">
@@ -841,13 +841,13 @@ async function _tab2() {
         </div>`).join('');
 
   const seccionD = Object.entries(sinGocePorTrab).length === 0
-    ? `<div class="empty-state" style="padding:16px;"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin permisos sin goce</div></div>`
+    ? `<div class="empty-state" style="padding:16px;"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin permisos sin goce</div></div>`
     : Object.entries(sinGocePorTrab).map(([id,{info,dias}]) => `
         <div class="incid-card">
           <div class="incid-header">
-            <div><strong>${escapeHtml(info?.nombre||id)}</strong> · ✋ ${dias.length} día${dias.length!==1?'s':''} sin goce de sueldo</div>
+            <div><strong>${escapeHtml(info?.nombre||id)}</strong> · ${dias.length} día${dias.length!==1?'s':''} sin goce de sueldo</div>
           </div>
-          <div style="font-size:.78rem;color:#f39c12;margin-top:4px;">
+          <div style="font-size:.78rem;color:var(--amber-warn);margin-top:4px;">
             Descuento pendiente en nómina · Fechas: ${dias.map(formatDateShort).join(', ')}
           </div>
         </div>`).join('');
@@ -855,13 +855,13 @@ async function _tab2() {
   // ── Render sección E ─────────────────────────────────────────────────────
   const seccionE = diasPendientes.length === 0 ? `
     <div class="empty-state" style="padding:16px;">
-      <div class="empty-state-icon">✅</div>
+      <div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div>
       <div class="empty-state-title">Todos los días del mes tienen registro completo</div>
     </div>` : diasPendientes.map(({ fecha, trabajadores: sinR }) => `
       <div class="incid-card incid-pendiente">
         <div class="incid-header">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:1.3rem;">📭</span>
+            <span style="font-size:1.3rem;"></span>
             <div>
               <strong>${formatDateShort(fecha)}</strong>
               <span style="font-size:.78rem;color:var(--text-muted);margin-left:6px;">
@@ -871,7 +871,7 @@ async function _tab2() {
             <span class="badge-pendiente">${sinR.length} sin registro</span>
           </div>
           <button class="btn-primary btn-sm" onclick="_irAFechaPendiente('${fecha}')">
-            ✏️ Capturar
+            Capturar
           </button>
         </div>
         <div style="font-size:.78rem;color:var(--text-muted);margin-top:6px;line-height:1.7;">
@@ -883,29 +883,29 @@ async function _tab2() {
   el.innerHTML = `
     <div class="incid-seccion" style="border:1.5px solid var(--gold-border);background:var(--gold-dim);border-radius:var(--radius);">
       <div class="incid-seccion-titulo" style="color:var(--gold-primary);">
-        📭 Días laborables sin registro — Pendiente de captura
+        Días laborables sin registro — Pendiente de captura
         ${diasPendientes.length > 0
-          ? `<span style="margin-left:8px;font-size:.78rem;background:var(--gold-primary);color:#000;padding:2px 8px;border-radius:100px;font-weight:800;">${diasPendientes.length} día${diasPendientes.length!==1?'s':''}</span>`
+          ? `<span style="margin-left:8px;font-size:.78rem;background:var(--gold-primary);color:#000;padding:2px 8px;border-radius:100px;font-weight:700;">${diasPendientes.length} día${diasPendientes.length!==1?'s':''}</span>`
           : ''}
       </div>
       ${seccionE}
     </div>
     <div class="incid-seccion">
       <div class="incid-seccion-titulo">
-        🔴 Trabajadores en riesgo — Art. 47 Fracc. X LFT (faltas injustificadas, últimos 30 días)
+        ● Trabajadores en riesgo — Art. 47 Fracc. X LFT (faltas injustificadas, últimos 30 días)
       </div>
       ${seccionA}
     </div>
     <div class="incid-seccion">
-      <div class="incid-seccion-titulo">🟡 Retardos acumulados en el mes</div>
+      <div class="incid-seccion-titulo">● Retardos acumulados en el mes</div>
       ${seccionB}
     </div>
     <div class="incid-seccion">
-      <div class="incid-seccion-titulo">🏥 Incapacidades activas</div>
+      <div class="incid-seccion-titulo">Incapacidades activas</div>
       ${seccionC}
     </div>
     <div class="incid-seccion">
-      <div class="incid-seccion-titulo">✋ Permisos sin goce — descuento en nómina</div>
+      <div class="incid-seccion-titulo">Permisos sin goce — descuento en nómina</div>
       ${seccionD}
     </div>
   `;
@@ -998,8 +998,8 @@ async function _tab3() {
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
         <button class="btn-secondary" onclick="_buscarHistorial()"><svg class="ic"><use href="#i-search"></use></svg> Buscar</button>
-        <button class="btn-secondary" onclick="_exportarExcelHistorial()">📊 Excel</button>
-        <button class="btn-primary" onclick="_exportarPDFHistorial()">📄 PDF Reporte</button>
+        <button class="btn-secondary" onclick="_exportarExcelHistorial()">Excel</button>
+        <button class="btn-primary" onclick="_exportarPDFHistorial()">PDF Reporte</button>
       </div>
     </div>
     <div id="hist-resultados"></div>
@@ -1031,7 +1031,7 @@ async function _buscarHistorial() {
   if (fin)    q = q.lte('fecha', fin);
 
   const { data, error } = await q;
-  if (error) { res.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${escapeHtml(error.message)}</span></div>`; return; }
+  if (error) { res.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${escapeHtml(error.message)}</span></div>`; return; }
 
   const registros = data || [];
   window._historialActual = { registros, ini, fin };
@@ -1047,17 +1047,17 @@ async function _buscarHistorial() {
   res.innerHTML = `
     <!-- Resumen estadístico -->
     <div class="card animate-in" style="margin-bottom:14px;">
-      <div class="card-header"><span class="card-title">📊 Resumen del período (${registros.length} registros)</span></div>
+      <div class="card-header"><span class="card-title">Resumen del período (${registros.length} registros)</span></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px;">
         ${Object.entries(TIPO_ASIST).filter(([k])=>stats[k]>0).map(([k,c])=>`
           <div style="text-align:center;padding:10px;background:var(--bg-surface);border-radius:var(--radius-sm);">
             <div style="font-size:1.2rem;">${c.icono}</div>
-            <div style="font-family:'Montserrat',sans-serif;font-size:1.4rem;font-weight:900;color:var(--gold-primary);">${stats[k]}</div>
+            <div style="font-size:1.4rem;font-weight:700;color:var(--gold-primary);">${stats[k]}</div>
             <div style="font-size:.7rem;color:var(--text-muted);">${c.label}</div>
           </div>`).join('')}
         <div style="text-align:center;padding:10px;background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:var(--radius-sm);">
-          <div style="font-size:1.2rem;">📈</div>
-          <div style="font-family:'Montserrat',sans-serif;font-size:1.4rem;font-weight:900;color:var(--gold-primary);">${pctAsist}%</div>
+          <div style="font-size:1.2rem;"></div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--gold-primary);">${pctAsist}%</div>
           <div style="font-size:.7rem;color:var(--text-muted);">Asistencia</div>
         </div>
       </div>
@@ -1066,7 +1066,7 @@ async function _buscarHistorial() {
     <!-- Tabla de registros -->
     <div class="card animate-in">
       ${registros.length === 0
-        ? `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Sin registros en el período seleccionado</div></div>`
+        ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div><div class="empty-state-title">Sin registros en el período seleccionado</div></div>`
         : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th scope="col">Fecha</th><th scope="col">Trabajador</th><th scope="col">Tipo</th><th scope="col">Hora entrada</th><th scope="col">Minutos retardo</th><th scope="col">Hrs extra</th><th scope="col">Observaciones</th></tr></thead>
             <tbody>
@@ -1126,7 +1126,7 @@ async function _exportarPDFHistorial() {
 
   // Header
   doc.setFillColor(15,20,40); doc.rect(0,0,pw,24,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(245,166,35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
   doc.text(np(CTX.empresa.nombre), pw/2, 10, {align:'center'});
   doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text(`Reporte de Asistencia — ${npDate(ini+'T00:00:00')} al ${npDate(fin+'T00:00:00')}`, pw/2, 18, {align:'center'});
@@ -1146,7 +1146,7 @@ async function _exportarPDFHistorial() {
       np(r.observaciones||'—'),
     ]),
     styles:{ fontSize:7.5, cellPadding:2.5 },
-    headStyles:{ fillColor:[15,20,40], textColor:[245,166,35], fontStyle:'bold', fontSize:7.5 },
+    headStyles:{ fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:7.5 },
     alternateRowStyles:{ fillColor:[248,248,252] },
     theme:'grid',
   });

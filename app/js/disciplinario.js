@@ -18,7 +18,7 @@ async function renderDisciplinario() {
     const main = eid('main-view');
     main.innerHTML = `
       <div class="view-header animate-in">
-        <div><div class="view-title">⚠️ Actas Administrativas</div></div>
+        <div><div class="view-title">Actas Administrativas</div></div>
         <button class="btn-primary" onclick="showModalActa(null)">+ Nueva acta</button>
       </div>
       <div class="search-bar animate-in">
@@ -38,7 +38,7 @@ async function renderDisciplinario() {
           <thead><tr><th>Trabajador</th><th>Tipo</th><th>Falta</th><th>Fecha</th><th>Reincidente</th><th>Acciones</th></tr></thead>
           <tbody>
             ${actas.length === 0
-              ? `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin actas registradas</div></div></td></tr>`
+              ? `<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin actas registradas</div></div></td></tr>`
               : actas.map(a=>`<tr data-trab="${a.trabajador_id}" data-tipo="${a.tipo}">
                   <td><strong>${escapeHtml(a.trabajadores?.nombre)||'—'}</strong></td>
                   <td>${badgeActa(a.tipo)}</td>
@@ -46,9 +46,9 @@ async function renderDisciplinario() {
                   <td>${formatDateShort(a.fecha)}</td>
                   <td>${a.reincidente?'<span style="color:var(--red-warn)">Sí</span>':'No'}</td>
                   <td><div class="actions">
-                    <button class="btn-secondary btn-sm" onclick="reDescargarActa('${a.id}','${a.trabajador_id}')">⬇ PDF</button>
+                    <button class="btn-secondary btn-sm" onclick="reDescargarActa('${a.id}','${a.trabajador_id}')">PDF</button>
                     <button class="btn-secondary btn-sm" style="border-color:var(--gold-border);color:var(--gold-primary);"
-                      onclick="abrirAgenteIA('${a.trabajador_id}','acta_${a.tipo}')">🤖 IA</button>
+                      onclick="abrirAgenteIA('${a.trabajador_id}','acta_${a.tipo}')">IA</button>
                     <button class="btn-secondary btn-sm" onclick="navigate('empleado','${a.trabajador_id}')">Ver perfil</button>
                     ${htmlBotonWhatsApp(a.trabajadores?.telefono, `Hola ${a.trabajadores?.nombre||''}, se te cita para el levantamiento de un acta administrativa (${a.tipo_falta_label||a.tipo_falta||''}) el ${formatDateShort(a.fecha)}${a.hora_falta?` a las ${a.hora_falta}`:''}${a.lugar?` en ${a.lugar}`:''}. Favor de confirmar tu asistencia.`, { ocultarSiFalta: true })}
                   </div></td>
@@ -77,7 +77,7 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
   showModal(`
     <div class="modal animate-in" style="max-width:720px;">
       <div class="modal-header">
-        <div><div class="modal-title">⚠️ Nueva Acta Administrativa</div></div>
+        <div><div class="modal-title">Nueva Acta Administrativa</div></div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div class="form-grid">
@@ -91,9 +91,9 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
         <div class="form-group">
           <label class="form-label" for="ac-tipo">Tipo de acta <span class="req">*</span></label>
           <select id="ac-tipo" class="form-select" onchange="actualizarCatalogoFaltas()" required aria-required="true">
-            <option value="amonestacion" ${tipoPresel==='amonestacion'?'selected':''}>📝 Amonestación</option>
-            <option value="formal" ${tipoPresel==='formal'?'selected':''}>⚠️ Acta Formal</option>
-            <option value="rescisoria" ${tipoPresel==='rescisoria'?'selected':''}>🚫 Rescisoria</option>
+            <option value="amonestacion" ${tipoPresel==='amonestacion'?'selected':''}>Amonestación</option>
+            <option value="formal" ${tipoPresel==='formal'?'selected':''}>Acta Formal</option>
+            <option value="rescisoria" ${tipoPresel==='rescisoria'?'selected':''}>Rescisoria</option>
           </select>
         </div>
         <div class="form-group">
@@ -155,7 +155,7 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
       <div id="ac-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick="handleGuardarActa()">💾 Guardar y generar PDF</button>
+        <button class="btn-primary" onclick="handleGuardarActa()">Guardar y generar PDF</button>
       </div>
     </div>
   `);

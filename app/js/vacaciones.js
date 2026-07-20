@@ -38,14 +38,14 @@ function _renderShellVAC() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">🏖 Vacaciones y Permisos</div>
+        <div class="view-title">Vacaciones</div>
         <div class="view-subtitle">Art. 76 LFT 2023 — mínimo 12 días primer año</div>
       </div>
     </div>
     <div class="tabs animate-in">
-      <button class="tab-btn ${_VAC.tab===1?'active':''}" onclick="switchVACTab(1)">📋 Solicitudes</button>
+      <button class="tab-btn ${_VAC.tab===1?'active':''}" onclick="switchVACTab(1)">Solicitudes</button>
       <button class="tab-btn ${_VAC.tab===2?'active':''}" onclick="switchVACTab(2)">+ Nueva solicitud</button>
-      <button class="tab-btn ${_VAC.tab===3?'active':''}" onclick="switchVACTab(3)">📊 Saldos</button>
+      <button class="tab-btn ${_VAC.tab===3?'active':''}" onclick="switchVACTab(3)">Saldos</button>
     </div>
     <div id="vac-content" class="animate-in"></div>
   `;
@@ -74,12 +74,12 @@ function _vacPuedeAprobar() {
 function _renderVACSolicitudes(c) {
   const TIPO_LABEL = { vacacion:'Vacaciones', permiso_goce:'Permiso c/goce', permiso_sin:'Permiso s/goce' };
   const ESTADO_BADGE = {
-    pendiente: '<span style="background:rgba(243,156,18,.15);color:#f39c12;border:1px solid rgba(243,156,18,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Pendiente</span>',
+    pendiente: '<span style="background:rgba(217,138,43,.15);color:var(--amber-warn);border:1px solid rgba(217,138,43,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Pendiente</span>',
     aprobada:  '<span style="background:rgba(39,174,96,.15);color:var(--green-ok);border:1px solid rgba(39,174,96,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Aprobada</span>',
-    rechazada: '<span style="background:rgba(231,76,60,.15);color:var(--red-warn);border:1px solid rgba(231,76,60,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Rechazada</span>',
+    rechazada: '<span style="background:rgba(192,57,43,.15);color:var(--red-warn);border:1px solid rgba(192,57,43,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Rechazada</span>',
   };
   if (!_VAC.solicitudes.length) {
-    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏖</div><div class="empty-state-title">Sin solicitudes registradas</div><p style="margin-top:8px;font-size:.82rem;color:var(--text-muted)">Usa la pestaña "Nueva solicitud" para registrar una</p></div>`;
+    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-sun"></use></svg></div><div class="empty-state-title">Sin solicitudes registradas</div><p style="margin-top:8px;font-size:.82rem;color:var(--text-muted)">Usa la pestaña "Nueva solicitud" para registrar una</p></div>`;
     return;
   }
   c.innerHTML = `
@@ -99,16 +99,16 @@ function _renderVACSolicitudes(c) {
               <td>
                 <div class="actions">
                   ${s.estado === 'pendiente' && _vacPuedeAprobar() ? `
-                    <button class="btn-sm" style="background:rgba(39,174,96,.12);color:var(--green-ok);border:1px solid rgba(39,174,96,.3);" onclick="aprobarVAC('${s.id}')">✅ Aprobar</button>
-                    <button class="btn-sm" style="background:rgba(231,76,60,.12);color:var(--red-warn);border:1px solid rgba(231,76,60,.3);" onclick="rechazarVAC('${s.id}')">❌ Rechazar</button>
+                    <button class="btn-sm" style="background:rgba(39,174,96,.12);color:var(--green-ok);border:1px solid rgba(39,174,96,.3);" onclick="aprobarVAC('${s.id}')">Aprobar</button>
+                    <button class="btn-sm" style="background:rgba(192,57,43,.12);color:var(--red-warn);border:1px solid rgba(192,57,43,.3);" onclick="rechazarVAC('${s.id}')">Rechazar</button>
                   ` : s.estado === 'pendiente' ? `
                     <span style="font-size:.75rem;color:var(--text-muted);" title="Solo un gerente o administrador puede aprobar">Pendiente de aprobación</span>
                   ` : ''}
-                  ${s.estado === 'aprobada' && s.tipo === 'vacacion' ? `<button class="btn-secondary btn-sm" onclick="generarConstanciaVacaciones('${s.id}')" title="Constancia de vacaciones (Art. 81 LFT)">📄 Constancia</button>` : ''}
+                  ${s.estado === 'aprobada' && s.tipo === 'vacacion' ? `<button class="btn-secondary btn-sm" onclick="generarConstanciaVacaciones('${s.id}')" title="Constancia de vacaciones (Art. 81 LFT)">Constancia</button>` : ''}
                   ${s.estado === 'aprobada' ? htmlBotonWhatsApp(s.trabajadores?.telefono,
                       `Hola ${s.trabajadores?.nombre||''}, tus ${TIPO_LABEL[s.tipo]||'días'} del ${formatDateShort(s.fecha_inicio)} al ${formatDateShort(s.fecha_fin)} (${s.dias} día${s.dias!==1?'s':''}) fueron aprobados. ¡Que los disfrutes!`,
                       { ocultarSiFalta: true }) : ''}
-                  ${_vacPuedeAprobar() ? `<button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')">🗑</button>` : ''}
+                  ${_vacPuedeAprobar() ? `<button class="btn-danger btn-sm" onclick="eliminarVAC('${s.id}')"><svg class="ic"><use href="#i-trash"></use></svg></button>` : ''}
                 </div>
               </td>
             </tr>
@@ -123,7 +123,7 @@ function _renderVACNueva(c) {
   const hoy = new Date().toISOString().split('T')[0];
   c.innerHTML = `
     <div class="card animate-in" style="max-width:600px;">
-      <div class="card-header"><span class="card-title">+ Nueva Solicitud</span></div>
+      <div class="card-header"><span class="card-title">+ Nueva solicitud</span></div>
       <div class="form-grid" style="margin-top:14px;">
         <div class="form-group span-2">
           <label class="form-label" for="vac-trab">Trabajador <span class="req">*</span></label>
@@ -157,7 +157,7 @@ function _renderVACNueva(c) {
       </div>
       <div id="vac-error" class="error-msg" role="alert" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-        <button class="btn-primary" onclick="guardarVAC()">💾 Guardar solicitud</button>
+        <button class="btn-primary" onclick="guardarVAC()">Guardar solicitud</button>
       </div>
     </div>
   `;
@@ -204,7 +204,7 @@ function _vacCalcDias() {
     }
   }
   wrap.innerHTML = `
-    <div style="background:rgba(245,166,35,.06);border:1px solid var(--gold-border);border-radius:var(--radius-md);padding:12px 16px;font-size:.88rem;">
+    <div style="background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:var(--radius-md);padding:12px 16px;font-size:.88rem;">
       <strong>Días hábiles: ${diasHab}</strong>
       ${prima > 0 ? ` &nbsp;·&nbsp; Prima vacacional (${(primaPct*100).toFixed(0)}%): <strong style="color:var(--green-ok)">${fmt(prima)}</strong>` : ''}
     </div>
@@ -248,7 +248,7 @@ async function guardarVAC() {
 }
 
 async function aprobarVAC(id) {
-  if (!confirm('¿Aprobar esta solicitud?')) return;
+  if (!(await showConfirmacion('¿Aprobar esta solicitud?'))) return;
   const s = _VAC.solicitudes.find(x => x.id === id);
   if (!s) return;
   try {
@@ -311,7 +311,7 @@ async function _limpiarAsistenciaVAC(s) {
 }
 
 async function rechazarVAC(id) {
-  if (!confirm('¿Rechazar esta solicitud?')) return;
+  if (!(await showConfirmacion('¿Rechazar esta solicitud?', { peligro:true, textoOk:'Rechazar' }))) return;
   try {
     const { error } = await _sbV().from('vacaciones').update({ estado: 'rechazada' }).eq('id', id);
     if (error) throw error;
@@ -365,7 +365,7 @@ async function generarConstanciaVacaciones(solicitudId) {
 }
 
 async function eliminarVAC(id) {
-  if (!confirm('¿Eliminar esta solicitud permanentemente?')) return;
+  if (!(await showConfirmacion('¿Eliminar esta solicitud permanentemente?', { peligro:true, textoOk:'Eliminar' }))) return;
   try {
     const s = _VAC.solicitudes.find(x => x.id === id);
     await _sbV().from('vacaciones').delete().eq('id', id);

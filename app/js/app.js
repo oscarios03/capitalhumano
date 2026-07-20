@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function routeFromHash() {
   const hash = window.location.hash.replace('#','') || 'dashboard';
   const parts = hash.split('/');
-  navigate(parts[0], parts[1]);
+  _renderRoute(parts[0], parts[1]);
 }
 
 function toggleSidebarMobile() {
@@ -87,8 +87,19 @@ function closeSidebarMobile() {
 }
 
 function navigate(route, param) {
+  // Si el hash cambia, el render lo dispara el evento hashchange (una sola
+  // vez) — así un clic en el menú no ejecuta la vista y sus consultas dos veces.
+  const nuevoHash = param ? `${route}/${param}` : route;
+  if (window.location.hash.replace('#', '') !== nuevoHash) {
+    window.location.hash = nuevoHash;
+    closeSidebarMobile();
+    return;
+  }
+  _renderRoute(route, param);
+}
+
+function _renderRoute(route, param) {
   _navGen++;
-  window.location.hash = param ? `${route}/${param}` : route;
   closeSidebarMobile();
   // Update sidebar
   document.querySelectorAll('.nav-item').forEach(el => {
@@ -134,7 +145,7 @@ function navigate(route, param) {
   }
 
   const fn = views[route];
-  if (fn) fn(); else main.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Vista no encontrada</p></div>`;
+  if (fn) fn(); else main.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-search"></use></svg></div><p>Vista no encontrada</p></div>`;
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -157,7 +168,7 @@ async function busquedaGlobal(q) {
       } else {
         box.innerHTML = lista.slice(0, 8).map(t => `
           <div class="global-result-item" onclick="eid('global-search').value='';eid('global-results').style.display='none';navigate('empleado','${t.id}')" role="button" tabindex="0">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--gold-dim);display:grid;place-items:center;font-size:.78rem;font-weight:800;color:var(--gold-primary);flex-shrink:0;">${iniciales(t.nombre)}</div>
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--gold-dim);display:grid;place-items:center;font-size:.78rem;font-weight:700;color:var(--gold-primary);flex-shrink:0;">${iniciales(t.nombre)}</div>
             <div>
               <div class="global-result-name">${escapeHtml(t.nombre)}</div>
               <div class="global-result-meta">${t.puesto || '—'} · ${badgeEstado(t.estado)}</div>
@@ -280,12 +291,12 @@ function alertaVencHTML(dias, tipo) {
   if (dias === null) return '';
   const tipoLabel = _CALIDAD[tipo]?.label || tipo;
   let cls, icono, msg;
-  if      (dias < 0)  { cls='alert-danger'; icono='🔴'; msg=`Contrato <strong>${tipoLabel}</strong> vencido hace <strong>${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''}</strong>.`; }
-  else if (dias === 0){ cls='alert-danger'; icono='🔴'; msg=`Contrato <strong>${tipoLabel}</strong> vence <strong>HOY</strong>.`; }
-  else if (dias === 1){ cls='alert-danger'; icono='🔴'; msg=`Contrato <strong>${tipoLabel}</strong> vence <strong>mañana</strong>.`; }
-  else if (dias <= 3) { cls='alert-danger'; icono='🔴'; msg=`Contrato <strong>${tipoLabel}</strong> vence en <strong>${dias} días</strong>.`; }
-  else if (dias <= 7) { cls='alert-warn';   icono='🟡'; msg=`Contrato <strong>${tipoLabel}</strong> vence en <strong>${dias} días</strong>.`; }
-  else if (dias <= 15){ cls='alert-warn';   icono='🟡'; msg=`Contrato <strong>${tipoLabel}</strong> vence en <strong>${dias} días</strong>.`; }
+  if      (dias < 0)  { cls='alert-danger'; icono='●'; msg=`Contrato <strong>${tipoLabel}</strong> vencido hace <strong>${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''}</strong>.`; }
+  else if (dias === 0){ cls='alert-danger'; icono='●'; msg=`Contrato <strong>${tipoLabel}</strong> vence <strong>HOY</strong>.`; }
+  else if (dias === 1){ cls='alert-danger'; icono='●'; msg=`Contrato <strong>${tipoLabel}</strong> vence <strong>mañana</strong>.`; }
+  else if (dias <= 3) { cls='alert-danger'; icono='●'; msg=`Contrato <strong>${tipoLabel}</strong> vence en <strong>${dias} días</strong>.`; }
+  else if (dias <= 7) { cls='alert-warn';   icono='●'; msg=`Contrato <strong>${tipoLabel}</strong> vence en <strong>${dias} días</strong>.`; }
+  else if (dias <= 15){ cls='alert-warn';   icono='●'; msg=`Contrato <strong>${tipoLabel}</strong> vence en <strong>${dias} días</strong>.`; }
   else return '';
   return `<div class="alert ${cls} animate-in" style="margin-bottom:14px;"><span>${icono}</span><span>${msg}</span></div>`;
 }
@@ -358,7 +369,7 @@ async function renderDashboard() {
         <div class="kpi-card kpi-clickable" onclick="navigate('empleados')" role="button" tabindex="0" title="Ver trabajadores">
           <div class="kpi-icon"><svg class="ic"><use href="#i-user"></use></svg></div>
           <div class="kpi-num">${kpis.empleadosActivos}</div>
-          <div class="kpi-label">Empleados activos</div>
+          <div class="kpi-label">Trabajadores activos</div>
           <div class="kpi-hint">Ver todos los trabajadores →</div>
         </div>
         <div class="kpi-card kpi-clickable" onclick="navigate('asistencia')" role="button" tabindex="0" title="Ver asistencia">
@@ -420,7 +431,7 @@ async function renderDashboard() {
           <button class="btn-secondary btn-sm" onclick="navigate('asistencia')">Ver todas</button>
         </div>
         ${recientes.length === 0
-          ? `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin incidencias registradas</div></div>`
+          ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin incidencias registradas</div></div>`
           : `<div class="table-wrap"><table class="data-table">
               <thead><tr><th>Trabajador</th><th>Tipo</th><th>Fecha</th><th>Justificada</th></tr></thead>
               <tbody>${recientes.map(r => `
@@ -437,12 +448,12 @@ async function renderDashboard() {
       <!-- Accesos rápidos -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;" class="animate-in">
         <div class="card" style="cursor:pointer;" onclick="navigate('empleados')" role="button" tabindex="0">
-          <div style="font-size:2rem;margin-bottom:10px;">👤</div>
+          <div style="font-size:2rem;margin-bottom:10px;"></div>
           <div style="font-weight:700;">Registrar nuevo trabajador</div>
           <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;">Alta + contrato automático</div>
         </div>
         <div class="card" style="cursor:pointer;" onclick="navigate('disciplinario')" role="button" tabindex="0">
-          <div style="font-size:2rem;margin-bottom:10px;">⚠️</div>
+          <div style="font-size:2rem;margin-bottom:10px;"></div>
           <div style="font-weight:700;">Levantar acta administrativa</div>
           <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px;">Amonestación, formal o rescisoria</div>
         </div>
@@ -468,31 +479,31 @@ function renderManual() {
   const main = document.getElementById('main-view');
 
   const secciones = [
-    { id:'intro',        icon:'📖', num:'1',  titulo:'Introducción' },
-    { id:'acceso',       icon:'🔐', num:'2',  titulo:'Acceso al sistema' },
-    { id:'dashboard',    icon:'📊', num:'3',  titulo:'Panel de Control' },
-    { id:'trabajadores', icon:'👥', num:'4',  titulo:'Trabajadores' },
-    { id:'contratos',    icon:'📄', num:'5',  titulo:'Contratos' },
-    { id:'asistencia',   icon:'🗓', num:'6',  titulo:'Asistencia' },
-    { id:'nomina',       icon:'💰', num:'7',  titulo:'Nómina' },
-    { id:'imss',         icon:'🏛', num:'8',  titulo:'IMSS / Movimientos' },
-    { id:'actas',        icon:'⚠️', num:'9',  titulo:'Actas Administrativas' },
-    { id:'bajas',        icon:'🚪', num:'10', titulo:'Bajas' },
-    { id:'prestaciones', icon:'🎁', num:'11', titulo:'Prestaciones' },
-    { id:'empresa',      icon:'🏢', num:'12', titulo:'Mi Empresa' },
-    { id:'organigrama',  icon:'🏗', num:'13', titulo:'Organigrama' },
-    { id:'reportes',     icon:'📈', num:'14', titulo:'Reportes' },
-    { id:'faq',          icon:'❓', num:'15', titulo:'Preguntas Frecuentes' },
+    { id:'intro',        icon:'', num:'1',  titulo:'Introducción' },
+    { id:'acceso',       icon:'', num:'2',  titulo:'Acceso al sistema' },
+    { id:'dashboard',    icon:'', num:'3',  titulo:'Panel de Control' },
+    { id:'trabajadores', icon:'', num:'4',  titulo:'Trabajadores' },
+    { id:'contratos',    icon:'', num:'5',  titulo:'Contratos' },
+    { id:'asistencia',   icon:'', num:'6',  titulo:'Asistencia' },
+    { id:'nomina',       icon:'', num:'7',  titulo:'Nómina' },
+    { id:'imss',         icon:'', num:'8',  titulo:'IMSS / Movimientos' },
+    { id:'actas',        icon:'', num:'9',  titulo:'Actas Administrativas' },
+    { id:'bajas',        icon:'', num:'10', titulo:'Bajas' },
+    { id:'prestaciones', icon:'', num:'11', titulo:'Prestaciones' },
+    { id:'empresa',      icon:'', num:'12', titulo:'Mi Empresa' },
+    { id:'organigrama',  icon:'', num:'13', titulo:'Organigrama' },
+    { id:'reportes',     icon:'', num:'14', titulo:'Reportes' },
+    { id:'faq',          icon:'', num:'15', titulo:'Preguntas Frecuentes' },
   ];
 
   const contenido = {
     intro: `
       <p><strong>Capital Humano MX</strong> es un sistema de gestión de recursos humanos diseñado para empresas mexicanas. Permite administrar trabajadores, contratos, asistencia, nómina, prestaciones y cumplimiento legal (LFT / IMSS / ISR 2026) desde una sola plataforma web.</p>
-      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">Perfiles de usuario</h4>
+      <h4 style="margin:16px 0 8px;color:var(--navy-deep);">Perfiles de usuario</h4>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
         <div style="border:2px solid var(--gold-primary);border-radius:10px;padding:16px;">
-          <div style="font-size:22px;margin-bottom:6px;">👑</div>
-          <strong style="font-family:'Montserrat',sans-serif;">Administrador</strong>
+          <div style="font-size:22px;margin-bottom:6px;"></div>
+          <strong>Administrador</strong>
           <ul style="margin-top:8px;font-size:.85rem;padding-left:16px;">
             <li>Configura la empresa y sucursales</li>
             <li>Define el día de pago semanal</li>
@@ -502,8 +513,8 @@ function renderManual() {
           </ul>
         </div>
         <div style="border:2px solid var(--border);border-radius:10px;padding:16px;">
-          <div style="font-size:22px;margin-bottom:6px;">📋</div>
-          <strong style="font-family:'Montserrat',sans-serif;">Operativo (RH)</strong>
+          <div style="font-size:22px;margin-bottom:6px;"></div>
+          <strong>Operativo (RH)</strong>
           <ul style="margin-top:8px;font-size:.85rem;padding-left:16px;">
             <li>Da de alta y edita trabajadores</li>
             <li>Registra asistencia e incidencias</li>
@@ -516,10 +527,10 @@ function renderManual() {
 
     acceso: `
       <ol style="padding-left:0;list-style:none;">
-        ${['Abre tu navegador (Chrome o Edge recomendado) y ve a la URL de la aplicación.','Ingresa tu correo electrónico y contraseña.','Haz clic en <strong>Iniciar sesión</strong>.','Si tienes más de una empresa, elige con cuál trabajar en el selector.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span>${s}</span></li>`).join('')}
+        ${['Abre tu navegador (Chrome o Edge recomendado) y ve a la URL de la aplicación.','Ingresa tu correo electrónico y contraseña.','Haz clic en <strong>Iniciar sesión</strong>.','Si tienes más de una empresa, elige con cuál trabajar en el selector.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;"><span style="background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span>${s}</span></li>`).join('')}
       </ol>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:12px;font-size:.88rem;">
-        <strong>💡 Multiempresa:</strong> Cambia de empresa en cualquier momento con el botón <strong>🔄</strong> en la barra superior, sin cerrar sesión.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:12px;font-size:.88rem;">
+        <strong>Multiempresa:</strong> Cambia de empresa en cualquier momento con el botón junto al nombre de tu empresa en la barra superior, sin cerrar sesión.
       </div>`,
 
     dashboard: `
@@ -527,195 +538,195 @@ function renderManual() {
       <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Indicador</th><th style="padding:8px 12px;text-align:left;">Descripción</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">📊 Nómina del mes</td><td style="padding:8px 12px;"><strong>Lo que la nómina le cuesta a la empresa</strong>: percepciones brutas más cuotas patronales IMSS, INFONAVIT e ISN. Pasa el cursor encima para ver el desglose y el neto que reciben los trabajadores.</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">👤 Empleados activos</td><td style="padding:8px 12px;">Total de trabajadores en plantilla</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🗓 Faltas este mes</td><td style="padding:8px 12px;">Faltas injustificadas del mes actual</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">⚠️ Actas este mes</td><td style="padding:8px 12px;">Actas administrativas emitidas en el mes</td></tr>
-          <tr><td style="padding:8px 12px;">🚪 Bajas este mes</td><td style="padding:8px 12px;">Trabajadores que causaron baja en el mes</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Nómina del mes</td><td style="padding:8px 12px;"><strong>Lo que la nómina le cuesta a la empresa</strong>: percepciones brutas más cuotas patronales IMSS, INFONAVIT e ISN. Pasa el cursor encima para ver el desglose y el neto que reciben los trabajadores.</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Trabajadores activos</td><td style="padding:8px 12px;">Total de trabajadores en plantilla</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Faltas este mes</td><td style="padding:8px 12px;">Faltas injustificadas del mes actual</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Actas este mes</td><td style="padding:8px 12px;">Actas administrativas emitidas en el mes</td></tr>
+          <tr><td style="padding:8px 12px;">Bajas este mes</td><td style="padding:8px 12px;">Trabajadores que causaron baja en el mes</td></tr>
         </tbody>
       </table>
-      <p style="margin-top:12px;font-size:.88rem;"><strong>🔔 Alertas Legales:</strong> el sistema genera automáticamente avisos sobre contratos por vencer, vacaciones pendientes y períodos de prueba. El botón <strong>"Buscar nuevos riesgos"</strong> vuelve a revisarlo todo en el momento.</p>
-      <p style="margin-top:10px;font-size:.88rem;"><strong>📅 Obligaciones del mes:</strong> el calendario de lo que hay que pagar o presentar — cuotas IMSS (día 17), el bimestral de RCV e INFONAVIT, la variabilidad del SBC, el ISN, la prima de riesgo de febrero, la PTU y el aguinaldo. Lo <span style="color:#e74c3c;font-weight:700;">vencido</span> se marca en rojo y lo <span style="color:#f39c12;font-weight:700;">por vencer</span> en naranja; haz clic para ir al módulo que corresponde.</p>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>💡 Sobre las fechas:</strong> las que caen en sábado, domingo o día festivo se recorren solas al siguiente día hábil. La fecha de la PTU depende de si eres persona moral (30 de mayo) o física (29 de junio): el sistema lo deduce de tu RFC. El <strong>ISN es estatal</strong>, así que su vencimiento y su tasa cambian según tu entidad — confírmalos con tu contador.
+      <p style="margin-top:12px;font-size:.88rem;"><strong>Alertas Legales:</strong> el sistema genera automáticamente avisos sobre contratos por vencer, vacaciones pendientes y períodos de prueba. El botón <strong>"Buscar nuevos riesgos"</strong> vuelve a revisarlo todo en el momento.</p>
+      <p style="margin-top:10px;font-size:.88rem;"><strong>Obligaciones del mes:</strong> el calendario de lo que hay que pagar o presentar — cuotas IMSS (día 17), el bimestral de RCV e INFONAVIT, la variabilidad del SBC, el ISN, la prima de riesgo de febrero, la PTU y el aguinaldo. Lo <span style="color:var(--red-warn);font-weight:700;">vencido</span> se marca en rojo y lo <span style="color:var(--amber-warn);font-weight:700;">por vencer</span> en naranja; haz clic para ir al módulo que corresponde.</p>
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Sobre las fechas:</strong> las que caen en sábado, domingo o día festivo se recorren solas al siguiente día hábil. La fecha de la PTU depende de si eres persona moral (30 de mayo) o física (29 de junio): el sistema lo deduce de tu RFC. El <strong>ISN es estatal</strong>, así que su vencimiento y su tasa cambian según tu entidad — confírmalos con tu contador.
       </div>`,
 
     trabajadores: `
-      <h4 style="margin:0 0 10px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">Alta de Trabajador</h4>
+      <h4 style="margin:0 0 10px;color:var(--navy-deep);">Alta de Trabajador</h4>
       <ol style="padding-left:0;list-style:none;">
-        ${['Clic en <strong>"+ Nuevo Trabajador"</strong>.','Completa datos personales: nombre, RFC, CURP, NSS.','Define puesto, departamento y sucursal.','Configura salario y <strong>tipo de período de pago</strong> (Semanal / Quincenal / Mensual). Este campo determina cómo se calcula su nómina.','Selecciona el tipo de contrato.','Configura prestaciones opcionales: vales, bono fijo, fondo de ahorro, INFONAVIT, pensión alimenticia.','Clic en <strong>"Guardar"</strong>. El contrato se genera automáticamente.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
+        ${['Clic en <strong>"+ Nuevo Trabajador"</strong>.','Completa datos personales: nombre, RFC, CURP, NSS.','Define puesto, departamento y sucursal.','Configura salario y <strong>tipo de período de pago</strong> (Semanal / Quincenal / Mensual). Este campo determina cómo se calcula su nómina.','Selecciona el tipo de contrato.','Configura prestaciones opcionales: vales, bono fijo, fondo de ahorro, INFONAVIT, pensión alimenticia.','Clic en <strong>"Guardar"</strong>. El contrato se genera automáticamente.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
       </ol>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
-        <strong>⚙️ Campo clave:</strong> Si el trabajador cobra semanalmente, selecciona <em>Semanal</em>. El sistema lo incluirá en períodos semanales y calculará su salario correctamente.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
+        <strong>Campo clave:</strong> Si el trabajador cobra semanalmente, selecciona <em>Semanal</em>. El sistema lo incluirá en períodos semanales y calculará su salario correctamente.
       </div>
 
-      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">RFC, CURP y NSS: revisión automática</h4>
+      <h4 style="margin:16px 0 8px;color:var(--navy-deep);">RFC, CURP y NSS: revisión automática</h4>
       <p style="font-size:.88rem;">Los tres traen un <strong>dígito verificador</strong> calculado a partir del resto de la clave, así que el sistema detecta los dedazos aunque el formato se vea bien. Si algo no cuadra te avisa, pero <strong>no te bloquea</strong>: si el dato viene así de un expediente viejo, puedes guardarlo igual.</p>
       <p style="font-size:.88rem;">Vale la pena corregirlo en el momento: un RFC o un NSS mal capturado no molesta hoy, pero reaparece como <strong>rechazo del IDSE, del SUA o del timbrado</strong> justo cuando tienes prisa.</p>
       <p style="font-size:.88rem;">Al capturar la CURP, la <strong>fecha de nacimiento y el sexo se llenan solos</strong> (van dentro de la propia CURP). Por eso ya no se pregunta la edad: se calcula. La edad caduca cada año; la fecha de nacimiento no.</p>
 
-      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">Semáforo del expediente</h4>
+      <h4 style="margin:16px 0 8px;color:var(--navy-deep);">Semáforo del expediente</h4>
       <p style="font-size:.88rem;">En el perfil de cada trabajador verás un porcentaje de qué tan completo está su expediente y exactamente qué falta. Los <strong>documentos pesan más que los datos</strong>, y no es un capricho: en un juicio el documento firmado es la prueba — lo que tienes capturado en el sistema es tu dicho, y el Art. 784 LFT no te lo concede. Un expediente con todos los datos pero sin un solo documento apenas llega al 46%.</p>
 
-      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">🛡️ Kit de expediente de defensa</h4>
+      <h4 style="margin:16px 0 8px;color:var(--navy-deep);">Kit de expediente de defensa</h4>
       <p style="font-size:.88rem;">El botón <strong>"Kit de defensa"</strong> del perfil arma un ZIP con todo lo probatorio de ese trabajador: contrato, recibos de nómina del rango que elijas, historial de asistencia en Excel, actas, cartas responsivas y los archivos del expediente digital — con un PDF índice al frente.</p>
-      <div style="border-left:4px solid #e74c3c;background:rgba(231,76,60,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>⚖️ Para qué sirve:</strong> cuando llega un citatorio de conciliación tienes días, no semanas. El Art. 784 LFT invierte la carga de la prueba: <strong>le toca al patrón</strong> demostrar fecha de ingreso, salario, jornada y pagos. Lo que no esté documentado se presume a favor del trabajador. Este ZIP es lo que le entregas a tu abogado.
+      <div style="border-left:4px solid var(--red-warn);background:rgba(192,57,43,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Para qué sirve:</strong> cuando llega un citatorio de conciliación tienes días, no semanas. El Art. 784 LFT invierte la carga de la prueba: <strong>le toca al patrón</strong> demostrar fecha de ingreso, salario, jornada y pagos. Lo que no esté documentado se presume a favor del trabajador. Este ZIP es lo que le entregas a tu abogado.
       </div>
 
-      <h4 style="margin:16px 0 8px;font-family:'Montserrat',sans-serif;color:var(--navy-deep);">💳 Descuentos y préstamos</h4>
+      <h4 style="margin:16px 0 8px;color:var(--navy-deep);">Descuentos y préstamos</h4>
       <p style="font-size:.88rem;">En el tab "Descuentos" del perfil se configuran INFONAVIT, FONACOT, pensión alimenticia, préstamos de la empresa y <strong>caja de ahorro</strong>. Cada descuento tiene su propia prioridad legal y tope (Art. 110 LFT) al aplicarse en nómina — la pensión alimenticia siempre va primero y sin tope, por ser orden judicial.</p>
       <p style="font-size:.88rem;"><strong>Caja de ahorro:</strong> deja el "Monto total del crédito" vacío para una aportación recurrente sin fin — la pestaña te muestra el acumulado a la fecha. Si el trabajador pide un préstamo contra ese fondo, regístralo como <strong>"Préstamo de caja de ahorro"</strong> (distinto del préstamo de la empresa) y sí captura el monto, para que el sistema calcule cuándo queda liquidado.</p>
-      <p style="font-size:.88rem;"><strong>Pago mixto</strong> (sección ⚙️ Configuración de Nómina del alta): si una parte del sueldo se entrega en efectivo, actívalo y captura el monto por período. Es independiente de la "Forma de Pago" de arriba, que solo redacta el contrato. Con esto activo, el archivo de dispersión bancaria (SPEI) solo incluye la parte por transferencia, y puedes imprimir el listado <strong>"Nómina en efectivo"</strong> desde el detalle del período con línea de firma por trabajador.</p>`,
+      <p style="font-size:.88rem;"><strong>Pago mixto</strong> (sección Configuración de Nómina del alta): si una parte del sueldo se entrega en efectivo, actívalo y captura el monto por período. Es independiente de la "Forma de Pago" de arriba, que solo redacta el contrato. Con esto activo, el archivo de dispersión bancaria (SPEI) solo incluye la parte por transferencia, y puedes imprimir el listado <strong>"Nómina en efectivo"</strong> desde el detalle del período con línea de firma por trabajador.</p>`,
 
     contratos: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Tipo</th><th style="padding:8px 12px;text-align:left;">Descripción</th><th style="padding:8px 12px;text-align:left;">Alertas</th></tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>De Planta</strong></td><td style="padding:8px 12px;">Sin fecha de vencimiento</td><td style="padding:8px 12px;">No aplica</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;"><strong>A Prueba</strong></td><td style="padding:8px 12px;">Tiempo determinado (Art. 35 LFT)</td><td style="padding:8px 12px;">15 días antes</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>A Prueba</strong></td><td style="padding:8px 12px;">Tiempo determinado (Art. 35 LFT)</td><td style="padding:8px 12px;">15 días antes</td></tr>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Por Obra</strong></td><td style="padding:8px 12px;">Para trabajo específico</td><td style="padding:8px 12px;">15 días antes</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;"><strong>Por Temporada</strong></td><td style="padding:8px 12px;">Actividades estacionales</td><td style="padding:8px 12px;">15 días antes</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Por Temporada</strong></td><td style="padding:8px 12px;">Actividades estacionales</td><td style="padding:8px 12px;">15 días antes</td></tr>
           <tr><td style="padding:8px 12px;"><strong>Por Comisión</strong></td><td style="padding:8px 12px;">Remuneración por comisiones (Art. 285 LFT)</td><td style="padding:8px 12px;">No aplica</td></tr>
         </tbody>
       </table>
       <p style="font-size:.88rem;margin-top:10px;">El PDF del contrato se genera automáticamente al dar de alta al trabajador. Puedes regenerarlo desde el perfil del trabajador o desde el módulo Contratos.</p>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>📱 Botón WhatsApp:</strong> si el trabajador tiene teléfono capturado (tab Contactos del alta), aparece un botón que abre un chat de WhatsApp con un mensaje ya escrito avisando que su contrato está listo para firma. El botón <strong>solo abre el chat</strong> — tú decides si lo mandas y adjuntas el PDF a mano.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Botón WhatsApp:</strong> si el trabajador tiene teléfono capturado (tab Contactos del alta), aparece un botón que abre un chat de WhatsApp con un mensaje ya escrito avisando que su contrato está listo para firma. El botón <strong>solo abre el chat</strong> — tú decides si lo mandas y adjuntas el PDF a mano.
       </div>`,
 
     asistencia: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Tipo</th><th style="padding:8px 12px;text-align:left;">Efecto en nómina</th><th style="padding:8px 12px;text-align:left;">Fundamento</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">❌ Falta</td><td style="padding:8px 12px;">Descuenta el día del salario</td><td style="padding:8px 12px;">Art. 59 LFT</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">⏰ Retardo</td><td style="padding:8px 12px;">Solo registro disciplinario</td><td style="padding:8px 12px;">Art. 59 LFT</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">✅ Permiso con goce</td><td style="padding:8px 12px;">No descuenta el salario</td><td style="padding:8px 12px;">Art. 132 fr. X LFT</td></tr>
-          <tr><td style="padding:8px 12px;">🔴 Permiso sin goce</td><td style="padding:8px 12px;">Descuenta el día del salario</td><td style="padding:8px 12px;">Art. 59 LFT</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Falta</td><td style="padding:8px 12px;">Descuenta el día del salario</td><td style="padding:8px 12px;">Art. 59 LFT</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Retardo</td><td style="padding:8px 12px;">Solo registro disciplinario</td><td style="padding:8px 12px;">Art. 59 LFT</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">Permiso con goce</td><td style="padding:8px 12px;">No descuenta el salario</td><td style="padding:8px 12px;">Art. 132 fr. X LFT</td></tr>
+          <tr><td style="padding:8px 12px;">● Permiso sin goce</td><td style="padding:8px 12px;">Descuenta el día del salario</td><td style="padding:8px 12px;">Art. 59 LFT</td></tr>
         </tbody>
       </table>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.85rem;">
-        <strong>💡 Vinculación automática:</strong> Al generar un período de nómina, el sistema consulta las incidencias del rango de fechas de cada trabajador y descuenta los días automáticamente.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.85rem;">
+        <strong>Vinculación automática:</strong> Al generar un período de nómina, el sistema consulta las incidencias del rango de fechas de cada trabajador y descuenta los días automáticamente.
       </div>
 
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">📅 Vista del mes</h4>
+      <h4 style="color:var(--navy-deep);margin:16px 0 8px;">Vista del mes</h4>
       <p style="font-size:.88rem;">El <strong>Registro Diario</strong> sirve para capturar; la <strong>Vista del mes</strong> sirve para <em>darte cuenta</em>. Es una cuadrícula de todos tus trabajadores contra todos los días del mes, con las columnas <strong>F</strong> (faltas), <strong>R</strong> (retardos) y <strong>HE</strong> (horas extra) al final de cada renglón.</p>
-      <p style="font-size:.88rem;">Ahí es donde se ven los patrones que día a día se pierden: quién falta siempre los lunes, quién viene acumulando retardos, quién carga con todas las horas extra. Haz clic en cualquier día para capturarlo o corregirlo. Los festivos salen en dorado y los fines de semana en gris.</p>
+      <p style="font-size:.88rem;">Ahí es donde se ven los patrones que día a día se pierden: quién falta siempre los lunes, quién viene acumulando retardos, quién carga con todas las horas extra. Haz clic en cualquier día para capturarlo o corregirlo. Los festivos salen en verde y los fines de semana en gris.</p>
 
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">⏰ Retardo automático</h4>
+      <h4 style="color:var(--navy-deep);margin:16px 0 8px;">Retardo automático</h4>
       <p style="font-size:.88rem;">Si capturas la <strong>hora de entrada</strong> y el trabajador tiene horario registrado, el sistema decide solo si fue retardo y cuántos minutos, usando <strong>exactamente la misma regla que el reloj checador</strong>: hay retardo cuando la entrada pasa de su hora más la tolerancia que configuraste en Mi Empresa (10 minutos por defecto), y los minutos se cuentan desde su hora de entrada.</p>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.85rem;">
-        <strong>💡 Por qué la misma regla:</strong> si capturar a mano y checar en el kiosco clasificaran distinto, el mismo trabajador tendría retardo o no según cómo se registró ese día — y eso es justo lo que se cae en un juicio. Ojo: si el trabajador <strong>no tiene horario capturado</strong>, no hay contra qué comparar y el retardo debes marcarlo tú.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:8px;font-size:.85rem;">
+        <strong>Por qué la misma regla:</strong> si capturar a mano y checar en el kiosco clasificaran distinto, el mismo trabajador tendría retardo o no según cómo se registró ese día — y eso es justo lo que se cae en un juicio. Ojo: si el trabajador <strong>no tiene horario capturado</strong>, no hay contra qué comparar y el retardo debes marcarlo tú.
       </div>`,
 
     nomina: `
       <p style="font-size:.88rem;margin-bottom:12px;">Motor de cálculo con <strong>ISR 2026</strong> (tarifas del Anexo 8 RMF por periodicidad: semanal, quincenal y mensual), <strong>subsidio al empleo</strong>, <strong>cuotas IMSS obrero y patronales</strong> e <strong>ISN estatal</strong>. El módulo tiene cuatro pestañas:</p>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin-bottom:8px;">7.1 Períodos — Crear un período</h4>
+      <h4 style="color:var(--navy-deep);margin-bottom:8px;">7.1 Períodos — Crear un período</h4>
       <ol style="padding-left:0;list-style:none;">
-        ${['Clic en <strong>"+ Nuevo Período"</strong>.','El sistema detecta el tipo dominante entre los trabajadores activos y pre-selecciona Semanal, Quincenal o Mensual.','Para nómina <strong>Semanal</strong>: las fechas se calculan según el día de pago configurado en <em>Mi Empresa</em>.','Elige modo <strong>Automático</strong> (genera todos los recibos) o <strong>Manual</strong> (período vacío).','Clic en <strong>"⚡ Crear y generar nómina"</strong>.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
+        ${['Clic en <strong>"+ Nuevo Período"</strong>.','El sistema detecta el tipo dominante entre los trabajadores activos y pre-selecciona Semanal, Quincenal o Mensual.','Para nómina <strong>Semanal</strong>: las fechas se calculan según el día de pago configurado en <em>Mi Empresa</em>.','Elige modo <strong>Automático</strong> (genera todos los recibos) o <strong>Manual</strong> (período vacío).','Clic en <strong>"Crear y generar nómina"</strong>.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
       </ol>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.2 Detalle del Período</h4>
-      <p style="font-size:.88rem;">Muestra KPIs y la tabla de recibos. Edita cualquier recibo con ✏️ para capturar comisiones, deducciones especiales y extras. El ISR e IMSS se recalculan en tiempo real. Si el trabajador tiene vacaciones aprobadas dentro de este período, la prima vacacional (🏖, Art. 80 LFT) se calcula sola y aparece en la columna Extras.</p>
+      <h4 style="color:var(--navy-deep);margin:14px 0 6px;">7.2 Detalle del Período</h4>
+      <p style="font-size:.88rem;">Muestra KPIs y la tabla de recibos. Edita cualquier recibo con para capturar comisiones, deducciones especiales y extras. El ISR e IMSS se recalculan en tiempo real. Si el trabajador tiene vacaciones aprobadas dentro de este período, la prima vacacional (, Art. 80 LFT) se calcula sola y aparece en la columna Extras.</p>
       <p style="font-size:.88rem;">El KPI <strong>"Costo total para la empresa"</strong> suma las percepciones brutas más lo que pagas encima: cuotas patronales IMSS, aportación INFONAVIT del 5% e ISN estatal. Es lo que la nómina te cuesta de verdad — configura tu prima de riesgo y tu tasa de ISN en <em>Mi Empresa</em> para que la cifra sea exacta.</p>
-      <p style="font-size:.88rem;">Si el trabajador tiene teléfono capturado, el botón <strong>📱 WhatsApp</strong> de cada recibo abre un chat con el aviso ya escrito (período y neto a pagar). No envía nada solo ni adjunta el PDF — eso lo haces tú.</p>
-      <p style="font-size:.88rem;">Si algún trabajador tiene <strong>pago mixto</strong> configurado (ver sección Trabajadores), el archivo "Exportar SPEI" solo dispersa la parte por transferencia — la parte en efectivo queda fuera de ese archivo. Usa <strong>"💵 Nómina en efectivo"</strong> para imprimir el listado con línea de firma de quienes reciben todo o parte de su pago en efectivo.</p>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.3 Historial por Trabajador</h4>
+      <p style="font-size:.88rem;">Si el trabajador tiene teléfono capturado, el botón <strong>WhatsApp</strong> de cada recibo abre un chat con el aviso ya escrito (período y neto a pagar). No envía nada solo ni adjunta el PDF — eso lo haces tú.</p>
+      <p style="font-size:.88rem;">Si algún trabajador tiene <strong>pago mixto</strong> configurado (ver sección Trabajadores), el archivo "Exportar SPEI" solo dispersa la parte por transferencia — la parte en efectivo queda fuera de ese archivo. Usa <strong>"Nómina en efectivo"</strong> para imprimir el listado con línea de firma de quienes reciben todo o parte de su pago en efectivo.</p>
+      <h4 style="color:var(--navy-deep);margin:14px 0 6px;">7.3 Historial por Trabajador</h4>
       <p style="font-size:.88rem;">Acumulado anual por trabajador: percepciones, ISR retenido, IMSS obrero y neto. Descarga cualquier recibo individual en PDF.</p>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">7.4 Ajuste anual de ISR (Art. 97 LISR)</h4>
+      <h4 style="color:var(--navy-deep);margin:14px 0 6px;">7.4 Ajuste anual de ISR (Art. 97 LISR)</h4>
       <p style="font-size:.88rem;">En diciembre estás obligado a comparar el ISR que retuviste durante el año contra el que realmente corresponde según la tarifa anual, y a cobrar o devolver la diferencia. Esta pestaña lo calcula por trabajador y aplica el resultado en el recibo de diciembre con un clic.</p>
       <p style="font-size:.88rem;">La ley excluye del ajuste a quien ganó más de $400,000 en el año o a quien entró o salió durante el ejercicio: el sistema los detecta y los marca solo. Si alguien te avisa por escrito que presentará su declaración anual por su cuenta, desmárcalo a mano en la columna "Aplica".</p>
-      <div style="border-left:4px solid #e74c3c;background:rgba(231,76,60,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>⛔ Cerrar vs. Eliminar:</strong> <em>Cerrar</em> marca el período como pagado (irreversible, queda en historial). <em>Eliminar</em> borra el período y todos sus recibos de forma permanente.
+      <div style="border-left:4px solid var(--red-warn);background:rgba(192,57,43,.06);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Cerrar vs. Eliminar:</strong> <em>Cerrar</em> marca el período como pagado (irreversible, queda en historial). <em>Eliminar</em> borra el período y todos sus recibos de forma permanente.
       </div>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>💡 Si regeneras diciembre:</strong> el ajuste anual se borra al regenerar la nómina de ese período. Vuelve a aplicarlo desde la pestaña 7.4 después de regenerar.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Si regeneras diciembre:</strong> el ajuste anual se borra al regenerar la nómina de ese período. Vuelve a aplicarlo desde la pestaña 7.4 después de regenerar.
       </div>`,
 
     imss: `
       <p style="font-size:.88rem;">El módulo <strong>IMSS / Movimientos</strong> concentra los avisos afiliatorios (altas, bajas y modificaciones de salario) para importarlos en <strong>IDSE</strong> o capturarlos en el <strong>SUA</strong>. Tiene dos pestañas.</p>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">📋 Movimientos</h4>
+      <h4 style="color:var(--navy-deep);margin:14px 0 6px;">Movimientos</h4>
       <p style="font-size:.88rem;">Bandeja de avisos pendientes: selecciona los que vas a presentar y usa <strong>"Exportar lote para IDSE"</strong> para descargar el archivo de ancho fijo y un Excel espejo. Los avisos con más de 3 días se marcan en rojo — el plazo legal es de 5 días hábiles (Art. 15 fr. I LSS).</p>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:14px 0 6px;">📈 Variabilidad bimestral del SBC</h4>
+      <h4 style="color:var(--navy-deep);margin:14px 0 6px;">Variabilidad bimestral del SBC</h4>
       <p style="font-size:.88rem;">Los trabajadores con <strong>salario mixto</strong> (una parte fija más comisiones, primas o bonos) deben recalcular su Salario Base de Cotización al cierre de cada bimestre: la parte variable es el promedio diario de esas percepciones en el bimestre que terminó (Art. 30 fr. III LSS). El nuevo SBC rige el bimestre siguiente y el aviso se presenta en sus primeros 5 días hábiles.</p>
       <p style="font-size:.88rem;">La pestaña toma automáticamente los recibos del <strong>bimestre anterior</strong>, calcula el SBC nuevo (salario diario × factor de integración + variables ÷ días devengados, topado a 25 UMA) y te muestra a quién le cambia. Selecciona a los trabajadores y usa <strong>"Generar modificaciones de salario"</strong>: cada uno se convierte en un aviso de modificación en la pestaña Movimientos, listo para exportar.</p>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>💡 Horas extra:</strong> se muestran aparte y no se integran automáticamente, porque sólo cuentan para el SBC en la parte que excede los límites del Art. 66 LFT (hasta 9 horas a la semana). Si un trabajador rebasa ese límite con frecuencia, ajusta su SBC a mano.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Horas extra:</strong> se muestran aparte y no se integran automáticamente, porque sólo cuentan para el SBC en la parte que excede los límites del Art. 66 LFT (hasta 9 horas a la semana). Si un trabajador rebasa ese límite con frecuencia, ajusta su SBC a mano.
       </div>`,
 
     actas: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Tipo</th><th style="padding:8px 12px;text-align:left;">Uso</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">📝 <strong>Amonestación</strong></td><td style="padding:8px 12px;">Primera infracción o falta leve</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">📋 <strong>Formal</strong></td><td style="padding:8px 12px;">Reincidencia o falta de mayor gravedad</td></tr>
-          <tr><td style="padding:8px 12px;">🚫 <strong>Rescisoria</strong></td><td style="padding:8px 12px;">Falta grave que justifica rescisión (Art. 47 LFT)</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Amonestación</strong></td><td style="padding:8px 12px;">Primera infracción o falta leve</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Formal</strong></td><td style="padding:8px 12px;">Reincidencia o falta de mayor gravedad</td></tr>
+          <tr><td style="padding:8px 12px;"><strong>Rescisoria</strong></td><td style="padding:8px 12px;">Falta grave que justifica rescisión (Art. 47 LFT)</td></tr>
         </tbody>
       </table>
       <ol style="padding-left:0;list-style:none;margin-top:12px;">
-        ${['Ve a <strong>Actas Admin.</strong> → <strong>"+ Nueva Acta"</strong>.','Selecciona trabajador y tipo de acta.','Elige el tipo de falta y la causal legal del catálogo.','Captura descripción, lugar, hora y datos de testigos.','Indica si el trabajador acepta o niega firmar.','Clic en <strong>"Generar Acta"</strong> — se crea el PDF listo para firma.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
+        ${['Ve a <strong>Actas Admin.</strong> → <strong>"+ Nueva Acta"</strong>.','Selecciona trabajador y tipo de acta.','Elige el tipo de falta y la causal legal del catálogo.','Captura descripción, lugar, hora y datos de testigos.','Indica si el trabajador acepta o niega firmar.','Clic en <strong>"Generar Acta"</strong> — se crea el PDF listo para firma.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
       </ol>
-      <p style="font-size:.88rem;margin-top:10px;">Si el trabajador tiene teléfono capturado, el botón <strong>📱 WhatsApp</strong> de cada acta abre un chat con el citatorio ya redactado (fecha, hora y lugar). Solo abre el chat — tú confirmas y envías.</p>`,
+      <p style="font-size:.88rem;margin-top:10px;">Si el trabajador tiene teléfono capturado, el botón <strong>WhatsApp</strong> de cada acta abre un chat con el citatorio ya redactado (fecha, hora y lugar). Solo abre el chat — tú confirmas y envías.</p>`,
 
     bajas: `
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Tipo de baja</th><th style="padding:8px 12px;text-align:left;">Documentos generados</th></tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Renuncia voluntaria</strong></td><td style="padding:8px 12px;">Carta de Renuncia + Recibo de Finiquito</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;"><strong>Rescisión sin responsabilidad</strong></td><td style="padding:8px 12px;">Aviso de Rescisión + Recibo de Liquidación (3 meses + 20 días/año + partes proporcionales)</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Rescisión sin responsabilidad</strong></td><td style="padding:8px 12px;">Aviso de Rescisión + Recibo de Liquidación (3 meses + 20 días/año + partes proporcionales)</td></tr>
           <tr><td style="padding:8px 12px;"><strong>Mutuo acuerdo</strong></td><td style="padding:8px 12px;">Recibo de Finiquito con prestaciones proporcionales</td></tr>
         </tbody>
       </table>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>💡 Proporcionales automáticos:</strong> El sistema calcula vacaciones, prima y aguinaldo proporcionales basándose en la fecha de ingreso del trabajador. Verifica que esté correcta antes de procesar la baja.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Proporcionales automáticos:</strong> El sistema calcula vacaciones, prima y aguinaldo proporcionales basándose en la fecha de ingreso del trabajador. Verifica que esté correcta antes de procesar la baja.
       </div>`,
 
     prestaciones: `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
-          <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">🏖 Vacaciones</div>
-          <p style="font-size:.83rem;margin:0;">Cálculo automático por antigüedad (LFT reforma 2023: mín. 12 días el 1er año). Al aprobar la solicitud, la prima vacacional (25% mínimo, Art. 80 LFT) se agrega sola al recibo de nómina del período en que el trabajador goza sus días — no hace falta capturarla a mano. El botón <strong>📄 Constancia</strong> genera el documento del Art. 81 LFT (antigüedad, días que corresponden, gozados y saldo). Al aprobar también aparece el botón <strong>📱 WhatsApp</strong> (si el trabajador tiene teléfono) para avisarle con un mensaje ya escrito.</p>
+          <div style="font-weight:700;margin-bottom:6px;">Vacaciones</div>
+          <p style="font-size:.83rem;margin:0;">Cálculo automático por antigüedad (LFT reforma 2023: mín. 12 días el 1er año). Al aprobar la solicitud, la prima vacacional (25% mínimo, Art. 80 LFT) se agrega sola al recibo de nómina del período en que el trabajador goza sus días — no hace falta capturarla a mano. El botón <strong>Constancia</strong> genera el documento del Art. 81 LFT (antigüedad, días que corresponden, gozados y saldo). Al aprobar también aparece el botón <strong>WhatsApp</strong> (si el trabajador tiene teléfono) para avisarle con un mensaje ya escrito.</p>
         </div>
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
-          <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">🏥 Incapacidades</div>
+          <div style="font-weight:700;margin-bottom:6px;">Incapacidades</div>
           <p style="font-size:.83rem;margin:0;">Registra enfermedad general, maternidad o riesgo de trabajo. Calcula subsidio IMSS y se refleja en nómina automáticamente.</p>
         </div>
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
-          <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">🎄 Aguinaldo</div>
+          <div style="font-weight:700;margin-bottom:6px;">Aguinaldo</div>
           <p style="font-size:.83rem;margin:0;">Mínimo 15 días de salario (Art. 87 LFT). Proporcional para trabajadores con menos de un año. Plazo: <strong>20 de diciembre</strong>. Los primeros 30 días de UMA están exentos de ISR; sobre el excedente se retiene con el procedimiento del Art. 174 RLISR.</p>
         </div>
         <div style="border:1.5px solid var(--border);border-radius:8px;padding:14px;">
-          <div style="font-weight:700;font-family:'Montserrat',sans-serif;margin-bottom:6px;">📊 PTU</div>
+          <div style="font-weight:700;margin-bottom:6px;">PTU</div>
           <p style="font-size:.83rem;margin:0;">Distribución por días trabajados y salarios (Art. 117-131 LFT). Plazo: 60 días después de la declaración anual. Aplica el tope individual de 3 meses de salario (Art. 127 fr. VIII) y la exención de ISR de 15 días de UMA.</p>
         </div>
       </div>`,
 
     empresa: `
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin-bottom:8px;">Datos Fiscales</h4>
+      <h4 style="color:var(--navy-deep);margin-bottom:8px;">Datos Fiscales</h4>
       <p style="font-size:.88rem;margin-bottom:14px;">Mantén actualizados: Razón Social, RFC, Representante Legal, Domicilio y Ciudad. Estos datos aparecen en todos los documentos generados.</p>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin-bottom:8px;">⚙️ Configuración de Nómina — Día de Pago Semanal</h4>
+      <h4 style="color:var(--navy-deep);margin-bottom:8px;">Configuración de Nómina — Día de Pago Semanal</h4>
       <ol style="padding-left:0;list-style:none;">
-        ${['Localiza la sección <strong>"⚙️ Configuración de Nómina"</strong>.','Haz clic en el día de la semana en que pagas (Dom, Lun, Mar, Mié, Jue, <strong>Vie</strong>, Sáb).','Clic en <strong>"💾 Guardar configuración"</strong>.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--gold-primary);color:var(--navy-deep);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
+        ${['Localiza la sección <strong>"Configuración de Nómina"</strong>.','Haz clic en el día de la semana en que pagas (Dom, Lun, Mar, Mié, Jue, <strong>Vie</strong>, Sáb).','Clic en <strong>"Guardar configuración"</strong>.'].map((s,i)=>`<li style="display:flex;gap:12px;margin-bottom:8px;align-items:flex-start;"><span style="background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span style="font-size:.88rem;">${s}</span></li>`).join('')}
       </ol>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
-        <strong>💡 ¿Cómo funciona?</strong> Al crear un período semanal, el sistema calcula el rango de 7 días que termina el día anterior al pago. Ej: pago el <strong>viernes</strong> → período sábado a viernes anterior.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:4px;font-size:.85rem;">
+        <strong>¿Cómo funciona?</strong> Al crear un período semanal, el sistema calcula el rango de 7 días que termina el día anterior al pago. Ej: pago el <strong>viernes</strong> → período sábado a viernes anterior.
       </div>
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">👥 Usuarios y permisos</h4>
+      <h4 style="color:var(--navy-deep);margin:16px 0 8px;">Usuarios y permisos</h4>
       <p style="font-size:.88rem;">Puedes dar acceso a más personas sin darles el control total. Cada usuario tiene uno de cuatro roles:</p>
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.85rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Rol</th><th style="padding:8px 12px;text-align:left;">Qué puede hacer</th></tr></thead>
         <tbody>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Administrador</strong></td><td style="padding:8px 12px;">Todo, incluidos los datos de la empresa y la gestión de usuarios. Es tu rol.</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;"><strong>Gerente</strong></td><td style="padding:8px 12px;">Opera todo: nómina, altas, bajas, actas, y aprueba vacaciones. No toca la configuración de la empresa ni a los usuarios.</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Gerente</strong></td><td style="padding:8px 12px;">Opera todo: nómina, altas, bajas, actas, y aprueba vacaciones. No toca la configuración de la empresa ni a los usuarios.</td></tr>
           <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Capturista</strong></td><td style="padding:8px 12px;">Captura asistencia y registra solicitudes de vacaciones. Puedes limitarlo a una sola sucursal. Lo demás lo ve, pero no lo edita.</td></tr>
           <tr><td style="padding:8px 12px;"><strong>Solo consulta</strong></td><td style="padding:8px 12px;">Lee todo, no cambia nada. El rol para tu contador — o, si eres despacho, para tu cliente.</td></tr>
         </tbody>
       </table>
       <p style="font-size:.88rem;margin-top:8px;">Para dar acceso: <strong>Invitar usuario</strong> → captura su correo y elige el rol → cópiale la liga. La persona crea su cuenta <strong>con ese mismo correo</strong> y entra directo a tu empresa con el rol que le diste. Las invitaciones vencen a los 14 días.</p>
-      <div style="border-left:4px solid var(--gold-primary);background:rgba(245,166,35,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
-        <strong>🔒 Nadie puede cambiarse el rol a sí mismo</strong>, ni siquiera un administrador: es justo lo que impide que alguien se auto-promueva. Si necesitas cambiar el tuyo, pídeselo a otro admin. Por lo mismo, el sistema no te deja quitar el último administrador de la empresa.
+      <div style="border-left:4px solid var(--gold-primary);background:var(--gold-dim);padding:12px 16px;border-radius:0 8px 8px 0;margin-top:10px;font-size:.85rem;">
+        <strong>Nadie puede cambiarse el rol a sí mismo</strong>, ni siquiera un administrador: es justo lo que impide que alguien se auto-promueva. Si necesitas cambiar el tuyo, pídeselo a otro admin. Por lo mismo, el sistema no te deja quitar el último administrador de la empresa.
       </div>
 
-      <h4 style="font-family:'Montserrat',sans-serif;color:var(--navy-deep);margin:16px 0 8px;">Costo patronal — Prima de riesgo e ISN</h4>
+      <h4 style="color:var(--navy-deep);margin:16px 0 8px;">Costo patronal — Prima de riesgo e ISN</h4>
       <p style="font-size:.88rem;">En la misma sección de Configuración de Nómina captura dos datos que determinan cuánto te cuesta realmente tu nómina:</p>
       <ul style="font-size:.88rem;margin-top:6px;padding-left:18px;">
         <li><strong>Prima de riesgo de trabajo:</strong> la de tu declaración anual ante el IMSS de febrero. Si nunca la has presentado o apenas inicias, va la mínima de clase I (0.54355%).</li>
@@ -736,15 +747,15 @@ function renderManual() {
       <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:.88rem;">
         <thead><tr style="background:var(--navy-deep);color:#fff;"><th style="padding:8px 12px;text-align:left;">Reporte</th><th style="padding:8px 12px;text-align:left;">Contenido</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">💰 <strong>Nómina por período</strong></td><td style="padding:8px 12px;">Percepciones, deducciones y neto de todos los trabajadores en un período específico</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">📅 <strong>Acumulado anual</strong></td><td style="padding:8px 12px;">Suma de percepciones, ISR e IMSS del año, por trabajador o de toda la empresa</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">📄 <strong>Constancia PDF</strong></td><td style="padding:8px 12px;">Constancia de percepciones y retenciones de un trabajador, lista para entregar</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">🏛 <strong>SUA / IMSS</strong></td><td style="padding:8px 12px;">Listado de trabajadores con SDI y cuotas para capturar en el SUA</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🔄 <strong>Rotación de personal</strong></td><td style="padding:8px 12px;">Altas y bajas por mes, motivo de la baja y tasa de rotación mensual</td></tr>
-          <tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,.03);"><td style="padding:8px 12px;">🗓 <strong>Ausentismo por sucursal</strong></td><td style="padding:8px 12px;">Faltas, retardos, incapacidades y permisos agrupados por sucursal en un rango de fechas</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🏢 <strong>Costo laboral por departamento</strong></td><td style="padding:8px 12px;">Percepciones más cuotas patronales (IMSS, INFONAVIT, ISN) agrupadas por departamento</td></tr>
-          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;">🎖 <strong>Antigüedades</strong></td><td style="padding:8px 12px;">Años de servicio, próximos aniversarios y prima de antigüedad potencial de cada trabajador activo</td></tr>
-          <tr><td style="padding:8px 12px;">📦 <strong>Paquete para el contador</strong></td><td style="padding:8px 12px;">ZIP del mes: un Excel por período, el acumulado, las cuotas patronales por trabajador y el CSV para el SUA</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Nómina por período</strong></td><td style="padding:8px 12px;">Percepciones, deducciones y neto de todos los trabajadores en un período específico</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Acumulado anual</strong></td><td style="padding:8px 12px;">Suma de percepciones, ISR e IMSS del año, por trabajador o de toda la empresa</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Constancia PDF</strong></td><td style="padding:8px 12px;">Constancia de percepciones y retenciones de un trabajador, lista para entregar</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>SUA / IMSS</strong></td><td style="padding:8px 12px;">Listado de trabajadores con SDI y cuotas para capturar en el SUA</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Rotación de personal</strong></td><td style="padding:8px 12px;">Altas y bajas por mes, motivo de la baja y tasa de rotación mensual</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Ausentismo por sucursal</strong></td><td style="padding:8px 12px;">Faltas, retardos, incapacidades y permisos agrupados por sucursal en un rango de fechas</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Costo laboral por departamento</strong></td><td style="padding:8px 12px;">Percepciones más cuotas patronales (IMSS, INFONAVIT, ISN) agrupadas por departamento</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 12px;"><strong>Antigüedades</strong></td><td style="padding:8px 12px;">Años de servicio, próximos aniversarios y prima de antigüedad potencial de cada trabajador activo</td></tr>
+          <tr><td style="padding:8px 12px;"><strong>Paquete para el contador</strong></td><td style="padding:8px 12px;">ZIP del mes: un Excel por período, el acumulado, las cuotas patronales por trabajador y el CSV para el SUA</td></tr>
         </tbody>
       </table>`,
 
@@ -756,10 +767,10 @@ function renderManual() {
         ['¿Qué diferencia hay entre "Cerrar" y "Eliminar" un período?', '<strong>Cerrar</strong> lo marca como pagado (solo lectura, queda en historial). <strong>Eliminar</strong> borra el período y todos sus recibos permanentemente.'],
         ['¿El ISR se calcula automáticamente?', 'Sí. El sistema aplica las tablas ISR 2026 (Art. 96 LISR) y el subsidio al empleo. Solo define el salario y el tipo de período del trabajador.'],
         ['¿Cómo exporto la nómina para pagar por SPEI?', 'En <strong>Nómina → Períodos</strong>, haz clic en el botón <strong>"SPEI"</strong> del período correspondiente.'],
-        ['¿Qué pasa si registro una falta después de generar la nómina?', 'Registra la falta en Asistencia y luego en el período usa <strong>"🔄 Recalcular todo"</strong> para regenerar los recibos con la información actualizada.'],
+        ['¿Qué pasa si registro una falta después de generar la nómina?', 'Registra la falta en Asistencia y luego en el período usa <strong>"Recalcular todo"</strong> para regenerar los recibos con la información actualizada.'],
       ].map(([q,a])=>`
         <div style="border:1.5px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden;">
-          <div style="background:rgba(255,255,255,.04);padding:10px 14px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:.88rem;color:var(--text-primary);">❓ ${q}</div>
+          <div style="padding:10px 14px;font-weight:700;font-size:.88rem;color:var(--text-primary);">${q}</div>
           <div style="padding:10px 14px;font-size:.85rem;">${a}</div>
         </div>`).join('')}`,
   };
@@ -767,12 +778,12 @@ function renderManual() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">📖 Manual de Uso</div>
+        <div class="view-title">Manual de Uso</div>
         <div class="view-subtitle">Capital Humano MX — Guía completa del sistema</div>
       </div>
-      <button class="btn-primary" onclick="window.open('manual.html','_blank')"
-              title="Abre el manual completo en una nueva pestaña para imprimir o guardar como PDF">
-        ⬇️ Descargar PDF
+      <button class="btn-primary" onclick="window.print()"
+              title="Imprime el manual o guárdalo como PDF desde el diálogo de impresión">
+        <svg class="ic"><use href="#i-printer"></use></svg> Imprimir manual
       </button>
     </div>
 
@@ -780,7 +791,7 @@ function renderManual() {
 
       <!-- Índice lateral -->
       <div style="position:sticky;top:16px;background:var(--bg-surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;">
-        <div style="background:var(--navy-deep);padding:12px 16px;font-family:'Montserrat',sans-serif;font-weight:800;font-size:.85rem;color:#fff;">
+        <div style="background:var(--navy-deep);padding:12px 16px;font-weight:700;font-size:.85rem;color:#fff;">
           Índice
         </div>
         ${secciones.map(s=>`
@@ -789,8 +800,8 @@ function renderManual() {
                style="padding:9px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;
                       border-bottom:1px solid var(--border);font-size:.83rem;
                       transition:background .15s;"
-               onmouseover="this.style.background='rgba(245,166,35,.08)'"
-               onmouseout="this.style.background=this.dataset.active==='1'?'rgba(245,166,35,.1)':''">
+               onmouseover="this.style.background='var(--gold-dim)'"
+               onmouseout="this.style.background=this.dataset.active==='1'?'var(--gold-dim)':''">
             <span>${s.icon}</span>
             <span><strong style="color:var(--gold-primary);margin-right:4px;">${s.num}.</strong>${s.titulo}</span>
           </div>`).join('')}
@@ -803,8 +814,8 @@ function renderManual() {
             <div style="background:var(--navy-deep);margin:-20px -20px 18px;padding:16px 20px;border-radius:var(--radius-md) var(--radius-md) 0 0;display:flex;align-items:center;gap:12px;">
               <span style="font-size:22px;">${s.icon}</span>
               <div>
-                <div style="font-size:.72rem;font-weight:700;color:var(--gold-primary);text-transform:uppercase;letter-spacing:1px;font-family:'Montserrat',sans-serif;">Sección ${s.num}</div>
-                <div style="font-family:'Montserrat',sans-serif;font-weight:900;font-size:1rem;color:#fff;">${s.titulo}</div>
+                <div style="font-size:.72rem;font-weight:700;color:var(--gold-primary);text-transform:uppercase;letter-spacing:1px;">Sección ${s.num}</div>
+                <div style="font-weight:700;font-size:1rem;color:#fff;">${s.titulo}</div>
               </div>
             </div>
             ${contenido[s.id] || ''}
@@ -825,7 +836,7 @@ function renderManual() {
         const id = e.target.id.replace('sec-','');
         document.querySelectorAll('[id^="toc-"]').forEach(el => {
           const active = el.id === 'toc-' + id;
-          el.style.background  = active ? 'rgba(245,166,35,.1)'  : '';
+          el.style.background  = active ? 'var(--gold-dim)'  : '';
           el.style.color       = active ? 'var(--gold-primary)'  : '';
           el.style.fontWeight  = active ? '700' : '';
           el.dataset.active    = active ? '1' : '';
@@ -853,8 +864,7 @@ async function renderNomina() {
   if (typeof renderNominaModulo !== 'function') {
     const main = document.getElementById('main-view');
     main.innerHTML = `
-      <div class="alert alert-danger" style="margin:24px;">
-        <span>❌</span>
+      <div class="alert alert-danger" style="margin:24px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
         <span>
           El módulo de Nómina no se cargó correctamente.<br>
           <strong>Solución:</strong> Abre la consola del navegador (F12) para ver el error exacto,
@@ -883,21 +893,21 @@ async function showModalImportacion() {
     <div class="modal animate-in" style="max-width:700px;width:96vw;padding:0;display:flex;flex-direction:column;max-height:92vh;">
       <div class="modal-header" style="padding:18px 24px 14px;flex-shrink:0;">
         <div>
-          <div class="modal-title">📥 Importación Masiva de Trabajadores</div>
+          <div class="modal-title">Importación Masiva de Trabajadores</div>
           <p style="font-size:.82rem;color:var(--text-muted);margin-top:3px;">Importa trabajadores nuevos o con historial previo desde Excel</p>
         </div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div style="flex:1;overflow-y:auto;padding:20px 24px;scrollbar-width:thin;">
 
-        <div style="background:rgba(245,166,35,.06);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+        <div style="background:var(--gold-dim);border:1.5px solid var(--gold-border);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
           <div style="font-weight:700;margin-bottom:6px;">① Descarga la plantilla</div>
           <p style="font-size:.84rem;color:var(--text-muted);margin-bottom:4px;">
             La plantilla incluye <strong>6 secciones</strong>: datos personales, laborales, jornada, nómina, historial de prestaciones y contactos.
             La hoja <em>Instrucciones</em> explica cada columna con los valores válidos.
           </p>
           ${_sucursalesImport.length ? `<p style="font-size:.78rem;color:var(--text-muted);margin:6px 0 12px;">Sucursales disponibles: <strong>Matriz</strong>${_sucursalesImport.map(s=>', '+escapeHtml(s.nombre)).join('')}</p>` : '<p style="margin-bottom:12px;"></p>'}
-          <button class="btn-secondary btn-sm" onclick="_descargarPlantillaImport()">⬇ Descargar plantilla completa.xlsx</button>
+          <button class="btn-secondary btn-sm" onclick="_descargarPlantillaImport()">Descargar plantilla completa.xlsx</button>
         </div>
 
         <div style="margin-bottom:20px;">
@@ -910,7 +920,7 @@ async function showModalImportacion() {
                  ondragleave="this.style.borderColor='var(--border)'"
                  ondrop="_importOnDrop(event)"
                  onclick="document.getElementById('import-file-input').click()">
-            <span style="font-size:2rem;">📂</span>
+            <svg class="ic" style="width:34px;height:34px;color:var(--text-muted);"><use href="#i-upload"></use></svg>
             <span style="font-weight:600;">Arrastra tu archivo aquí o haz clic para seleccionar</span>
             <span style="font-size:.78rem;color:var(--text-muted);">Solo archivos .xlsx o .xls</span>
             <input type="file" id="import-file-input" accept=".xlsx,.xls" style="display:none;" onchange="_importLeerArchivo(this.files[0])" />
@@ -1060,7 +1070,7 @@ function _importLeerArchivo(file) {
       _importMostrarPreview(rows, file.name);
     } catch(err) {
       const el = document.getElementById('import-preview');
-      if (el) el.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>No se pudo leer el archivo: ${escapeHtml(err.message)}</span></div>`;
+      if (el) el.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>No se pudo leer el archivo: ${escapeHtml(err.message)}</span></div>`;
     }
   };
   reader.readAsArrayBuffer(file);
@@ -1073,7 +1083,7 @@ function _importNormCol(col) {
 function _importMostrarPreview(rows, fileName) {
   const preview = document.getElementById('import-preview');
   if (!rows.length) {
-    preview.innerHTML = `<div class="alert alert-warn"><span>⚠️</span><span>El archivo está vacío.</span></div>`;
+    preview.innerHTML = `<div class="alert alert-warn"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>El archivo está vacío.</span></div>`;
     return;
   }
 
@@ -1109,32 +1119,31 @@ function _importMostrarPreview(rows, fileName) {
         <div>
           <strong>${norm.length} trabajador${norm.length!==1?'es':''}</strong> en <em>${escapeHtml(fileName)}</em>
           ${errores.length
-            ? `<span style="margin-left:8px;color:var(--red-warn);font-size:.82rem;">⚠️ ${errores.length} error${errores.length!==1?'es':''}</span>`
-            : '<span style="margin-left:8px;color:var(--green-ok);font-size:.82rem;">✅ Sin errores</span>'}
+            ? `<span style="margin-left:8px;color:var(--red-warn);font-size:.82rem;">${errores.length} error${errores.length!==1?'es':''}</span>`
+            : '<span style="margin-left:8px;color:var(--green-ok);font-size:.82rem;">Sin errores</span>'}
         </div>
       </div>
 
       ${errores.length ? `
-        <div class="alert alert-danger" style="margin-bottom:12px;">
-          <span>❌</span>
+        <div class="alert alert-danger" style="margin-bottom:12px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
           <span>${errores.slice(0,5).join('<br>')}${errores.length>5?`<br>… y ${errores.length-5} más`:''}</span>
         </div>` : ''}
 
       ${(conInfonavit||conFondo||conPension||conVacPend||conVacUsadas||conPrestamo||conAguinPag||conPTUPag) ? `
-        <div style="background:rgba(52,152,219,.06);border:1px solid rgba(52,152,219,.25);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px;font-size:.82rem;">
-          <div style="font-weight:700;margin-bottom:8px;color:#3498db;">📋 Datos históricos detectados</div>
+        <div style="background:rgba(44,111,176,.06);border:1px solid rgba(44,111,176,.25);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px;font-size:.82rem;">
+          <div style="font-weight:700;margin-bottom:8px;color:var(--blue-accent);">Datos históricos detectados</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;">
-            ${conInfonavit  ? `<div>🏦 INFONAVIT activo: <strong>${conInfonavit}</strong></div>` : ''}
-            ${conFondo      ? `<div>💰 Fondo de ahorro: <strong>${conFondo}</strong></div>` : ''}
-            ${conPension    ? `<div>⚖️ Pensión alimenticia: <strong>${conPension}</strong></div>` : ''}
-            ${conVacPend    ? `<div>🏖 Vac. pendientes: <strong>${conVacPend}</strong></div>` : ''}
-            ${conVacUsadas  ? `<div>📅 Vac. usadas año actual: <strong>${conVacUsadas}</strong></div>` : ''}
-            ${conPrestamo   ? `<div>💳 Con préstamo: <strong>${conPrestamo}</strong></div>` : ''}
-            ${conAguinPag   ? `<div>🎄 Aguinaldo ya pagado: <strong>${conAguinPag}</strong></div>` : ''}
-            ${conPTUPag     ? `<div>📊 PTU ya pagado: <strong>${conPTUPag}</strong></div>` : ''}
+            ${conInfonavit  ? `<div>INFONAVIT activo: <strong>${conInfonavit}</strong></div>` : ''}
+            ${conFondo      ? `<div>Fondo de ahorro: <strong>${conFondo}</strong></div>` : ''}
+            ${conPension    ? `<div>Pensión alimenticia: <strong>${conPension}</strong></div>` : ''}
+            ${conVacPend    ? `<div>Vac. pendientes: <strong>${conVacPend}</strong></div>` : ''}
+            ${conVacUsadas  ? `<div>Vac. usadas año actual: <strong>${conVacUsadas}</strong></div>` : ''}
+            ${conPrestamo   ? `<div>Con préstamo: <strong>${conPrestamo}</strong></div>` : ''}
+            ${conAguinPag   ? `<div>Aguinaldo ya pagado: <strong>${conAguinPag}</strong></div>` : ''}
+            ${conPTUPag     ? `<div>PTU ya pagado: <strong>${conPTUPag}</strong></div>` : ''}
           </div>
-          ${conPrestamo ? `<div style="margin-top:8px;color:var(--text-muted);">⚠️ Los saldos de préstamo se mostrarán como advertencia al finalizar — deberás registrarlos manualmente en nómina.</div>` : ''}
-          ${conAguinPag||conPTUPag ? `<div style="margin-top:4px;color:var(--text-muted);">⚠️ Aguinaldo/PTU marcados como pagados quedarán registrados en las notas del trabajador.</div>` : ''}
+          ${conPrestamo ? `<div style="margin-top:8px;color:var(--text-muted);">Los saldos de préstamo se mostrarán como advertencia al finalizar — deberás registrarlos manualmente en nómina.</div>` : ''}
+          ${conAguinPag||conPTUPag ? `<div style="margin-top:4px;color:var(--text-muted);">Aguinaldo/PTU marcados como pagados quedarán registrados en las notas del trabajador.</div>` : ''}
         </div>` : ''}
 
       <div class="table-wrap" style="max-height:240px;overflow-y:auto;margin-bottom:14px;">
@@ -1170,7 +1179,7 @@ function _importMostrarPreview(rows, fileName) {
         <button class="btn-primary" id="import-btn-confirmar"
           ${errores.length ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''}
           onclick="_importarTrabajadores()">
-          ✅ Importar ${norm.length} trabajador${norm.length!==1?'es':''}
+          Importar ${norm.length} trabajador${norm.length!==1?'es':''}
         </button>
       </div>
     </div>
@@ -1318,9 +1327,9 @@ async function _importarTrabajadores() {
 
   setTimeout(() => {
     closeModal();
-    let msg = `✅ ${ok} trabajador${ok!==1?'es':''} importado${ok!==1?'s':''}`;
-    if (fail > 0) msg += `\n❌ ${fail} con error:\n${errLista.slice(0,5).join('\n')}`;
-    if (advertencias.length) msg += `\n\n⚠️ ACCIÓN MANUAL REQUERIDA:\n${advertencias.join('\n')}`;
+    let msg = `${ok} trabajador${ok!==1?'es':''} importado${ok!==1?'s':''}`;
+    if (fail > 0) msg += `\n${fail} con error:\n${errLista.slice(0,5).join('\n')}`;
+    if (advertencias.length) msg += `\n\nACCIÓN MANUAL REQUERIDA:\n${advertencias.join('\n')}`;
     alert(msg);
     navigate('empleados');
   }, 800);
@@ -1345,13 +1354,13 @@ async function switchEmpresa() {
   showModal(`
     <div class="modal animate-in" style="max-width:400px;width:92vw;">
       <div class="modal-header">
-        <div class="modal-title">🔄 Cambiar empresa</div>
+        <div class="modal-title">Cambiar empresa</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px;">
         ${empresas.map(e => `
           <button onclick="_seleccionarEmpresa('${e.id}','${e.nombre.replace(/'/g,"\\'")}','${e.rfc||''}')"
-            style="background:${CTX.empresa.id===e.id?'rgba(245,166,35,.1)':'transparent'};border:1.5px solid ${CTX.empresa.id===e.id?'var(--gold-primary)':'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;text-align:left;cursor:pointer;color:var(--text-primary);">
+            style="background:${CTX.empresa.id===e.id?'var(--gold-dim)':'transparent'};border:1.5px solid ${CTX.empresa.id===e.id?'var(--gold-primary)':'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;text-align:left;cursor:pointer;color:var(--text-primary);">
             <div style="font-weight:700;">${escapeHtml(e.nombre)}</div>
             ${e.rfc ? `<div style="font-size:.78rem;color:var(--text-muted);">${escapeHtml(e.rfc)}</div>` : ''}
             ${CTX.empresa.id===e.id ? '<div style="font-size:.72rem;color:var(--gold-primary);font-weight:700;margin-top:4px;">● Activa</div>' : ''}
@@ -1416,11 +1425,11 @@ function showError(e) {
   // Errores de los triggers de plan (PLAN_SOLO_LECTURA, PLAN_LIMITE_*, PLAN_FEATURE_*)
   if (typeof esErrorDePlan === 'function' && esErrorDePlan(e)) {
     console.error(e);
-    showToast('🔒 ' + mensajeErrorPlan(e), 'warn', 6000);
+    showToast('' + mensajeErrorPlan(e), 'warn', 6000);
     showModalPlanes('error_plan');
     return;
   }
-  showToast('❌ ' + friendlyError(e), 'error');
+  showToast('' + friendlyError(e), 'error');
 }
 
 // ─── SISTEMA DE TOASTS (no-bloqueante) ────────────────────────────────────────
@@ -1443,24 +1452,24 @@ function showToast(msg, type = 'info', duration = 4000) {
   }
 
   const colors = {
-    info:    { bg:'rgba(74,144,226,.18)',  border:'rgba(74,144,226,.5)',  icon:'ℹ️' },
-    success: { bg:'rgba(46,204,113,.18)',  border:'rgba(46,204,113,.5)',  icon:'✅' },
-    error:   { bg:'rgba(231,76,60,.18)',   border:'rgba(231,76,60,.5)',   icon:'❌' },
-    warn:    { bg:'rgba(243,156,18,.18)',  border:'rgba(243,156,18,.5)',  icon:'⚠️' },
+    info:    { bg:'#f4f8fd', border:'rgba(44,111,176,.35)', color:'#2c6fb0', icon:'i-info' },
+    success: { bg:'#f2f9f4', border:'rgba(21,128,61,.35)',  color:'#15803d', icon:'i-check-circle' },
+    error:   { bg:'#fdf4f3', border:'rgba(192,57,43,.35)',  color:'#b4472f', icon:'i-alert' },
+    warn:    { bg:'#fdf8f1', border:'rgba(217,138,43,.40)', color:'#a9752a', icon:'i-alert' },
   };
   const c = colors[type] || colors.info;
 
   const toast = document.createElement('div');
   toast.style.cssText =
     `background:${c.bg};border:1px solid ${c.border};border-radius:10px;` +
-    `padding:12px 16px;color:#eef0f7;font-size:.85rem;line-height:1.5;` +
-    `box-shadow:0 8px 32px rgba(0,0,0,.4);backdrop-filter:blur(8px);` +
+    `padding:12px 16px;color:var(--text-primary);font-size:.85rem;line-height:1.5;` +
+    `box-shadow:0 12px 32px -8px rgba(20,33,46,.25);` +
     `display:flex;align-items:flex-start;gap:10px;cursor:pointer;` +
     `animation:_toastIn .25s ease;max-width:360px;word-break:break-word;`;
 
   const msgStr = escapeHtml(msg);
   toast.innerHTML =
-    `<span style="flex-shrink:0;font-size:1rem;">${c.icon}</span>` +
+    `<svg class="ic" style="flex-shrink:0;color:${c.color};margin-top:1px;"><use href="#${c.icon}"></use></svg>` +
     `<span style="flex:1;">${msgStr}</span>` +
     `<span style="flex-shrink:0;font-size:1.1rem;opacity:.5;line-height:1;margin-top:1px;">×</span>`;
   toast.addEventListener('click', () => _dismissToast(toast));
@@ -1491,9 +1500,64 @@ window._nativeAlert = window.alert;
 window.alert = function(msg) {
   const str = String(msg || '');
   // Detectar tipo por el contenido
-  const type = /^✅|^🟢|^\[ok\]|^OK/i.test(str) ? 'success'
-             : /^❌|^🔴|^error/i.test(str)         ? 'error'
-             : /^⚠️|^🟡|^warning/i.test(str)       ? 'warn'
+  const type = /^(error|no se pudo|no se puede|falta|faltan|inválid)/i.test(str) ? 'error'
+             : /^(atención|advertencia|primero |selecciona |captura |ingresa )/i.test(str) ? 'warn'
              : 'info';
   showToast(str, type, 5000);
 };
+
+// ─── CONFIRMACIÓN ESTILIZADA (reemplazo de confirm() nativo) ──────────────────
+/**
+ * Diálogo de confirmación con la estética del sistema de modales.
+ * Devuelve una promesa que resuelve true (confirmar) o false (cancelar).
+ * @param {string} msg        Mensaje (se admite <strong> u otro HTML simple)
+ * @param {object} [opts]     { titulo, textoOk, textoCancelar, peligro }
+ */
+function showConfirmacion(msg, opts = {}) {
+  const { titulo = 'Confirmar', textoOk = 'Confirmar', textoCancelar = 'Cancelar', peligro = false } = opts;
+  return new Promise(resolve => {
+    const prev = eid('modal-container').innerHTML;
+    window._confirmResolve = (v) => {
+      window._confirmResolve = null;
+      closeModal();
+      // Restaura el modal que estuviera abierto debajo (si lo había)
+      if (prev.trim()) eid('modal-container').innerHTML = prev;
+      resolve(v);
+    };
+    showModal(`
+      <div class="modal animate-in" style="max-width:420px;">
+        <div class="modal-header" style="margin-bottom:14px;">
+          <div class="modal-title" style="display:flex;align-items:center;gap:10px;">
+            <svg class="ic" style="color:${peligro ? 'var(--red-warn)' : 'var(--accent)'};"><use href="#i-alert"></use></svg>
+            ${escapeHtml(titulo)}
+          </div>
+        </div>
+        <div style="font-size:.9rem;color:var(--text-secondary);line-height:1.6;">${msg}</div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="window._confirmResolve && window._confirmResolve(false)">${escapeHtml(textoCancelar)}</button>
+          <button class="${peligro ? 'btn-danger' : 'btn-primary'}" onclick="window._confirmResolve && window._confirmResolve(true)">${escapeHtml(textoOk)}</button>
+        </div>
+      </div>
+    `);
+  });
+}
+
+// ─── ESTADO DE CARGA DE BOTONES ───────────────────────────────────────────────
+// Preserva el contenido original (incluidos iconos SVG) al restaurar — evita
+// que un botón "pierda" su icono después de pasar por un estado de carga.
+function btnCargando(btn, texto = 'Guardando…') {
+  if (!btn) return;
+  // Solo captura el original si no está ya en estado de carga — así un botón
+  // cuyo texto cambió dinámicamente no restaura contenido obsoleto.
+  if (!btn.dataset.cargando) { btn.dataset.htmlOriginal = btn.innerHTML; btn.dataset.cargando = '1'; }
+  btn.textContent = texto;
+  btn.disabled = true;
+}
+function btnRestaurar(btn) {
+  if (!btn) return;
+  if (btn.dataset.cargando) {
+    btn.innerHTML = btn.dataset.htmlOriginal || btn.innerHTML;
+    delete btn.dataset.htmlOriginal; delete btn.dataset.cargando;
+  }
+  btn.disabled = false;
+}

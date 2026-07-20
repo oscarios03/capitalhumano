@@ -40,16 +40,16 @@ FORMATO DE RESPUESTA — JSON estricto:
 //  CATÁLOGO DE TIPOS DE DOCUMENTO
 // ═══════════════════════════════════════════════════════════════════════════
 const TIPOS_DOCUMENTO = {
-  contrato_indeterminado: { label:'Contrato Tiempo Indeterminado', plantilla:'contrato_indeterminado', icono:'📄', categoria:'contrato',   desc:'Art. 35 LFT — Relación de planta sin fecha de término' },
-  contrato_determinado:   { label:'Contrato Tiempo Determinado',   plantilla:'contrato_determinado',   icono:'📄', categoria:'contrato',   desc:'Art. 37 LFT — Período a prueba (30 o 90 días)' },
-  contrato_obra:          { label:'Contrato por Obra o Proyecto',  plantilla:'contrato_obra',          icono:'📄', categoria:'contrato',   desc:'Art. 36 LFT — Para proyectos con fin determinado' },
-  contrato_temporada:     { label:'Contrato por Temporada',        plantilla:'contrato_temporada',     icono:'📄', categoria:'contrato',   desc:'Art. 42 Bis LFT — Prestación discontinua' },
-  contrato_comision:      { label:'Contrato por Comisión',         plantilla:'contrato_comision',      icono:'📄', categoria:'contrato',   desc:'Arts. 285-289 LFT — Trabajador comisionista' },
-  acta_amonestacion:      { label:'Acta de Amonestación',         plantilla:'acta_amonestacion',      icono:'📋', categoria:'acta',       desc:'Primer aviso disciplinario, sin consecuencia inmediata' },
-  acta_formal:            { label:'Acta Administrativa Formal',    plantilla:'acta_formal',            icono:'⚠️', categoria:'acta',       desc:'Apercibimiento formal con riesgo de rescisión' },
-  acta_rescisoria:        { label:'Acta Rescisoria (Art. 47 LFT)',plantilla:'acta_rescisoria',        icono:'🚫', categoria:'acta',       desc:'Terminación sin responsabilidad patronal' },
-  carta_renuncia:         { label:'Carta de Renuncia',             plantilla:'carta_renuncia',         icono:'✍️', categoria:'terminacion',desc:'Renuncia voluntaria e irrevocable del trabajador' },
-  aviso_recision:         { label:'Aviso de Rescisión / Terminación',plantilla:'aviso_recision',     icono:'⚖️', categoria:'terminacion',desc:'Notificación formal de terminación patronal' },
+  contrato_indeterminado: { label:'Contrato Tiempo Indeterminado', plantilla:'contrato_indeterminado', icono:'', categoria:'contrato',   desc:'Art. 35 LFT — Relación de planta sin fecha de término' },
+  contrato_determinado:   { label:'Contrato Tiempo Determinado',   plantilla:'contrato_determinado',   icono:'', categoria:'contrato',   desc:'Art. 37 LFT — Período a prueba (30 o 90 días)' },
+  contrato_obra:          { label:'Contrato por Obra o Proyecto',  plantilla:'contrato_obra',          icono:'', categoria:'contrato',   desc:'Art. 36 LFT — Para proyectos con fin determinado' },
+  contrato_temporada:     { label:'Contrato por Temporada',        plantilla:'contrato_temporada',     icono:'', categoria:'contrato',   desc:'Art. 42 Bis LFT — Prestación discontinua' },
+  contrato_comision:      { label:'Contrato por Comisión',         plantilla:'contrato_comision',      icono:'', categoria:'contrato',   desc:'Arts. 285-289 LFT — Trabajador comisionista' },
+  acta_amonestacion:      { label:'Acta de Amonestación',         plantilla:'acta_amonestacion',      icono:'', categoria:'acta',       desc:'Primer aviso disciplinario, sin consecuencia inmediata' },
+  acta_formal:            { label:'Acta Administrativa Formal',    plantilla:'acta_formal',            icono:'', categoria:'acta',       desc:'Apercibimiento formal con riesgo de rescisión' },
+  acta_rescisoria:        { label:'Acta Rescisoria (Art. 47 LFT)',plantilla:'acta_rescisoria',        icono:'', categoria:'acta',       desc:'Terminación sin responsabilidad patronal' },
+  carta_renuncia:         { label:'Carta de Renuncia',             plantilla:'carta_renuncia',         icono:'', categoria:'terminacion',desc:'Renuncia voluntaria e irrevocable del trabajador' },
+  aviso_recision:         { label:'Aviso de Rescisión / Terminación',plantilla:'aviso_recision',     icono:'', categoria:'terminacion',desc:'Notificación formal de terminación patronal' },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -289,7 +289,7 @@ function generarPDFDesdeAgente(documento) {
   doc.text(np(empresa.nombre || ''), pw/2, 10, { align:'center' });
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
   doc.text(np([empresa.rfc, empresa.domicilio].filter(Boolean).join('  |  ')), pw/2, 18, { align:'center' });
-  doc.setFillColor(245, 166, 35);
+  doc.setFillColor(21,128,61);
   doc.rect(ml - 2, 24, pw - ml - mr + 4, 12, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(15, 20, 40);
   doc.text(np(documento.titulo || ''), pw/2, 31.5, { align:'center' });
@@ -302,9 +302,9 @@ function generarPDFDesdeAgente(documento) {
   // ── Advertencia legal ────────────────────────────────────────────────────
   if (documento.advertencia_legal) {
     checkY(28);
-    const wl = doc.splitTextToSize(np('⚠ NOTA LEGAL: ' + documento.advertencia_legal), tw - 10);
+    const wl = doc.splitTextToSize(np('NOTA LEGAL: ' + documento.advertencia_legal), tw - 10);
     const wh = wl.length * 5 + 10;
-    doc.setFillColor(255, 248, 225); doc.setDrawColor(245, 166, 35); doc.setLineWidth(0.5);
+    doc.setFillColor(255, 248, 225); doc.setDrawColor(21,128,61); doc.setLineWidth(0.5);
     doc.roundedRect(ml, y, tw, wh, 2, 2, 'FD');
     doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(100, 60, 0);
     doc.text(wl, ml + 5, y + 7);
@@ -316,9 +316,9 @@ function generarPDFDesdeAgente(documento) {
     checkY(18);
     if (sec.tipo === 'clausula' || sec.tipo === 'declaracion') {
       // Título dorado izquierdo
-      doc.setFillColor(245, 166, 35);
+      doc.setFillColor(21,128,61);
       doc.rect(ml, y, 2.5, 7, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(245, 166, 35);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
       const titulo = sec.numero ? `${sec.numero} — ${(sec.titulo||'').toUpperCase()}` : (sec.titulo||'').toUpperCase();
       doc.text(np(titulo), ml + 5, y + 5);
       y += 11;
@@ -442,9 +442,9 @@ function _renderModalAgente() {
 function _renderPaso1() {
   const s = _agenteState;
   const categorias = [
-    { id:'contrato',    label:'📄 Contratos',         tipos:['contrato_indeterminado','contrato_determinado','contrato_obra','contrato_temporada','contrato_comision'] },
-    { id:'acta',        label:'⚠️ Actas Administrativas', tipos:['acta_amonestacion','acta_formal','acta_rescisoria'] },
-    { id:'terminacion', label:'🚪 Terminación Laboral', tipos:['carta_renuncia','aviso_recision'] },
+    { id:'contrato',    label:'Contratos',         tipos:['contrato_indeterminado','contrato_determinado','contrato_obra','contrato_temporada','contrato_comision'] },
+    { id:'acta',        label:'Actas Administrativas', tipos:['acta_amonestacion','acta_formal','acta_rescisoria'] },
+    { id:'terminacion', label:'Terminación Laboral', tipos:['carta_renuncia','aviso_recision'] },
   ];
   return `
     <div style="margin-bottom:16px;">
@@ -464,7 +464,7 @@ function _renderPaso1() {
             return `
               <div class="agente-tipo-card ${esSeleccionado ? 'selected' : ''} ${esSugerido && !esSeleccionado ? 'sugerido' : ''}"
                    onclick="seleccionarTipoDocumento('${tipoKey}')">
-                <div class="agente-tipo-icono">${t.icono}</div>
+
                 <div class="agente-tipo-label">${t.label}</div>
                 <div class="agente-tipo-desc">${t.desc}</div>
                 ${esSugerido ? '<div class="agente-tipo-badge">Recomendado</div>' : ''}
@@ -510,7 +510,7 @@ function _renderPaso2() {
     <div style="display:flex;gap:10px;justify-content:space-between;">
       <button class="btn-secondary" onclick="agentePrevPaso()">← Volver</button>
       <button class="btn-primary" id="btn-generar" onclick="agenteLanzar()">
-        ⚡ Generar Documento con IA
+        Generar Documento con IA
       </button>
     </div>`;
 }
@@ -553,28 +553,28 @@ function _renderPaso3() {
       <div style="display:flex;gap:8px;">
         <button class="btn-secondary btn-sm" onclick="agenteToggleEditar()"
           style="${s.editando ? 'border-color:var(--green-ok);color:var(--green-ok);' : ''}">
-          ${s.editando ? '✅ Aplicar edición' : '✏️ Editar'}
+          ${s.editando ? 'Aplicar edición' : 'Editar'}
         </button>
-        <button class="btn-secondary btn-sm" onclick="agentePrevPaso()">🔄 Regenerar</button>
+        <button class="btn-secondary btn-sm" onclick="agentePrevPaso()">Regenerar</button>
       </div>
     </div>
 
     ${doc.advertencia_legal ? `
       <div class="agente-advertencia">
-        <strong>⚠️ Nota legal del agente:</strong><br>${doc.advertencia_legal}
+        <strong>Nota legal del agente:</strong><br>${doc.advertencia_legal}
       </div>` : ''}
 
     <div class="agente-preview-body">
       ${seccionesHTML}
       ${doc.notas_agente ? `
         <div class="agente-notas">
-          <strong>📝 Notas del agente:</strong><br>${doc.notas_agente}
+          <strong>Notas del agente:</strong><br>${doc.notas_agente}
         </div>` : ''}
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-shrink:0;">
       <button class="btn-primary" onclick="agenteDescargarPDF()">
-        ⬇️ Descargar PDF
+        Descargar PDF
       </button>
     </div>`;
 }
@@ -648,8 +648,7 @@ async function agenteLanzar() {
     clearInterval(spinInterval);
     const body = document.querySelector('.agente-body');
     if (body) body.innerHTML = `
-      <div class="alert alert-danger">
-        <span>❌</span>
+      <div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
         <div>
           <strong>Error al generar el documento</strong><br>
           <span style="font-size:.85rem;">${escapeHtml(e.message)}</span>
@@ -657,7 +656,7 @@ async function agenteLanzar() {
       </div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn-secondary" onclick="agentePrevPaso()">← Volver e intentar de nuevo</button>
-        <button class="btn-primary" onclick="agenteLanzar()">🔄 Reintentar</button>
+        <button class="btn-primary" onclick="agenteLanzar()">Reintentar</button>
       </div>`;
   }
 }
@@ -680,11 +679,11 @@ function agenteToggleEditar() {
 function agenteDescargarPDF() {
   if (!_agenteState.documento) return;
   const btn = document.querySelector('.agente-body .btn-primary');
-  if (btn) { btn.textContent = '⏳ Generando PDF…'; btn.disabled = true; }
+  btnCargando(btn, 'Generando PDF…');
   try {
     generarPDFDesdeAgente(_agenteState.documento);
   } catch(e) { alert('Error generando PDF: ' + e.message); }
-  setTimeout(() => { if (btn) { btn.textContent = '⬇️ Descargar PDF'; btn.disabled = false; } }, 2000);
+  setTimeout(() => { btnRestaurar(btn); }, 2000);
 }
 
 function closeModalAgente() {

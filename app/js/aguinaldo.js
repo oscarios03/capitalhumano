@@ -87,7 +87,7 @@ async function renderAguinaldo() {
         </div>
         <div class="kpi-card ${diasParaLimite < 0 ? 'kpi-alert' : diasParaLimite < 30 ? '' : ''}">
           <div class="kpi-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div>
-          <div class="kpi-num" style="font-size:1.1rem;color:${diasParaLimite < 0 ? 'var(--red-warn)' : diasParaLimite < 30 ? '#f39c12' : 'inherit'}">
+          <div class="kpi-num" style="font-size:1.1rem;color:${diasParaLimite < 0 ? 'var(--red-warn)' : diasParaLimite < 30 ? 'var(--amber-warn)' : 'inherit'}">
             ${diasParaLimite < 0 ? 'VENCIDO' : diasParaLimite === 0 ? 'HOY' : diasParaLimite + ' días'}
           </div>
           <div class="kpi-label">Para vencimiento (20 dic)</div>
@@ -95,13 +95,12 @@ async function renderAguinaldo() {
       </div>
 
       ${diasParaLimite < 30 && diasParaLimite >= 0 ? `
-        <div class="alert alert-warn animate-in">
-          <span>⚠️</span>
+        <div class="alert alert-warn animate-in"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
           <span>El aguinaldo debe pagarse antes del <strong>20 de diciembre</strong>. Quedan <strong>${diasParaLimite} días</strong>.</span>
         </div>
       ` : diasParaLimite < 0 ? `
         <div class="alert alert-danger animate-in">
-          <span>🔴</span>
+          <span>●</span>
           <span>El plazo para pagar el aguinaldo <strong>ya venció</strong> (20 de diciembre de ${anioActual}).</span>
         </div>
       ` : ''}
@@ -156,7 +155,7 @@ async function renderAguinaldo() {
 async function _generarPeriodoAguinaldo() {
   const rows = window._aguinaldoRows;
   if (!rows?.length) { alert('No hay datos de aguinaldo calculados.'); return; }
-  if (!confirm(`¿Generar período de aguinaldo para ${rows.length} trabajadores?\n\nSe creará un período en Nómina con los montos calculados.`)) return;
+  if (!(await showConfirmacion(`¿Generar período de aguinaldo para ${rows.length} trabajadores?\n\nSe creará un período en Nómina con los montos calculados.`))) return;
 
   const anio = new Date().getFullYear();
   const nombre = `Aguinaldo ${anio}`;
@@ -194,7 +193,7 @@ async function _generarPeriodoAguinaldo() {
       total_neto:         parseFloat(recibos.reduce((s,x) => s + x.neto_pagar, 0).toFixed(2)),
     }).eq('id', periodo.id);
 
-    alert(`✅ Período "${nombre}" creado con ${rows.length} recibos.\nPuedes revisarlo en el módulo de Nómina.`);
+    showToast(`Período "${nombre}" creado con ${rows.length} recibos.\nPuedes revisarlo en el módulo de Nómina.`, 'success');
     navigate('nomina');
   } catch(e) { alert('Error al generar período: ' + e.message); }
 }

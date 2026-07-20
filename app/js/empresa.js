@@ -29,7 +29,7 @@ async function renderEmpresa() {
   if (typeof _navStale === 'function' && _navStale(_gen)) return;
   main.innerHTML = `
     <div class="view-header animate-in">
-      <div><div class="view-title">🏢 Mi Empresa</div></div>
+      <div><div class="view-title">Mi Empresa</div></div>
     </div>
     <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
       <div class="card-header"><span class="card-title">Datos Fiscales</span></div>
@@ -57,12 +57,12 @@ async function renderEmpresa() {
       </div>
       <div id="emp-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn-primary" onclick="handleGuardarEmpresa()">💾 Guardar cambios</button>
+        <button class="btn-primary" onclick="handleGuardarEmpresa()">Guardar cambios</button>
       </div>
     </div>
 
     <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
-      <div class="card-header"><span class="card-title">⚙️ Configuración de Nómina</span></div>
+      <div class="card-header"><span class="card-title">Configuración de Nómina</span></div>
       <div style="margin-bottom:14px;">
         <label class="form-label" style="margin-bottom:10px;display:block;">
           Día de pago semanal
@@ -79,7 +79,7 @@ async function renderEmpresa() {
                    style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
                           font-weight:700;font-size:.88rem;cursor:pointer;border:2px solid;
                           border-color:${(e.dia_pago_semanal??5)===i?'var(--gold-primary)':'var(--border)'};
-                          background:${(e.dia_pago_semanal??5)===i?'rgba(245,166,35,.15)':'transparent'};
+                          background:${(e.dia_pago_semanal??5)===i?'var(--gold-dim)':'transparent'};
                           color:${(e.dia_pago_semanal??5)===i?'var(--gold-primary)':'var(--text-muted)'};
                           transition:all .15s;">
                 ${d}
@@ -144,12 +144,12 @@ async function renderEmpresa() {
       </div>
       <div id="emp-nomina-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn-primary" onclick="handleGuardarConfigNomina()">💾 Guardar configuración</button>
+        <button class="btn-primary" onclick="handleGuardarConfigNomina()">Guardar configuración</button>
       </div>
     </div>
 
     <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
-      <div class="card-header"><span class="card-title">🎁 Prestaciones y Disposiciones Particulares</span></div>
+      <div class="card-header"><span class="card-title">Prestaciones y Disposiciones Particulares</span></div>
       <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;">
         Prestaciones que la empresa otorga por encima de los mínimos de la LFT. Los valores precargados
         son los de ley y no pueden ser inferiores. <strong>Los cambios aplican a las nóminas que se generen
@@ -192,7 +192,7 @@ async function renderEmpresa() {
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;">
             <input type="checkbox" id="presta-fondo-activo" style="width:16px;height:16px;accent-color:var(--gold-primary);"
               ${e.fondo_ahorro_empresa_activo ? 'checked' : ''} onchange="_togglePrestaFondo()" />
-            <span><strong>💰 Fondo de ahorro</strong> <span style="color:var(--text-muted);font-weight:400;">(Art. 110 fr. IV LFT)</span></span>
+            <span><strong>Fondo de ahorro</strong> <span style="color:var(--text-muted);font-weight:400;">(Art. 110 fr. IV LFT)</span></span>
           </label>
           <div class="helper-text" style="margin-top:6px;">
             Al activarlo, aparecerá preseleccionado al dar de alta trabajadores nuevos (ahí se puede ajustar o quitar por trabajador).
@@ -214,7 +214,7 @@ async function renderEmpresa() {
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;">
             <input type="checkbox" id="presta-vales-activo" style="width:16px;height:16px;accent-color:var(--gold-primary);"
               ${e.vales_despensa_activo ? 'checked' : ''} onchange="_togglePrestaVales()" />
-            <span><strong>🛒 Vales de despensa</strong></span>
+            <span><strong>Vales de despensa</strong></span>
           </label>
           <div class="helper-text" style="margin-top:6px;">
             Se aplican en nómina a los trabajadores que no tengan un monto individual configurado.
@@ -235,7 +235,7 @@ async function renderEmpresa() {
         </div>
 
         <div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:14px;">
-          <label class="form-label" style="display:block;margin-bottom:6px;">🎉 Días festivos / de descanso adicionales de la empresa</label>
+          <label class="form-label" style="display:block;margin-bottom:6px;">Días festivos / de descanso adicionales de la empresa</label>
           <div class="helper-text" style="margin-bottom:10px;">
             Días de descanso con goce de sueldo adicionales a los festivos oficiales (ej. 24 de diciembre, aniversario de la empresa).
             Se preseleccionan como festivo en Asistencia y se pagan como día laborado.
@@ -260,12 +260,12 @@ async function renderEmpresa() {
       </div>
       <div id="presta-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn-primary" onclick="handleGuardarPrestaciones()">💾 Guardar prestaciones</button>
+        <button class="btn-primary" onclick="handleGuardarPrestaciones()">Guardar prestaciones</button>
       </div>
     </div>
 
     <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
-      <div class="card-header"><span class="card-title">📅 Calendario de días festivos oficiales (Art. 74 LFT)</span></div>
+      <div class="card-header"><span class="card-title">Calendario de días festivos oficiales (Art. 74 LFT)</span></div>
       <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;">
         Descansos obligatorios de ley (no editables) más los que la empresa decida otorgar
         adicionalmente (Art. 74 LFT permite pactar descansos extra, ej. costumbre del ramo).
@@ -279,7 +279,7 @@ async function renderEmpresa() {
       </div>
       <div id="fest-oficiales-lista"></div>
       <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px;">
-        <label class="form-label" style="display:block;margin-bottom:6px;">➕ Agregar festivo propio de la empresa</label>
+        <label class="form-label" style="display:block;margin-bottom:6px;">Agregar festivo propio de la empresa</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div>
             <label class="form-label" style="font-size:.72rem;" for="fest-nuevo-fecha">Fecha</label>
@@ -295,7 +295,7 @@ async function renderEmpresa() {
     </div>
 
     <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
-      <div class="card-header"><span class="card-title">🔔 Notificaciones por Email</span></div>
+      <div class="card-header"><span class="card-title">Notificaciones por Email</span></div>
       <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;">
         Recibe un correo cuando se genere una alerta laboral de prioridad <strong>crítica</strong> o <strong>alta</strong>.
         Requiere configurar la Edge Function <code>send-emails</code> en Supabase.
@@ -318,36 +318,36 @@ async function renderEmpresa() {
       </div>
       <div id="notif-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn-primary" onclick="handleGuardarNotificaciones()">💾 Guardar</button>
+        <button class="btn-primary" onclick="handleGuardarNotificaciones()">Guardar</button>
       </div>
     </div>
 
     <div class="view-header animate-in" style="margin-bottom:16px;">
       <div>
-        <div class="view-title" style="font-size:1.2rem;">🏪 Centros de Trabajo</div>
+        <div class="view-title" style="font-size:1.2rem;">Centros de Trabajo</div>
         <div class="view-subtitle">Matriz y sucursales de la empresa</div>
       </div>
-      <button class="btn-primary" onclick="showModalSucursal(null)">+ Agregar Sucursal</button>
+      <button class="btn-primary" onclick="showModalSucursal(null)">+ Nueva sucursal</button>
     </div>
 
     ${matriz ? `
     <div class="matriz-card animate-in">
       <div class="matriz-card-header">
         <div>
-          <span class="matriz-label">⭐ Matriz</span>
-          <div style="font-weight:800;font-size:1.05rem;margin-top:4px;">${escapeHtml(e.nombre)}</div>
+          <span class="matriz-label">Matriz</span>
+          <div style="font-weight:700;font-size:1.05rem;margin-top:4px;">${escapeHtml(e.nombre)}</div>
           ${e.rfc ? `<div style="font-size:.82rem;color:var(--text-muted);">RFC: ${escapeHtml(e.rfc)}</div>` : ''}
         </div>
-        <button class="btn-secondary btn-sm" onclick="showModalSucursal('${matriz.id}')">✏️ Editar</button>
+        <button class="btn-secondary btn-sm" onclick="showModalSucursal('${matriz.id}')">Editar</button>
       </div>
       <div style="font-size:.85rem;color:var(--text-secondary);line-height:1.7;">
-        ${e.domicilio ? `📍 ${escapeHtml(e.domicilio)}` : ''}
+        ${e.domicilio ? `${escapeHtml(e.domicilio)}` : ''}
         ${e.domicilio && e.ciudad ? '<br>' : ''}
-        ${e.ciudad ? `🏙 ${escapeHtml(e.ciudad)}` : ''}
-        ${e.representante ? `<br>👤 ${escapeHtml(e.representante)}` : ''}
+        ${e.ciudad ? `${escapeHtml(e.ciudad)}` : ''}
+        ${e.representante ? `<br>${escapeHtml(e.representante)}` : ''}
       </div>
       <div style="margin-top:12px;font-size:.8rem;color:var(--text-muted);">
-        👥 ${conteos['matriz']} trabajador${conteos['matriz']!==1?'es':''} sin sucursal asignada
+        ${conteos['matriz']} trabajador${conteos['matriz']!==1?'es':''} sin sucursal asignada
       </div>
     </div>` : ''}
 
@@ -363,31 +363,31 @@ async function renderEmpresa() {
             ${!s.activa ? '<span class="badge-inactiva">Inactiva</span>' : ''}
           </div>
           <div class="sucursal-meta">
-            ${s.domicilio ? `📍 ${escapeHtml(s.domicilio)}` : ''}
-            ${s.ciudad    ? `<br>🏙 ${escapeHtml(s.ciudad)}${s.estado ? ', '+escapeHtml(s.estado) : ''}${s.cp ? ' C.P. '+escapeHtml(s.cp) : ''}` : ''}
-            ${s.telefono  ? `<br>📞 ${escapeHtml(s.telefono)}` : ''}
-            ${s.responsable_nombre ? `<br>👤 ${escapeHtml(s.responsable_nombre)}${s.responsable_puesto ? ' · '+escapeHtml(s.responsable_puesto) : ''}` : ''}
-            <br>👥 <strong>${conteos[s.id]||0}</strong> trabajador${(conteos[s.id]||0)!==1?'es':''}
+            ${s.domicilio ? `${escapeHtml(s.domicilio)}` : ''}
+            ${s.ciudad    ? `<br>${escapeHtml(s.ciudad)}${s.estado ? ', '+escapeHtml(s.estado) : ''}${s.cp ? ' C.P. '+escapeHtml(s.cp) : ''}` : ''}
+            ${s.telefono  ? `<br>${escapeHtml(s.telefono)}` : ''}
+            ${s.responsable_nombre ? `<br>${escapeHtml(s.responsable_nombre)}${s.responsable_puesto ? ' · '+escapeHtml(s.responsable_puesto) : ''}` : ''}
+            <br><strong>${conteos[s.id]||0}</strong> trabajador${(conteos[s.id]||0)!==1?'es':''}
           </div>
           <div class="sucursal-footer">
-            <button class="btn-secondary btn-sm" onclick="showModalSucursal('${s.id}')">✏️ Editar</button>
+            <button class="btn-secondary btn-sm" onclick="showModalSucursal('${s.id}')">Editar</button>
             <button class="btn-${s.activa?'danger':'secondary'} btn-sm"
               onclick="toggleSucursalStatus('${s.id}', ${!s.activa})">
-              ${s.activa ? '🔴 Desactivar' : '🟢 Activar'}
+              ${s.activa ? '● Desactivar' : '● Activar'}
             </button>
           </div>
         </div>
       `).join('')}
     </div>` : `
     <div class="empty-state animate-in" style="padding:32px;">
-      <div class="empty-state-icon">🏪</div>
+      <div class="empty-state-icon"><svg class="ic"><use href="#i-bank"></use></svg></div>
       <div class="empty-state-title">Sin sucursales registradas</div>
       <p style="font-size:.82rem;color:var(--text-muted);margin-top:8px;">Usa el botón "+ Agregar Sucursal" para registrar centros de trabajo adicionales.</p>
     </div>`}
 
     <div class="view-header animate-in" style="margin:32px 0 16px;">
       <div>
-        <div class="view-title" style="font-size:1.2rem;">👥 Usuarios y permisos</div>
+        <div class="view-title" style="font-size:1.2rem;">Usuarios y permisos</div>
         <div class="view-subtitle">Quién entra a la plataforma y qué puede hacer</div>
       </div>
     </div>
@@ -404,7 +404,7 @@ async function _renderCostoPrestaciones() {
   if (!cont || typeof costoMensualPrestaciones !== 'function') return;
   try {
     const total = await costoMensualPrestaciones(CTX.empresa.id);
-    cont.innerHTML = `💰 Costo mensual estimado de prestaciones de la plantilla: <strong style="color:var(--gold-primary);">${fmt(total)}</strong>`;
+    cont.innerHTML = `Costo mensual estimado de prestaciones de la plantilla: <strong style="color:var(--gold-primary);">${fmt(total)}</strong>`;
   } catch (e) {
     console.warn('costoMensualPrestaciones:', e.message);
   }
@@ -419,8 +419,8 @@ async function showModalSucursal(id) {
       const activas = sucs.filter(s => s.tipo !== 'matriz').length;
       if (activas >= max) {
         showToast(max === 0
-          ? '🔒 Tu plan no incluye sucursales adicionales.'
-          : `🔒 Tu plan permite máximo ${max} sucursales.`, 'warn', 6000);
+          ? 'Tu plan no incluye sucursales adicionales.'
+          : `Tu plan permite máximo ${max} sucursales.`, 'warn', 6000);
         showModalPlanes('limite_sucursales');
         return;
       }
@@ -437,7 +437,7 @@ async function showModalSucursal(id) {
     <div class="modal animate-in" style="max-width:640px;">
       <div class="modal-header">
         <div>
-          <div class="modal-title">${esEdicion ? (esMatrizEdit ? '⭐ Editar Matriz' : '✏️ Editar Sucursal') : '🏪 Nueva Sucursal'}</div>
+          <div class="modal-title">${esEdicion ? (esMatrizEdit ? 'Editar Matriz' : 'Editar Sucursal') : 'Nueva Sucursal'}</div>
           ${esMatrizEdit ? '<p style="font-size:.8rem;color:var(--text-muted);margin-top:4px;">Los datos de la matriz se usan en documentos cuando el trabajador no tiene sucursal asignada.</p>' : ''}
         </div>
         <button class="modal-close" onclick="closeModal()">×</button>
@@ -486,7 +486,7 @@ async function showModalSucursal(id) {
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="handleGuardarSucursal('${id||''}')">
-          💾 ${esEdicion ? 'Guardar cambios' : 'Crear Sucursal'}
+          ${esEdicion ? 'Guardar cambios' : 'Crear Sucursal'}
         </button>
       </div>
     </div>
@@ -512,7 +512,7 @@ async function handleGuardarSucursal(id) {
   };
 
   const btn = document.querySelector('#modal-container .btn-primary');
-  btn.textContent = 'Guardando…'; btn.disabled = true;
+  btnCargando(btn, 'Guardando…');
   try {
     if (id) {
       await db.updateSucursal(id, datos);
@@ -523,13 +523,13 @@ async function handleGuardarSucursal(id) {
     navigate('empresa');
   } catch(e) {
     err.textContent = friendlyError(e); err.style.display='';
-    btn.textContent = '💾 Guardar'; btn.disabled = false;
+    btnRestaurar(btn);
   }
 }
 
 async function toggleSucursalStatus(id, activar) {
   const accion = activar ? 'activar' : 'desactivar';
-  if (!confirm(`¿Deseas ${accion} esta sucursal?`)) return;
+  if (!(await showConfirmacion(`¿Deseas ${accion} esta sucursal?`))) return;
   try {
     await db.toggleSucursal(id, activar);
     navigate('empresa');
@@ -543,7 +543,7 @@ function _seleccionarDiaPago(dia) {
   document.querySelectorAll('.dia-pago-btn').forEach(btn => {
     const sel = parseInt(btn.dataset.dia) === dia;
     btn.style.borderColor  = sel ? 'var(--gold-primary)' : 'var(--border)';
-    btn.style.background   = sel ? 'rgba(245,166,35,.15)' : 'transparent';
+    btn.style.background   = sel ? 'var(--gold-dim)' : 'transparent';
     btn.style.color        = sel ? 'var(--gold-primary)' : 'var(--text-muted)';
   });
 }
@@ -596,7 +596,7 @@ async function handleGuardarConfigNomina() {
     if (err) throw err;
     CTX.empresa = { ...CTX.empresa, ...cfg };
     _diaPagoSeleccionado = null;
-    msg.textContent = '✅ Configuración guardada.'; msg.className = 'alert alert-success'; msg.style.display = '';
+    msg.textContent = 'Configuración guardada.'; msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) {
     msg.textContent = friendlyError(e); msg.className = 'error-msg'; msg.style.display = '';
   }
@@ -616,7 +616,7 @@ async function handleGuardarEmpresa() {
     });
     CTX.empresa = { ...CTX.empresa, nombre, ciudad };
     document.getElementById('topbar-empresa').textContent = nombre;
-    msg.textContent = '✅ Datos guardados correctamente.'; msg.className='alert alert-success'; msg.style.display='';
+    msg.textContent = 'Datos guardados correctamente.'; msg.className='alert alert-success'; msg.style.display='';
   } catch(e) { msg.textContent = friendlyError(e); msg.className='error-msg'; msg.style.display=''; }
 }
 
@@ -631,8 +631,8 @@ function _festivosChipsHTML() {
   }
   return _festivosTmp.map((f, i) => `
     <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;
-                 background:rgba(245,166,35,.12);border:1px solid var(--gold-border);font-size:.78rem;">
-      ${f.tipo === 'recurrente' ? '🔁' : '📅'} ${escapeHtml(f.valor)}${f.descripcion ? ' · ' + escapeHtml(f.descripcion) : ''}
+                 background:var(--gold-dim);border:1px solid var(--gold-border);font-size:.78rem;">
+      ${f.tipo === 'recurrente' ? '' : ''} ${escapeHtml(f.valor)}${f.descripcion ? ' · ' + escapeHtml(f.descripcion) : ''}
       <span onclick="_quitarFestivoEmpresa(${i})" role="button" tabindex="0" aria-label="Quitar festivo" style="cursor:pointer;font-weight:700;color:var(--red-warn);">×</span>
     </span>`).join('');
 }
@@ -712,7 +712,7 @@ async function _agregarFestivoOficial() {
 }
 
 async function _eliminarFestivoOficial(id) {
-  if (!confirm('¿Eliminar este festivo propio de la empresa?')) return;
+  if (!(await showConfirmacion('¿Eliminar este festivo propio de la empresa?', { peligro:true, textoOk:'Eliminar' }))) return;
   try {
     await eliminarFestivoEmpresa(id);
     _renderFestivosOficiales();
@@ -779,7 +779,7 @@ async function handleGuardarPrestaciones() {
   try {
     await actualizarEmpresa(CTX.empresa.id, datos);
     CTX.empresa = { ...CTX.empresa, ...datos };
-    msg.textContent = '✅ Prestaciones guardadas. Aplican a nóminas generadas o recalculadas a partir de ahora.';
+    msg.textContent = 'Prestaciones guardadas. Aplican a nóminas generadas o recalculadas a partir de ahora.';
     msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) {
     if (/column|does not exist|schema cache/i.test(e.message || '')) {
@@ -805,7 +805,7 @@ async function handleGuardarNotificaciones() {
       notif_email_destino: email,
     });
     CTX.empresa = { ...CTX.empresa, notif_email_activo: activo, notif_email_destino: email };
-    msg.textContent = '✅ Configuración de notificaciones guardada.';
+    msg.textContent = 'Configuración de notificaciones guardada.';
     msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) { msg.textContent = friendlyError(e); msg.className = 'error-msg'; msg.style.display = ''; }
 }

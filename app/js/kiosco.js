@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!_K.token) {
     eid('kiosk-content').innerHTML = `
       <div class="kiosk-result err">
-        <div class="kiosk-result-icon">⚠️</div>
+        <div class="kiosk-result-icon">â</div>
         <div class="kiosk-result-name">Enlace inválido</div>
         <div class="kiosk-result-detail">Genera el enlace del kiosco desde el módulo "Reloj Checador" de la app.</div>
       </div>`;
@@ -47,8 +47,8 @@ function _renderIdle() {
   _K.pin = '';
   eid('kiosk-content').innerHTML = `
     <div class="kiosk-tabs">
-      <button class="kiosk-tab ${_K.tab==='pin'?'active':''}" onclick="_kioskSwitchTab(event,'pin')">🔢 PIN</button>
-      <button class="kiosk-tab ${_K.tab==='qr'?'active':''}" onclick="_kioskSwitchTab(event,'qr')">🪪 Gafete QR</button>
+      <button class="kiosk-tab ${_K.tab==='pin'?'active':''}" onclick="_kioskSwitchTab(event,'pin')">PIN</button>
+      <button class="kiosk-tab ${_K.tab==='qr'?'active':''}" onclick="_kioskSwitchTab(event,'qr')">Gafete QR</button>
     </div>
     <div id="kiosk-tab-body"></div>
   `;
@@ -138,13 +138,13 @@ async function _kioskEnviar(tipo, valor) {
 
 function _mostrarResultado(ok, data) {
   const cls = ok ? 'ok' : 'err';
-  const icono = ok ? (data.tipo === 'entrada' ? '✅' : '👋') : '❌';
+  const icono = ok ? '✓' : '✗';
   const titulo = ok ? escapeHtml(data.trabajador_nombre) : 'No se pudo registrar';
   const detalle = ok
     ? `${data.tipo === 'entrada' ? 'Entrada' : 'Salida'} registrada — ${escapeHtml(data.hora)}`
     : escapeHtml(data.error);
   const festivoHTML = (ok && data.festivo_desc)
-    ? `<div class="kiosk-result-detail" style="margin-top:6px;color:var(--gold-primary,#c9a227);">📅 Día festivo oficial: ${escapeHtml(data.festivo_desc)}</div>`
+    ? `<div class="kiosk-result-detail" style="margin-top:6px;color:var(--gold-primary,#c9a227);">Día festivo oficial: ${escapeHtml(data.festivo_desc)}</div>`
     : '';
 
   eid('kiosk-content').innerHTML = `

@@ -128,3 +128,6 @@ body.lp { background: var(--bg-surface); }
   .lp-cards, .lp-ley { grid-template-columns: 1fr; }
   .lp-cta { display: block; margin: 0 16px; text-align: center; }
 }
+
+/* Iconos SVG de línea (reemplazo de emojis) */
+.lp-card-icon svg, .lp-ley-icon svg { width: 30px; height: 30px; color: var(--accent, #15803d); }

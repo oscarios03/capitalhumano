@@ -40,7 +40,7 @@ function _renderShellREP() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">📈 Reportes y Exportaciones</div>
+        <div class="view-title">Reportes</div>
         <div class="view-subtitle">Nómina, acumulados, constancias y SUA</div>
       </div>
     </div>
@@ -48,15 +48,15 @@ function _renderShellREP() {
     <div class="card animate-in" style="margin-bottom:16px;">
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
         ${[
-          ['nomina_periodo',  '💰 Nómina por período'],
-          ['acumulado_anual', '📅 Acumulado anual'],
-          ['constancia_pdf',  '📄 Constancia PDF'],
-          ['sua_imss',        '🏛 SUA / IMSS'],
-          ['rotacion',        '🔄 Rotación de personal'],
-          ['ausentismo',      '🗓 Ausentismo por sucursal'],
-          ['costo_depto',     '🏢 Costo laboral por departamento'],
-          ['antiguedades',    '🎖 Antigüedades'],
-          ['paquete_contador','📦 Paquete para el contador'],
+          ['nomina_periodo',  'Nómina por período'],
+          ['acumulado_anual', 'Acumulado anual'],
+          ['constancia_pdf',  'Constancia PDF'],
+          ['sua_imss',        'SUA / IMSS'],
+          ['rotacion',        'Rotación de personal'],
+          ['ausentismo',      'Ausentismo por sucursal'],
+          ['costo_depto',     'Costo laboral por departamento'],
+          ['antiguedades',    'Antigüedades'],
+          ['paquete_contador','Paquete para el contador'],
         ].map(([v,l]) => `
           <button onclick="_repSelTipo('${v}')" id="rep-btn-${v}"
             class="btn-secondary btn-sm ${_REP.tipo===v?'active':''}"
@@ -149,7 +149,7 @@ function _renderREPForm() {
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;">
-          <button class="btn-primary" onclick="_repGenConstancia()">📄 Generar PDF</button>
+          <button class="btn-primary" onclick="_repGenConstancia()">Generar PDF</button>
         </div>
       </div>
     `;
@@ -161,7 +161,7 @@ function _renderREPForm() {
         </p>
         <div style="display:flex;gap:8px;">
           <button class="btn-primary" onclick="_repGenSUA()"><svg class="ic"><use href="#i-eye"></use></svg> Ver listado</button>
-          <button class="btn-secondary" onclick="_exportarSUAcsv()">⬇ Exportar CSV</button>
+          <button class="btn-secondary" onclick="_exportarSUAcsv()">Exportar CSV</button>
         </div>
       </div>
     `;
@@ -235,7 +235,7 @@ function _renderREPForm() {
         </p>
         <div style="display:flex;gap:8px;">
           <button class="btn-primary" onclick="_repGenAntiguedades()"><svg class="ic"><use href="#i-eye"></use></svg> Ver reporte</button>
-          <button class="btn-secondary" onclick="_exportarAntiguedadesXLSX()">⬇ Excel</button>
+          <button class="btn-secondary" onclick="_exportarAntiguedadesXLSX()">Excel</button>
         </div>
       </div>
     `;
@@ -262,7 +262,7 @@ function _renderREPForm() {
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;">
-          <button class="btn-primary" id="rep-pc-btn" onclick="_generarPaqueteContador()">📦 Generar paquete (ZIP)</button>
+          <button class="btn-primary" id="rep-pc-btn" onclick="_generarPaqueteContador()">Generar paquete (ZIP)</button>
         </div>
       </div>
     `;
@@ -273,7 +273,7 @@ function _renderREPForm() {
 async function _repGenNominaPeriodo() {
   const periodoId = document.getElementById('rep-periodo')?.value;
   const res = document.getElementById('rep-resultado');
-  if (!periodoId) { res.innerHTML = `<div class="alert alert-warn"><span>⚠️</span><span>Selecciona un período.</span></div>`; return; }
+  if (!periodoId) { res.innerHTML = `<div class="alert alert-warn"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>Selecciona un período.</span></div>`; return; }
   res.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando recibos…</div>`;
   try {
     const { data } = await _sbREP().from('recibos_nomina')
@@ -286,7 +286,7 @@ async function _repGenNominaPeriodo() {
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
           <span class="card-title">Nómina: ${escapeHtml(periodo?.nombre) || ''}</span>
-          <button class="btn-secondary btn-sm" onclick="_exportarNominaXLSX()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_exportarNominaXLSX()">Excel</button>
         </div>
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
@@ -350,7 +350,7 @@ async function _repGenAcumulado() {
     if (trabId) q = q.eq('trabajador_id', trabId);
     const { data } = await q;
 
-    if (!data?.length) { res.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">Sin datos para el período seleccionado</div></div>`; return; }
+    if (!data?.length) { res.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div><div class="empty-state-title">Sin datos para el período seleccionado</div></div>`; return; }
 
     window._repDataAcumulado = data;
     const totPer = data.reduce((a,r)=>a+(r.total_percepciones||0),0);
@@ -362,7 +362,7 @@ async function _repGenAcumulado() {
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
           <span class="card-title">Acumulado ${anio}${trabId ? ' — ' + escapeHtml(_REP.trabajadores.find(t=>t.id===trabId)?.nombre) : ''}</span>
-          <button class="btn-secondary btn-sm" onclick="_exportarAcumuladoXLSX()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_exportarAcumuladoXLSX()">Excel</button>
         </div>
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
@@ -506,7 +506,7 @@ async function _repGenSUA() {
   window._repDataSUA = filas;
 
   if (!filas.length) {
-    res.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏛</div><div class="empty-state-title">Sin trabajadores activos</div></div>`;
+    res.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-bank"></use></svg></div><div class="empty-state-title">Sin trabajadores activos</div></div>`;
     return;
   }
 
@@ -514,7 +514,7 @@ async function _repGenSUA() {
     <div class="card animate-in" style="margin-top:16px;">
       <div class="card-header">
         <span class="card-title">Listado SUA / IMSS</span>
-        <button class="btn-secondary btn-sm" onclick="_exportarSUAcsv()">⬇ CSV</button>
+        <button class="btn-secondary btn-sm" onclick="_exportarSUAcsv()">CSV</button>
       </div>
       <div class="table-wrap" style="margin-top:12px;">
         <table class="data-table">
@@ -618,7 +618,7 @@ async function _repGenRotacion() {
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
           <span class="card-title">Rotación de personal ${anio}</span>
-          <button class="btn-secondary btn-sm" onclick="_exportarRotacionXLSX()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_exportarRotacionXLSX()">Excel</button>
         </div>
         <div style="display:flex;gap:18px;margin:10px 0 14px;flex-wrap:wrap;">
           <div><span style="color:var(--text-muted);font-size:.8rem;">Altas del año</span><br><strong style="font-size:1.2rem;color:var(--green-ok);">${totAltas}</strong></div>
@@ -662,7 +662,7 @@ async function _repGenAusentismo() {
   const ini = document.getElementById('rep-aus-ini')?.value;
   const fin = document.getElementById('rep-aus-fin')?.value;
   const res = document.getElementById('rep-resultado');
-  if (!ini || !fin) { res.innerHTML = `<div class="alert alert-warn"><span>⚠️</span><span>Selecciona el rango de fechas.</span></div>`; return; }
+  if (!ini || !fin) { res.innerHTML = `<div class="alert alert-warn"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>Selecciona el rango de fechas.</span></div>`; return; }
   res.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando…</div>`;
   try {
     const { data, error } = await _sbREP().from('asistencia')
@@ -687,7 +687,7 @@ async function _repGenAusentismo() {
     window._repDataAusentismo = filas;
 
     if (!filas.length) {
-      res.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin incidencias en el rango seleccionado</div></div>`;
+      res.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin incidencias en el rango seleccionado</div></div>`;
       return;
     }
 
@@ -695,7 +695,7 @@ async function _repGenAusentismo() {
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
           <span class="card-title">Ausentismo por sucursal (${formatDateShort(ini)} – ${formatDateShort(fin)})</span>
-          <button class="btn-secondary btn-sm" onclick="_exportarAusentismoXLSX()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_exportarAusentismoXLSX()">Excel</button>
         </div>
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
@@ -767,7 +767,7 @@ async function _repGenCostoDepto() {
     window._repDataCostoDepto = filas;
 
     if (!filas.length) {
-      res.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏢</div><div class="empty-state-title">Sin nómina generada en el período seleccionado</div></div>`;
+      res.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-bank"></use></svg></div><div class="empty-state-title">Sin nómina generada en el período seleccionado</div></div>`;
       return;
     }
 
@@ -776,7 +776,7 @@ async function _repGenCostoDepto() {
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
           <span class="card-title">Costo laboral por departamento — ${mes ? `${anio}/${String(mes).padStart(2,'0')}` : `Año ${anio}`}</span>
-          <button class="btn-secondary btn-sm" onclick="_exportarCostoDeptoXLSX()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_exportarCostoDeptoXLSX()">Excel</button>
         </div>
         <div class="table-wrap" style="margin-top:12px;">
           <table class="data-table">
@@ -842,7 +842,7 @@ async function _repGenAntiguedades() {
   window._repDataAntiguedades = filas;
 
   if (!filas.length) {
-    res.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎖</div><div class="empty-state-title">Sin trabajadores activos</div></div>`;
+    res.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-sparkle"></use></svg></div><div class="empty-state-title">Sin trabajadores activos</div></div>`;
     return;
   }
 
@@ -850,12 +850,12 @@ async function _repGenAntiguedades() {
     <div class="card animate-in" style="margin-top:16px;">
       <div class="card-header">
         <span class="card-title">Antigüedades (${filas.length} trabajadores activos)</span>
-        <button class="btn-secondary btn-sm" onclick="_exportarAntiguedadesXLSX()">⬇ Excel</button>
+        <button class="btn-secondary btn-sm" onclick="_exportarAntiguedadesXLSX()">Excel</button>
       </div>
       <div class="table-wrap" style="margin-top:12px;">
         <table class="data-table">
           <thead><tr><th>Trabajador</th><th>Ingreso</th><th>Años cumplidos</th><th>Próximo aniversario</th><th>Faltan</th><th>Prima de antigüedad*</th></tr></thead>
-          <tbody>${filas.map(f => `<tr${f.diasParaAniversario <= 30 ? ' style="background:rgba(245,166,35,.08);"' : ''}>
+          <tbody>${filas.map(f => `<tr${f.diasParaAniversario <= 30 ? ' style="background:var(--gold-dim);"' : ''}>
             <td><strong>${f.nombre}</strong></td>
             <td>${formatDateShort(f.fecha_ingreso)}</td>
             <td>${f.anios}</td>
@@ -909,7 +909,7 @@ async function _generarPaqueteContador() {
   const hasta = new Date(anio, mes, 0).toISOString().split('T')[0];
   const nombreMes = document.getElementById('rep-pc-mes')?.selectedOptions?.[0]?.textContent || mes;
 
-  if (btn) { btn.textContent = '⏳ Generando…'; btn.disabled = true; }
+  btnCargando(btn, 'Generando…');
   try {
     const { data: periodos, error: errP } = await _sbREP().from('periodos_nomina')
       .select('id, nombre, fecha_inicio, fecha_fin')
@@ -984,6 +984,6 @@ async function _generarPaqueteContador() {
   } catch(e) {
     alert('Error al generar el paquete: ' + e.message);
   } finally {
-    if (btn) { btn.textContent = '📦 Generar paquete (ZIP)'; btn.disabled = false; }
+    btnRestaurar(btn);
   }
 }

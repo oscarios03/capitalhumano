@@ -25,7 +25,7 @@ async function showModalKitDefensa(trabajadorId) {
 
   _KIT.trabajadorId = trabajadorId;
   showModal(`<div class="modal animate-in" style="max-width:560px;">
-    <div class="modal-header"><div class="modal-title">🛡️ Kit de expediente de defensa</div>
+    <div class="modal-header"><div class="modal-title">Kit de expediente de defensa</div>
       <button class="modal-close" onclick="closeModal()">×</button></div>
     <div style="padding:30px;text-align:center;color:var(--text-muted);">
       <div class="spinner" style="margin:0 auto 10px;"></div>Revisando qué hay en el expediente…
@@ -74,26 +74,25 @@ function _renderModalKit() {
     <div class="modal animate-in" style="max-width:600px;display:flex;flex-direction:column;max-height:90vh;">
       <div class="modal-header">
         <div>
-          <div class="modal-title">🛡️ Kit de expediente de defensa</div>
+          <div class="modal-title">Kit de expediente de defensa</div>
           <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">${t.nombre}</p>
         </div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
 
       <div style="padding:16px 24px;overflow-y:auto;">
-        <div class="alert alert-info" style="margin-bottom:14px;">
-          <span>⚖️</span>
+        <div class="alert alert-info" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
           <span style="font-size:.82rem;">En un juicio laboral <strong>la carga de la prueba es tuya</strong> (Art. 784 LFT):
           tú debes demostrar ingreso, salario, jornada y pagos. Esto arma un ZIP con todo lo que tienes.</span>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px;">
-          ${fila('contrato',  '📝', 'Contrato de trabajo',    'Se regenera al momento desde los datos actuales', true)}
-          ${fila('recibos',   '💰', 'Recibos de nómina',      c.recibos ? `${c.recibos} recibo${c.recibos!==1?'s':''} — prueba de pago` : 'Sin recibos generados', c.recibos > 0)}
-          ${fila('asistencia','🗓', 'Historial de asistencia','Excel con faltas, retardos e incidencias', true)}
-          ${fila('actas',     '⚠️', 'Actas administrativas',  c.actas ? `${c.actas} acta${c.actas!==1?'s':''}` : 'Sin actas', c.actas > 0)}
-          ${fila('resguardos','🧰', 'Cartas responsivas',     c.resguardos ? `${c.resguardos} resguardo${c.resguardos!==1?'s':''} de equipo` : 'Sin resguardos', c.resguardos > 0)}
-          ${fila('docs',      '🗂️', 'Documentos del expediente', c.docs ? `${c.docs} archivo${c.docs!==1?'s':''} (INE, comprobantes, contratos firmados…)` : 'Sin documentos subidos', c.docs > 0)}
+          ${fila('contrato',  '', 'Contrato de trabajo',    'Se regenera al momento desde los datos actuales', true)}
+          ${fila('recibos',   '', 'Recibos de nómina',      c.recibos ? `${c.recibos} recibo${c.recibos!==1?'s':''} — prueba de pago` : 'Sin recibos generados', c.recibos > 0)}
+          ${fila('asistencia','', 'Historial de asistencia','Excel con faltas, retardos e incidencias', true)}
+          ${fila('actas',     '', 'Actas administrativas',  c.actas ? `${c.actas} acta${c.actas!==1?'s':''}` : 'Sin actas', c.actas > 0)}
+          ${fila('resguardos','', 'Cartas responsivas',     c.resguardos ? `${c.resguardos} resguardo${c.resguardos!==1?'s':''} de equipo` : 'Sin resguardos', c.resguardos > 0)}
+          ${fila('docs',      '', 'Documentos del expediente', c.docs ? `${c.docs} archivo${c.docs!==1?'s':''} (INE, comprobantes, contratos firmados…)` : 'Sin documentos subidos', c.docs > 0)}
         </div>
 
         <div class="form-grid" style="margin-top:16px;">
@@ -111,7 +110,7 @@ function _renderModalKit() {
 
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" id="kit-btn" onclick="_generarKitDefensa()">📦 Generar ZIP</button>
+        <button class="btn-primary" id="kit-btn" onclick="_generarKitDefensa()">Generar ZIP</button>
       </div>
     </div>
   `);
@@ -123,9 +122,9 @@ async function _generarKitDefensa() {
   const sel = id => document.getElementById('kit-' + id)?.checked;
   const btn = document.getElementById('kit-btn');
   const prog = document.getElementById('kit-progreso');
-  const paso = txt => { if (prog) { prog.style.display = ''; prog.textContent = '⏳ ' + txt; } };
+  const paso = txt => { if (prog) { prog.style.display = ''; prog.textContent = '' + txt; } };
 
-  if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+  btnCargando(btn, 'Generando…');
 
   const t   = _KIT.trab;
   const sb  = window.supabase;
@@ -270,13 +269,13 @@ async function _generarKitDefensa() {
 
     closeModal();
     showToast(errores.length
-      ? `📦 Kit generado con ${errores.length} elemento(s) que no se pudieron incluir. Revisa el índice del ZIP.`
-      : '📦 Kit de expediente generado.', errores.length ? 'warn' : 'success', 6000);
+      ? `Kit generado con ${errores.length} elemento(s) que no se pudieron incluir. Revisa el índice del ZIP.`
+      : 'Kit de expediente generado.', errores.length ? 'warn' : 'success', 6000);
     if (errores.length) console.warn('Kit de defensa — omitidos:', errores);
 
   } catch(e) {
     showToast('Error al generar el kit: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '📦 Generar ZIP'; }
+    btnRestaurar(btn);
   }
 }
 

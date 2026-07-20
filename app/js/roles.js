@@ -79,7 +79,7 @@ function aplicarGatesRol() {
     const ruta = el.dataset.route;
     if (!puedeVerRuta(ruta) && !el.querySelector('.nav-rol-lock')) {
       el.classList.add('nav-locked');
-      el.insertAdjacentHTML('beforeend', '<span class="nav-rol-lock" title="No disponible para tu rol">🔒</span>');
+      el.insertAdjacentHTML('beforeend', '<span class="nav-rol-lock" title="No disponible para tu rol"></span>');
     }
   });
 
@@ -98,7 +98,7 @@ function aplicarGatesRol() {
 function htmlRutaBloqueadaPorRol(ruta) {
   const permitidos = (ROUTE_ROLES[ruta] || []).map(r => ROL_NOMBRES[r]).join(' o ');
   return `<div class="empty-state" style="padding:60px 20px;text-align:center;">
-    <div class="empty-state-icon" style="font-size:2.6rem;">🔒</div>
+    <div class="empty-state-icon"><svg class="ic" style="width:38px;height:38px;"><use href="#i-lock"></use></svg></div>
     <h3 style="margin:12px 0 6px;color:var(--text-primary);font-family:var(--font-serif);">Esta sección no está disponible para tu rol</h3>
     <p style="color:var(--text-muted);max-width:440px;margin:0 auto 18px;">
       Tu rol es <b>${nombreRolActual()}</b>. Esta sección la pueden ver los roles <b>${permitidos}</b>.
@@ -114,8 +114,8 @@ function _injectRolCSS() {
   style.textContent = `
   .nav-rol-lock { margin-left:auto; font-size:.68rem; }
   .topbar-rol { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
-    background:var(--gold-dim, rgba(245,166,35,.12)); color:var(--accent, #c9a34e);
-    border:1px solid var(--gold-border, rgba(245,166,35,.3)); border-radius:100px;
+    background:var(--gold-dim, var(--gold-dim)); color:var(--accent, #c9a34e);
+    border:1px solid var(--gold-border, var(--gold-dim)); border-radius:100px;
     padding:2px 9px; margin-right:8px; white-space:nowrap; }
   body.rol-consulta #main-view .btn-primary,
   body.rol-consulta #main-view .btn-danger,
@@ -123,9 +123,9 @@ function _injectRolCSS() {
   body.rol-consulta #modal-container .btn-danger { opacity:.45; pointer-events:none; }
   .rol-badge { font-size:.7rem; font-weight:700; border-radius:100px; padding:2px 9px;
     border:1px solid var(--border); color:var(--text-secondary); white-space:nowrap; }
-  .rol-badge-admin      { border-color:rgba(245,166,35,.45); color:var(--gold-primary, #c9a34e); }
-  .rol-badge-gerente    { border-color:rgba(46,204,113,.4);  color:#5fd08a; }
-  .rol-badge-capturista { border-color:rgba(52,152,219,.4);  color:#6ab0e8; }
+  .rol-badge-admin      { border-color:var(--gold-dim); color:var(--gold-primary, #c9a34e); }
+  .rol-badge-gerente    { border-color:rgba(21,128,61,.4);  color:#5fd08a; }
+  .rol-badge-capturista { border-color:rgba(44,111,176,.4);  color:#6ab0e8; }
   .rol-badge-consulta   { border-color:var(--border);        color:var(--text-muted); }`;
   document.head.appendChild(style);
 }
@@ -146,7 +146,7 @@ async function renderTabUsuarios() {
 
   if (!esAdmin()) {
     c.innerHTML = `<div class="card"><div class="empty-state" style="padding:40px 20px;">
-      <div class="empty-state-icon">🔒</div>
+      <div class="empty-state-icon"><svg class="ic"><use href="#i-lock"></use></svg></div>
       <div class="empty-state-title">Solo un administrador puede gestionar usuarios</div>
     </div></div>`;
     return;
@@ -168,18 +168,18 @@ async function renderTabUsuarios() {
     _USR.sucursales   = sucursales || [];
   } catch(e) {
     if (/listar_usuarios_empresa|invitaciones/i.test(e.message || '')) {
-      c.innerHTML = `<div class="alert alert-warn"><span>⚠️</span><span>
+      c.innerHTML = `<div class="alert alert-warn"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>
         Falta aplicar la migración <strong>33_migration_roles.sql</strong> en Supabase.</span></div>`;
       return;
     }
-    c.innerHTML = `<div class="alert alert-danger"><span>❌</span><span>${e.message}</span></div>`;
+    c.innerHTML = `<div class="alert alert-danger"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>${e.message}</span></div>`;
     return;
   }
 
   c.innerHTML = `
     <div class="card animate-in" style="max-width:820px;margin-bottom:16px;">
       <div class="card-header">
-        <span class="card-title">👥 Usuarios de la empresa</span>
+        <span class="card-title">Usuarios de la empresa</span>
         <button class="btn-primary btn-sm" onclick="showModalInvitar()">＋ Invitar usuario</button>
       </div>
       <div class="table-wrap" style="margin-top:12px;">
@@ -207,7 +207,7 @@ async function renderTabUsuarios() {
     </div>
 
     <div class="card animate-in" style="max-width:820px;">
-      <div class="card-header"><span class="card-title">✉️ Invitaciones pendientes</span></div>
+      <div class="card-header"><span class="card-title">Invitaciones pendientes</span></div>
       ${!_USR.invitaciones.length
         ? `<div class="empty-state" style="padding:24px;"><div class="empty-state-title" style="font-size:.9rem;">Sin invitaciones pendientes</div></div>`
         : `<div class="table-wrap" style="margin-top:12px;">
@@ -308,7 +308,7 @@ async function _crearInvitacion() {
     });
     if (error) throw error;
     closeModal();
-    showToast(`✅ Invitación creada para ${email}. Cópiale la liga de registro.`, 'success', 6000);
+    showToast(`Invitación creada para ${email}. Cópiale la liga de registro.`, 'success', 6000);
     await renderTabUsuarios();
   } catch(e) {
     err.textContent = esErrorDePermisos(e) ? mensajeErrorPermisos(e) : e.message;
@@ -319,12 +319,12 @@ async function _crearInvitacion() {
 function _copiarLigaInvitacion(email) {
   const liga = `${window.location.origin}${window.location.pathname.replace(/app\.html$/, 'index.html')}?invitacion=${encodeURIComponent(email)}`;
   navigator.clipboard?.writeText(liga)
-    .then(() => showToast('📋 Liga copiada. Compártela con la persona invitada.', 'success'))
+    .then(() => showToast('Liga copiada. Compártela con la persona invitada.', 'success'))
     .catch(() => showToast(liga, 'info', 12000));
 }
 
 async function _cancelarInvitacion(id) {
-  if (!confirm('¿Cancelar esta invitación?')) return;
+  if (!(await showConfirmacion('¿Cancelar esta invitación?', { peligro:true, textoOk:'Cancelar invitación', textoCancelar:'Volver' }))) return;
   try {
     const { error } = await window.supabase.from('invitaciones').delete().eq('id', id);
     if (error) throw error;
@@ -393,7 +393,7 @@ async function _guardarRol(usuarioId) {
     });
     if (error) throw error;
     closeModal();
-    showToast('✅ Rol actualizado.', 'success');
+    showToast('Rol actualizado.', 'success');
     await renderTabUsuarios();
   } catch(e) {
     err.textContent = esErrorDePermisos(e) ? mensajeErrorPermisos(e) : e.message;
