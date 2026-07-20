@@ -66,6 +66,11 @@ correr una migración dos veces no rompe nada.
 |---|---------|----------|
 | 21 | `21_migration_planes.sql` | `planes`, `suscripciones`, triggers de enforcement (`zz_*`), índices de rendimiento y **supersede** `handle_new_user()` + `setup_empresa()` + `admin_set_plan()` |
 
+### 🐛 Fase beta — reportes de bug
+| # | Archivo | Qué hace |
+|---|---------|----------|
+| 37 | `37_migration_reportes_bug.sql` | Canal de reportes de la beta: tablas `reportes_bug` y `reporte_bug_notas` (notas internas del dev, aisladas del usuario), tabla `desarrolladores` + helper RLS `es_desarrollador()` (compuerta cross-empresa, **fuera** del sistema de 4 roles de la 33), políticas de Storage del bucket `reportes` y `encolar_resumen_reportes()` (correo-resumen diario vía `email_queue`). **Requiere pasos manuales**: crear el bucket `reportes` en el Dashboard y programar el `pg_cron` del resumen (ver comentarios en la migración). Nota: el **36** quedó reservado para la migración pendiente de nómina/ausencias |
+
 ---
 
 ## ⚠️ Definiciones supersedidas (misma función/tabla en varias migraciones)
