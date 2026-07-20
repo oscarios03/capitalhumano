@@ -89,19 +89,19 @@ const expediente = {
 
 // Los valores deben existir en el ENUM tipo_documento_enum (migraciones 12 y 34).
 const TIPOS_DOCS = {
-  contrato:             { icono: '📝', label: 'Contrato' },
-  identificacion:       { icono: '🪪', label: 'Identificación oficial (INE/pasaporte)' },
-  curp_doc:             { icono: '📄', label: 'CURP impresa' },
-  nss_doc:              { icono: '🏥', label: 'Constancia de NSS' },
-  csf:                  { icono: '🧾', label: 'Constancia de situación fiscal' },
-  acta_nacimiento:      { icono: '👶', label: 'Acta de nacimiento' },
-  comprobante_domicilio:{ icono: '🏠', label: 'Comprobante de domicilio' },
-  titulo_cedula:        { icono: '🎓', label: 'Título o cédula profesional' },
-  examen_medico:        { icono: '🩺', label: 'Examen médico' },
-  acta:                 { icono: '📋', label: 'Acta administrativa' },
-  justificante:         { icono: '📌', label: 'Justificante' },
-  resguardo:            { icono: '🧰', label: 'Carta responsiva (resguardo)' },
-  otro:                 { icono: '📎', label: 'Otro' },
+  contrato:             { icono: '', label: 'Contrato' },
+  identificacion:       { icono: '', label: 'Identificación oficial (INE/pasaporte)' },
+  curp_doc:             { icono: '', label: 'CURP impresa' },
+  nss_doc:              { icono: '', label: 'Constancia de NSS' },
+  csf:                  { icono: '', label: 'Constancia de situación fiscal' },
+  acta_nacimiento:      { icono: '', label: 'Acta de nacimiento' },
+  comprobante_domicilio:{ icono: '', label: 'Comprobante de domicilio' },
+  titulo_cedula:        { icono: '', label: 'Título o cédula profesional' },
+  examen_medico:        { icono: '', label: 'Examen médico' },
+  acta:                 { icono: '', label: 'Acta administrativa' },
+  justificante:         { icono: '', label: 'Justificante' },
+  resguardo:            { icono: '', label: 'Carta responsiva (resguardo)' },
+  otro:                 { icono: '', label: 'Otro' },
 };
 
 async function renderTabExpediente(trabajadorId) {
@@ -117,7 +117,7 @@ async function renderTabExpediente(trabajadorId) {
 
   const listaHTML = docs.length === 0
     ? `<div class="empty-state">
-         <div class="empty-state-icon">🗂️</div>
+         <div class="empty-state-icon"><svg class="ic"><use href="#i-file"></use></svg></div>
          <div class="empty-state-title">Aún no hay documentos en el expediente</div>
        </div>`
     : `<div class="table-wrap">
@@ -135,8 +135,8 @@ async function renderTabExpediente(trabajadorId) {
                  <td style="font-size:.82rem;white-space:nowrap;">${formatDateShort(d.created_at)}</td>
                  <td>
                    <div class="actions">
-                     <button class="btn-secondary btn-sm" onclick="descargarDocExpediente('${d.id}','${d.storage_path}')">⬇ Descargar</button>
-                     <button class="btn-danger btn-sm" onclick="eliminarDocExpediente('${d.id}','${d.storage_path}','${trabajadorId}')">🗑</button>
+                     <button class="btn-secondary btn-sm" onclick="descargarDocExpediente('${d.id}','${d.storage_path}')">Descargar</button>
+                     <button class="btn-danger btn-sm" onclick="eliminarDocExpediente('${d.id}','${d.storage_path}','${trabajadorId}')"><svg class="ic"><use href="#i-trash"></use></svg></button>
                    </div>
                  </td>
                </tr>`;
@@ -151,8 +151,8 @@ async function renderTabExpediente(trabajadorId) {
       <button class="btn-primary btn-sm" onclick="showFormSubirDocumento('${trabajadorId}')">+ Subir documento</button>
     </div>
     ${listaHTML}
-    <div id="form-subir-doc" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:rgba(255,255,255,.02);">
-      <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">📤 Subir nuevo documento</div>
+    <div id="form-subir-doc" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);">
+      <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">Subir nuevo documento</div>
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label" for="exp-archivo">Archivo <span class="req">*</span></label>
@@ -173,7 +173,7 @@ async function renderTabExpediente(trabajadorId) {
       <div id="exp-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
         <button class="btn-secondary btn-sm" onclick="cerrarFormSubirDocumento()">Cancelar</button>
-        <button id="exp-btn-subir" class="btn-primary btn-sm" onclick="guardarDocExpediente('${trabajadorId}')">💾 Subir</button>
+        <button id="exp-btn-subir" class="btn-primary btn-sm" onclick="guardarDocExpediente('${trabajadorId}')">Subir</button>
       </div>
     </div>
   `;
@@ -210,11 +210,11 @@ async function guardarDocExpediente(trabajadorId) {
   }
 
   const btn = eid('exp-btn-subir');
-  if (btn) { btn.textContent = 'Subiendo…'; btn.disabled = true; }
+  btnCargando(btn, 'Subiendo…');
 
   const { error } = await expediente.subirDocumento(trabajadorId, archivo, tipo, desc);
 
-  if (btn) { btn.textContent = '💾 Subir'; btn.disabled = false; }
+  btnRestaurar(btn);
 
   if (error) {
     errEl.textContent = 'Error al subir: ' + friendlyError(error);
@@ -239,7 +239,7 @@ async function descargarDocExpediente(docId, storagePath) {
 }
 
 async function eliminarDocExpediente(docId, storagePath, trabajadorId) {
-  if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+  if (!(await showConfirmacion('¿Eliminar este documento? Esta acción no se puede deshacer.', { peligro:true, textoOk:'Eliminar' }))) return;
   const { error } = await expediente.eliminarDocumento(docId, storagePath);
   if (error) {
     alert('Error al eliminar: ' + friendlyError(error));

@@ -5,7 +5,7 @@
  */
 
 // Claves de causa de baja IMSS (catálogo de "Movimientos Afiliatorios").
-// ⚠️ Verificar contra la guía oficial de IDSE vigente antes de usar en producción —
+// Verificar contra la guía oficial de IDSE vigente antes de usar en producción —
 // estas claves son las de uso más común pero el catálogo puede variar.
 const CAUSAS_BAJA_IMSS = {
   '01': 'Terminación de la relación o contrato de trabajo',
@@ -68,11 +68,11 @@ async function renderIMSS() {
   const main = eid('main-view');
   main.innerHTML = `
     <div class="view-header animate-in">
-      <div><div class="view-title">🏛 IMSS / Movimientos</div><div class="view-subtitle">Avisos afiliatorios para importar en IDSE, o capturar en SUA</div></div>
+      <div><div class="view-title">IMSS / Movimientos</div><div class="view-subtitle">Avisos afiliatorios para importar en IDSE, o capturar en SUA</div></div>
     </div>
     <div class="tabs animate-in" style="margin-bottom:16px;">
-      <button class="tab-btn ${_imssTab==='movimientos'?'active':''}" data-imss-tab="movimientos" onclick="switchIMSSTab('movimientos')">📋 Movimientos</button>
-      <button class="tab-btn ${_imssTab==='variabilidad'?'active':''}" data-imss-tab="variabilidad" onclick="switchIMSSTab('variabilidad')">📈 Variabilidad bimestral</button>
+      <button class="tab-btn ${_imssTab==='movimientos'?'active':''}" data-imss-tab="movimientos" onclick="switchIMSSTab('movimientos')">Movimientos</button>
+      <button class="tab-btn ${_imssTab==='variabilidad'?'active':''}" data-imss-tab="variabilidad" onclick="switchIMSSTab('variabilidad')">Variabilidad bimestral</button>
     </div>
     <div id="imss-tab-body" class="animate-in"><div class="loading"><div class="spinner"></div></div></div>
   `;
@@ -113,30 +113,29 @@ async function _tabMovimientosIMSS() {
   const exportados  = (movimientos || []).filter(m => m.estatus === 'exportado');
   const lotes = [...new Set(exportados.map(m => m.lote_exportacion))];
 
-  const TIPO_LABEL = { alta:'🟢 Alta', baja:'🔴 Baja', modificacion_salario:'💵 Modificación salario', reingreso:'🔁 Reingreso' };
+  const TIPO_LABEL = { alta:'● Alta', baja:'● Baja', modificacion_salario:'Modificación salario', reingreso:'Reingreso' };
 
   main.innerHTML = `
     <div class="card animate-in" style="margin-bottom:16px;">
       <div class="card-header" style="margin-bottom:10px;">
-        <span class="card-title">📋 Movimientos pendientes (${pendientes.length})</span>
-        <button class="btn-primary btn-sm" ${!pendientes.length?'disabled':''} onclick="_exportarLoteIMSS()">📤 Exportar lote para IDSE</button>
+        <span class="card-title">Movimientos pendientes (${pendientes.length})</span>
+        <button class="btn-primary btn-sm" ${!pendientes.length?'disabled':''} onclick="_exportarLoteIMSS()">Exportar lote para IDSE</button>
       </div>
-      <div class="alert alert-info" style="margin-bottom:14px;">
-        <span>ℹ️</span><span>Los avisos de alta o modificación de salario deben presentarse dentro de los 5 días hábiles siguientes (Art. 15 fr. I LSS).</span>
+      <div class="alert alert-info" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg><span>Los avisos de alta o modificación de salario deben presentarse dentro de los 5 días hábiles siguientes (Art. 15 fr. I LSS).</span>
       </div>
       ${pendientes.length === 0
-        ? `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin movimientos pendientes</div></div>`
+        ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin movimientos pendientes</div></div>`
         : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th><input type="checkbox" onchange="document.querySelectorAll('.mov-check').forEach(c=>c.checked=this.checked)" /></th><th>Trabajador</th><th>Tipo</th><th>Fecha</th><th>SBC</th><th>Antigüedad</th></tr></thead>
             <tbody>${pendientes.map(m => {
               const dias = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 86400000);
-              return `<tr${dias > 3 ? ' style="background:rgba(231,76,60,.08);"' : ''}>
+              return `<tr${dias > 3 ? ' style="background:rgba(192,57,43,.08);"' : ''}>
                 <td><input type="checkbox" class="mov-check" value="${m.id}" /></td>
                 <td>${escapeHtml(m.trabajadores?.nombre) || '—'}</td>
                 <td>${TIPO_LABEL[m.tipo] || m.tipo}${m.tipo==='baja' && m.causa_baja ? `<br><span style="font-size:.72rem;color:var(--text-muted);">${CAUSAS_BAJA_IMSS[m.causa_baja]||m.causa_baja}</span>`:''}</td>
                 <td>${formatDateShort(m.fecha_movimiento)}</td>
                 <td>${m.sbc_nuevo != null ? fmt(m.sbc_nuevo) : '—'}${m.sbc_anterior != null ? ` <span style="font-size:.72rem;color:var(--text-muted);">(antes ${fmt(m.sbc_anterior)})</span>` : ''}</td>
-                <td>${dias > 3 ? `<span style="color:var(--red-warn);font-weight:700;">⚠️ ${dias} días</span>` : `${dias} día${dias!==1?'s':''}`}</td>
+                <td>${dias > 3 ? `<span style="color:var(--red-warn);font-weight:700;">${dias} días</span>` : `${dias} día${dias!==1?'s':''}`}</td>
               </tr>`;
             }).join('')}</tbody>
           </table></div>`
@@ -144,7 +143,7 @@ async function _tabMovimientosIMSS() {
     </div>
 
     <div class="card animate-in">
-      <div class="card-header"><span class="card-title">📦 Lotes exportados</span></div>
+      <div class="card-header"><span class="card-title">Lotes exportados</span></div>
       ${lotes.length === 0
         ? `<div class="empty-state" style="padding:20px;"><div class="empty-state-title">Sin lotes exportados todavía</div></div>`
         : `<div class="table-wrap"><table class="data-table">
@@ -155,7 +154,7 @@ async function _tabMovimientosIMSS() {
                 <td style="font-family:monospace;font-size:.78rem;">${lote.slice(0,8)}…</td>
                 <td>${items.length}</td>
                 <td>${formatDateShort(items[0]?.exportado_at)}</td>
-                <td><button class="btn-secondary btn-sm" onclick="_redescargarLoteIMSS('${lote}')">⬇ Volver a descargar</button></td>
+                <td><button class="btn-secondary btn-sm" onclick="_redescargarLoteIMSS('${lote}')">Volver a descargar</button></td>
               </tr>`;
             }).join('')}</tbody>
           </table></div>`
@@ -179,7 +178,7 @@ function _fechaDDMMAAAA(fechaISO) {
 /**
  * Genera una línea de ancho fijo con el layout ILUSTRATIVO de importación de
  * movimientos afiliatorios de IDSE.
- * ⚠️ IMPORTANTE: verificar las posiciones exactas contra la "Guía técnica de
+ * IMPORTANTE: verificar las posiciones exactas contra la "Guía técnica de
  * importación de movimientos" vigente de IDSE antes de usar en producción —
  * el layout real puede diferir por versión/tipo de movimiento.
  *
@@ -411,17 +410,16 @@ async function _tabVariabilidadIMSS() {
   const conCambio = filas.filter(x => x.c.cambia);
 
   body.innerHTML = `
-    <div class="alert alert-info" style="margin-bottom:14px;">
-      <span>ℹ️</span><span>Bimestre medido: <strong>${bim.label}</strong>. La parte variable del SBC es el promedio diario de comisiones, primas y bonos de ese bimestre (Art. 30 fr. III LSS). El nuevo SBC rige el bimestre en curso; presenta las modificaciones en IDSE dentro de sus primeros 5 días hábiles.</span>
+    <div class="alert alert-info" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg><span>Bimestre medido: <strong>${bim.label}</strong>. La parte variable del SBC es el promedio diario de comisiones, primas y bonos de ese bimestre (Art. 30 fr. III LSS). El nuevo SBC rige el bimestre en curso; presenta las modificaciones en IDSE dentro de sus primeros 5 días hábiles.</span>
     </div>
 
     <div class="card animate-in">
       <div class="card-header" style="margin-bottom:10px;">
-        <span class="card-title">📈 Recálculo de SBC — ${bim.label} (${conCambio.length} con cambio)</span>
-        <button class="btn-primary btn-sm" ${!conCambio.length ? 'disabled' : ''} onclick="_generarMovimientosVariabilidad()">💵 Generar modificaciones de salario</button>
+        <span class="card-title">Recálculo de SBC — ${bim.label} (${conCambio.length} con cambio)</span>
+        <button class="btn-primary btn-sm" ${!conCambio.length ? 'disabled' : ''} onclick="_generarMovimientosVariabilidad()">Generar modificaciones de salario</button>
       </div>
       ${filas.length === 0
-        ? `<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-title">Sin percepciones variables en ${bim.label}</div><div class="empty-state-subtitle">Ningún trabajador tuvo comisiones, primas ni bonos que modifiquen el SBC.</div></div>`
+        ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin percepciones variables en ${bim.label}</div><div class="empty-state-subtitle">Ningún trabajador tuvo comisiones, primas ni bonos que modifiquen el SBC.</div></div>`
         : `<div class="table-wrap"><table class="data-table">
             <thead><tr>
               <th><input type="checkbox" onchange="document.querySelectorAll('.var-check:not(:disabled)').forEach(c=>c.checked=this.checked)" /></th>

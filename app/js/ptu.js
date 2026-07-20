@@ -26,13 +26,13 @@ function _renderShellPTU() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">📊 PTU — Participación de los Trabajadores en las Utilidades</div>
-        <div class="view-subtitle">Art. 117-131 LFT — 50% días trabajados / 50% salarios devengados</div>
+        <div class="view-title">PTU</div>
+        <div class="view-subtitle">Participación de los Trabajadores en las Utilidades · Art. 117-131 LFT — 50% días trabajados / 50% salarios devengados</div>
       </div>
     </div>
     <div class="tabs animate-in">
-      <button class="tab-btn ${_PTU.tab===1?'active':''}" onclick="switchPTUTab(1)">🧮 Calcular PTU</button>
-      <button class="tab-btn ${_PTU.tab===2?'active':''}" onclick="switchPTUTab(2)">📋 Historial</button>
+      <button class="tab-btn ${_PTU.tab===1?'active':''}" onclick="switchPTUTab(1)">Calcular PTU</button>
+      <button class="tab-btn ${_PTU.tab===2?'active':''}" onclick="switchPTUTab(2)">Historial</button>
     </div>
     <div id="ptu-content" class="animate-in"></div>
   `;
@@ -68,7 +68,7 @@ function _renderPTUCalc(c) {
       </div>
       <div id="ptu-calc-error" class="error-msg" role="alert" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <button class="btn-primary" onclick="calcularPTU()">🧮 Calcular distribución</button>
+        <button class="btn-primary" onclick="calcularPTU()">Calcular distribución</button>
       </div>
     </div>
     <div id="ptu-resultado"></div>
@@ -124,7 +124,7 @@ async function calcularPTU() {
     const trabajadores = Object.values(map);
 
     if (!trabajadores.length) {
-      res.innerHTML = `<div class="alert alert-warn" style="margin-top:16px;"><span>⚠️</span><span>No se encontraron recibos de nómina para el año ${anio}. Genera la nómina del año antes de calcular el PTU.</span></div>`;
+      res.innerHTML = `<div class="alert alert-warn" style="margin-top:16px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>No se encontraron recibos de nómina para el año ${anio}. Genera la nómina del año antes de calcular el PTU.</span></div>`;
       return;
     }
 
@@ -166,7 +166,7 @@ async function calcularPTU() {
       <div class="card animate-in" style="margin-top:16px;">
         <div class="card-header">
           <span class="card-title">Distribución PTU ${anio} — Utilidad: ${fmt(utilidad)}</span>
-          <button class="btn-secondary btn-sm" onclick="_exportarPTU()">⬇ Excel</button>
+          <button class="btn-secondary btn-sm" onclick="_exportarPTU()">Excel</button>
         </div>
         <div class="kpi-grid" style="margin:12px 0 16px;">
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div><div class="kpi-num">${totalDias.toLocaleString()}</div><div class="kpi-label">Total días trabajados</div></div>
@@ -176,9 +176,8 @@ async function calcularPTU() {
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="kpi-num">${fmt(totalNeto)}</div><div class="kpi-label">Neto a pagar</div></div>
         </div>
         ${remanente > 0 ? `
-        <div class="alert alert-info" style="margin-bottom:12px;">
-          <span>ℹ️</span>
-          <span>Se aplicó el <strong>tope de 3 meses de salario</strong> (Art. 127 fr. VIII LFT) a los trabajadores marcados con ⚠.
+        <div class="alert alert-info" style="margin-bottom:12px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
+          <span>Se aplicó el <strong>tope de 3 meses de salario</strong> (Art. 127 fr. VIII LFT) a los trabajadores marcados con .
           Remanente no repartido por tope: <strong>${fmt(remanente)}</strong>. Verifica con tu contador si aplica el promedio de PTU de los últimos 3 años como tope alternativo más favorable.</span>
         </div>` : ''}
         <div class="table-wrap">
@@ -194,7 +193,7 @@ async function calcularPTU() {
                   <td>${fmt(d.salarioAcum)}</td>
                   <td>${fmt(d.pd)}</td>
                   <td>${fmt(d.ps)}</td>
-                  <td><strong>${fmt(d.total)}</strong>${d.topado ? ' <span title="Topado a 3 meses de salario (Art. 127 fr. VIII LFT)">⚠</span>' : ''}</td>
+                  <td><strong>${fmt(d.total)}</strong>${d.topado ? ' <span title="Topado a 3 meses de salario (Art. 127 fr. VIII LFT)"></span>' : ''}</td>
                   <td style="color:var(--text-muted);">${fmt(d.exento)}</td>
                   <td style="color:${d.isr > 0 ? 'var(--red-warn)' : 'var(--text-muted)'};">${fmt(d.isr)}</td>
                   <td><strong>${fmt(d.neto)}</strong></td>
@@ -217,7 +216,7 @@ async function calcularPTU() {
           </table>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-          <button class="btn-primary" onclick="_guardarEjercicioPTU(${anio},${utilidad},${factorDias},${factorSal})">💾 Guardar ejercicio</button>
+          <button class="btn-primary" onclick="_guardarEjercicioPTU(${anio},${utilidad},${factorDias},${factorSal})">Guardar ejercicio</button>
         </div>
       </div>
     `;
@@ -255,7 +254,7 @@ async function _guardarEjercicioPTU(anio, utilidad, factorDias, factorSal) {
     const { error: dErr } = await _sbPTU().from('ptu_detalle').insert(rows);
     if (dErr) throw dErr;
 
-    alert(`✅ Ejercicio PTU ${anio} guardado.`);
+    showToast(`Ejercicio PTU ${anio} guardado.`, 'success');
     _PTU.tab = 2;
     await renderPTU();
   } catch(e) { alert('Error al guardar: ' + e.message); }
@@ -285,13 +284,13 @@ function _exportarPTU() {
 
 function _renderPTUHistorial(c) {
   if (!_PTU.ejercicios.length) {
-    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-title">Sin ejercicios PTU guardados</div></div>`;
+    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-pie"></use></svg></div><div class="empty-state-title">Sin ejercicios PTU guardados</div></div>`;
     return;
   }
   const ESTADO = {
     borrador:  '<span style="background:rgba(127,140,141,.15);color:var(--text-muted);border:1px solid var(--border);border-radius:100px;padding:2px 10px;font-size:.75rem;">Borrador</span>',
     calculado: '<span style="background:rgba(39,174,96,.15);color:var(--green-ok);border:1px solid rgba(39,174,96,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Calculado</span>',
-    pagado:    '<span style="background:rgba(52,152,219,.15);color:#3498db;border:1px solid rgba(52,152,219,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Pagado</span>',
+    pagado:    '<span style="background:rgba(44,111,176,.15);color:var(--blue-accent);border:1px solid rgba(44,111,176,.3);border-radius:100px;padding:2px 10px;font-size:.75rem;font-weight:700;">Pagado</span>',
   };
   c.innerHTML = `
     <div class="table-wrap animate-in">
@@ -304,7 +303,7 @@ function _renderPTUHistorial(c) {
               <td>${fmt(e.utilidad_repartible)}</td>
               <td>${ESTADO[e.estado] || e.estado}</td>
               <td>
-                ${e.estado === 'calculado' ? `<button class="btn-sm" style="background:rgba(52,152,219,.12);color:#3498db;border:1px solid rgba(52,152,219,.3);" onclick="_marcarPTUPagado('${e.id}')">✅ Marcar pagado</button>` : ''}
+                ${e.estado === 'calculado' ? `<button class="btn-sm" style="background:rgba(44,111,176,.12);color:var(--blue-accent);border:1px solid rgba(44,111,176,.3);" onclick="_marcarPTUPagado('${e.id}')">Marcar pagado</button>` : ''}
               </td>
             </tr>
           `).join('')}
@@ -315,7 +314,7 @@ function _renderPTUHistorial(c) {
 }
 
 async function _marcarPTUPagado(id) {
-  if (!confirm('¿Marcar este ejercicio PTU como pagado?')) return;
+  if (!(await showConfirmacion('¿Marcar este ejercicio PTU como pagado?'))) return;
   try {
     await _sbPTU().from('ptu_ejercicios').update({ estado: 'pagado' }).eq('id', id);
     await renderPTU();

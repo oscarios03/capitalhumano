@@ -42,7 +42,7 @@ async function generarReciboNominaBlob(reciboId) {
 
   // ── 1. ENCABEZADO ────────────────────────────────────────────────────────
   doc.setFillColor(15,20,40); doc.rect(0,0,pw,36,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(245,166,35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
   doc.text(np(empresa.nombre||''), pw/2, 11, { align:'center' });
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
   doc.text(np([empresa.rfc, empresa.domicilio].filter(Boolean).join('  |  ')), pw/2, 18, { align:'center' });
@@ -166,7 +166,7 @@ async function generarReciboNominaBlob(reciboId) {
   doc.rect(ml, y, tw, 22, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text('NETO A PAGAR', pw/2, y+7, { align:'center' });
-  doc.setFontSize(16); doc.setTextColor(245,166,35);
+  doc.setFontSize(16); doc.setTextColor(21,128,61);
   doc.text(np(`${fmt(recibo.neto_pagar)}   (${numToWords(recibo.neto_pagar)} PESOS M.N.)`), pw/2, y+17, { align:'center' });
   y += 30;
 
@@ -274,7 +274,7 @@ function pdfHeader(doc, title, subtitle, ml, mr) {
   const pw = doc.internal.pageSize.getWidth();
   doc.setFillColor(15,20,40);
   doc.rect(0, 0, pw, 32, 'F');
-  doc.setTextColor(245,166,35); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.setTextColor(21,128,61); doc.setFont('helvetica','bold'); doc.setFontSize(13);
   doc.text(np(title), pw/2, 13, { align:'center' });
   doc.setFontSize(8); doc.setTextColor(180,185,200); doc.setFont('helvetica','normal');
   doc.text(np(subtitle), pw/2, 21, { align:'center' });
@@ -415,7 +415,7 @@ function _cHeader(state, titulo, subtitulo, data) {
   const sub = [data.rfcPatron, data.domicilioSucursal || data.domicilioFiscal].filter(Boolean).join('  |  ');
   doc.text(np(sub), pw/2, 18, { align:'center' });
   // Barra dorada con título
-  doc.setFillColor(245, 166, 35);
+  doc.setFillColor(21,128,61);
   doc.rect(ml - 2, 24, pw - ml - mr + 4, 12, 'F');
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(15, 20, 40);
   doc.text(np(titulo.toUpperCase()), pw/2, 31.5, { align:'center' });
@@ -446,9 +446,9 @@ function _checkY(state, needed = 22) {
 function _h(state, num, titulo) {
   _checkY(state, 18);
   const { doc, ml } = state;
-  doc.setFillColor(245, 166, 35);
+  doc.setFillColor(21,128,61);
   doc.rect(ml, state.y, 2.5, 7, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(245, 166, 35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
   doc.text(np(`CLAUSULA ${num}a — ${titulo.toUpperCase()}`), ml + 5, state.y + 5);
   state.y += 11;
 }
@@ -483,7 +483,7 @@ function _table(state, head, body, extra = {}) {
     startY: state.y, margin: { left: ml, right: mr },
     head, body,
     styles: { fontSize: 8.5, cellPadding: 3, textColor: [40,40,40] },
-    headStyles: { fillColor: [15,20,40], textColor: [245,166,35], fontStyle:'bold', fontSize: 8 },
+    headStyles: { fillColor: [15,36,56], textColor: [21,128,61], fontStyle:'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: [248,248,252] },
     theme: 'grid', ...extra,
   });
@@ -495,7 +495,7 @@ function _recuadro(state, texto, tipo = 'info') {
   const { doc, ml, mr, pw } = state;
   const tw = pw - ml - mr;
   const bg = tipo === 'warn' ? [255,248,225] : [230,240,255];
-  const br = tipo === 'warn' ? [245,166,35]  : [74,144,226];
+  const br = tipo === 'warn' ? [21,128,61]  : [74,144,226];
   const lines = doc.splitTextToSize(np(texto), tw - 10);
   const h = lines.length * 5 + 10;
   doc.setFillColor(...bg); doc.setDrawColor(...br); doc.setLineWidth(0.5);
@@ -793,7 +793,7 @@ function generateContratoComision(data) {
 
   // Hoja adicional: ficha del puesto + datos personales
   _newPage(state);
-  _p(state, 'ANEXO A — DATOS DEL PUESTO Y FICHA PERSONAL DEL TRABAJADOR', { bold: true, fontSize: 11, color:[15,20,40] });
+  _p(state, 'ANEXO A — DATOS DEL PUESTO Y FICHA PERSONAL DEL TRABAJADOR', { bold: true, fontSize: 11, color:[15,36,56] });
   _gap(state, 4);
   _table(state, [['Campo','Dato']], [
     ['Puesto',                np(data.puesto)],
@@ -1016,7 +1016,7 @@ function generateAvisoRecision(empresa, trab, result, sucursal = null) {
       [`Dias laborados en ${new Date(trab.fecha_baja+'T00:00:00').getFullYear()}`, `${result.diasEnAnio} dias (ano calendario)`],
     ],
     styles:{ fontSize:9, cellPadding:3, textColor:[40,40,40] },
-    headStyles:{ fillColor:[245,166,35], textColor:[0,0,0], fontStyle:'bold', fontSize:8 },
+    headStyles:{ fillColor:[21,128,61], textColor:[0,0,0], fontStyle:'bold', fontSize:8 },
     alternateRowStyles:{ fillColor:[248,248,252] },
     columnStyles:{ 0:{ fontStyle:'bold', cellWidth:60 } },
     theme:'grid'
@@ -1067,7 +1067,7 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   doc.setFillColor(15, 20, 40);
   doc.rect(0, 0, pw, 36, 'F');
   // Razón Social dorada
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(245,166,35);
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
   doc.text(np(empresa.nombre), pw/2, 11, { align:'center' });
   // RFC + domicilio
   doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
@@ -1153,7 +1153,7 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
        'Ciudad',                    np(ciudadTrab)],
     ],
     styles:      { fontSize:8, cellPadding:2.8, textColor:[50,50,50] },
-    headStyles:  { fillColor:[15,20,40], textColor:[245,166,35] },
+    headStyles:  { fillColor:[15,36,56], textColor:[21,128,61] },
     alternateRowStyles: { fillColor:[248,248,252] },
     columnStyles:{ 0:{ fontStyle:'bold', cellWidth:44 }, 1:{ cellWidth:40 },
                    2:{ fontStyle:'bold', cellWidth:44 }, 3:{ cellWidth:40 } },
@@ -1170,8 +1170,8 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
     body: result.items.map(item => [np(item.name), np(item.calc), fmt(item.amount)]),
     foot: [['', 'TOTAL', fmt(result.total)]],
     styles:      { fontSize:9, cellPadding:3.5, textColor:[40,40,40] },
-    headStyles:  { fillColor:[15,20,40], textColor:[245,166,35], fontStyle:'bold', fontSize:8.5 },
-    footStyles:  { fillColor:[15,20,40], textColor:[245,166,35], fontStyle:'bold', fontSize:11 },
+    headStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:8.5 },
+    footStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:11 },
     alternateRowStyles: { fillColor:[248,248,252] },
     columnStyles:{
       0:{ cellWidth:76, fontStyle:'bold' },
@@ -1197,7 +1197,7 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
     ck(28);
     const isrLines = doc.splitTextToSize(np(isrTxt), tw - 10);
     const isrH = isrLines.length * 4.8 + 10;
-    doc.setFillColor(255, 248, 225); doc.setDrawColor(245,166,35); doc.setLineWidth(0.5);
+    doc.setFillColor(255, 248, 225); doc.setDrawColor(21,128,61); doc.setLineWidth(0.5);
     doc.roundedRect(ml, y, tw, isrH, 2, 2, 'FD');
     doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,60,0);
     doc.text(isrLines, ml + 5, y + 7);
@@ -1465,7 +1465,7 @@ function generateNominaEfectivoPDF(empresa, periodo, filas) {
     body: filas.map(f => [np(f.nombre), np(f.puesto), fmt(f.monto), '']),
     foot: [['', '', 'TOTAL', fmt(total)]],
     styles:{ fontSize:9, cellPadding:4, textColor:[30,30,30] },
-    headStyles:{ fillColor:[15,20,40], textColor:255, fontStyle:'bold' },
+    headStyles:{ fillColor:[15,36,56], textColor:255, fontStyle:'bold' },
     footStyles:{ fillColor:[240,240,244], textColor:[20,20,20], fontStyle:'bold' },
     alternateRowStyles:{ fillColor:[248,248,252] },
     columnStyles:{ 2:{ cellWidth:32, halign:'right' }, 3:{ cellWidth:50, minCellHeight:14 } },

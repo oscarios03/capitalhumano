@@ -41,12 +41,12 @@ function _renderShellINC() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">🏥 Incapacidades IMSS</div>
+        <div class="view-title">Incapacidades</div>
         <div class="view-subtitle">Registro y seguimiento de incapacidades</div>
       </div>
     </div>
     <div class="tabs animate-in">
-      <button class="tab-btn ${_INC.tab===1?'active':''}" onclick="switchINCTab(1)">📋 Lista</button>
+      <button class="tab-btn ${_INC.tab===1?'active':''}" onclick="switchINCTab(1)">Lista</button>
       <button class="tab-btn ${_INC.tab===2?'active':''}" onclick="switchINCTab(2)">+ Nueva incapacidad</button>
     </div>
     <div id="inc-content" class="animate-in"></div>
@@ -67,7 +67,7 @@ function _renderINCTab() {
 
 function _renderINCLista(c) {
   if (!_INC.incapacidades.length) {
-    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏥</div><div class="empty-state-title">Sin incapacidades registradas</div></div>`;
+    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-activity"></use></svg></div><div class="empty-state-title">Sin incapacidades registradas</div></div>`;
     return;
   }
   c.innerHTML = `
@@ -84,7 +84,7 @@ function _renderINCLista(c) {
               <td>${formatDateShort(i.fecha_fin)}</td>
               <td><strong>${i.dias}</strong></td>
               <td><strong>${i.subsidio_pct}%</strong></td>
-              <td><button class="btn-danger btn-sm" onclick="eliminarINC('${i.id}')">🗑</button></td>
+              <td><button class="btn-danger btn-sm" onclick="eliminarINC('${i.id}')"><svg class="ic"><use href="#i-trash"></use></svg></button></td>
             </tr>
           `).join('')}
         </tbody>
@@ -99,7 +99,7 @@ function _renderINCNueva(c) {
     `<option value="${v}">${t.label} — subsidio ${t.subsidio}%</option>`).join('');
   c.innerHTML = `
     <div class="card animate-in" style="max-width:600px;">
-      <div class="card-header"><span class="card-title">+ Nueva Incapacidad</span></div>
+      <div class="card-header"><span class="card-title">+ Nueva incapacidad</span></div>
       <div class="form-grid" style="margin-top:14px;">
         <div class="form-group span-2">
           <label class="form-label" for="inc-trab">Trabajador <span class="req">*</span></label>
@@ -111,7 +111,7 @@ function _renderINCNueva(c) {
         <div class="form-group span-2">
           <label class="form-label" for="inc-tipo">Tipo de incapacidad</label>
           <select id="inc-tipo" class="form-select" onchange="_incOnTipo()">${tiposOpts}</select>
-          <div id="inc-nota" style="margin-top:6px;font-size:.8rem;color:var(--text-muted);padding:8px 10px;background:rgba(245,166,35,.05);border-radius:var(--radius-sm);border:1px solid var(--gold-border);">${INC_TIPOS.enfermedad_general.nota}</div>
+          <div id="inc-nota" style="margin-top:6px;font-size:.8rem;color:var(--text-muted);padding:8px 10px;background:var(--gold-dim);border-radius:var(--radius-sm);border:1px solid var(--gold-border);">${INC_TIPOS.enfermedad_general.nota}</div>
         </div>
         <div class="form-group">
           <label class="form-label" for="inc-ini">Fecha inicio <span class="req">*</span></label>
@@ -140,7 +140,7 @@ function _renderINCNueva(c) {
       </div>
       <div id="inc-error" class="error-msg" role="alert" style="display:none;margin-top:10px;"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
-        <button class="btn-primary" onclick="guardarINC()">💾 Guardar</button>
+        <button class="btn-primary" onclick="guardarINC()">Guardar</button>
       </div>
     </div>
   `;
@@ -197,7 +197,7 @@ async function guardarINC() {
 }
 
 async function eliminarINC(id) {
-  if (!confirm('¿Eliminar este registro de incapacidad?')) return;
+  if (!(await showConfirmacion('¿Eliminar este registro de incapacidad?', { peligro:true, textoOk:'Eliminar' }))) return;
   try {
     await _sbI().from('incapacidades').delete().eq('id', id);
     await renderIncapacidades();

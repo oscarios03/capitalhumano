@@ -6,20 +6,20 @@
  */
 
 const TIPOS_PRESTACION = {
-  vales_despensa:      { icono: '🛒', label: 'Vales de despensa' },
-  fondo_ahorro:         { icono: '🐷', label: 'Fondo de ahorro' },
-  premio_puntualidad:  { icono: '⏱️', label: 'Premio de puntualidad' },
-  premio_asistencia:   { icono: '📅', label: 'Premio de asistencia' },
-  ayuda_transporte:    { icono: '🚌', label: 'Ayuda de transporte' },
-  otro:                { icono: '📎', label: 'Otra prestación' },
+  vales_despensa:      { icono: '', label: 'Vales de despensa' },
+  fondo_ahorro:         { icono: '', label: 'Fondo de ahorro' },
+  premio_puntualidad:  { icono: '', label: 'Premio de puntualidad' },
+  premio_asistencia:   { icono: '', label: 'Premio de asistencia' },
+  ayuda_transporte:    { icono: '', label: 'Ayuda de transporte' },
+  otro:                { icono: '', label: 'Otra prestación' },
 };
 
 /** Indicador visual + fundamento según el desglose fiscal. */
 function _indicadorSBC(desglose) {
   if (!desglose.montoPeriodo) return { texto: '—', color: 'var(--text-muted)' };
-  if (desglose.integraSBC <= 0) return { texto: '✅ No integra SBC', color: 'var(--green-ok)' };
-  if (desglose.integraSBC >= desglose.montoPeriodo) return { texto: '🔴 Integra al SBC', color: 'var(--red-warn)' };
-  return { texto: '⚠️ Integra parcialmente', color: '#f39c12' };
+  if (desglose.integraSBC <= 0) return { texto: 'No integra SBC', color: 'var(--green-ok)' };
+  if (desglose.integraSBC >= desglose.montoPeriodo) return { texto: '● Integra al SBC', color: 'var(--red-warn)' };
+  return { texto: 'Integra parcialmente', color: 'var(--amber-warn)' };
 }
 
 async function _listarPrestaciones(trabajadorId) {
@@ -54,24 +54,24 @@ async function renderTabPrestaciones(trabajadorId) {
   // Vales de despensa (almacenamiento actual: trabajadores.vales_despensa)
   if (parseFloat(trab.vales_despensa || 0) > 0) {
     const d = desglosarPrestacion({ tipo:'vales_despensa', montoPeriodo:parseFloat(trab.vales_despensa), diasPeriodo:dias }, daily, uma);
-    filas.push({ icono:'🛒', label:'Vales de despensa', monto:d.montoPeriodo, ind:_indicadorSBC(d), fund:d.fundamento, editable:false });
+    filas.push({ icono:'', label:'Vales de despensa', monto:d.montoPeriodo, ind:_indicadorSBC(d), fund:d.fundamento, editable:false });
   }
   // Fondo de ahorro (almacenamiento actual: trabajadores.fondo_ahorro_activo/pct — aportación patronal = obrera, siempre simétrico en este sistema)
   if (trab.fondo_ahorro_activo) {
     const pct = parseFloat(trab.fondo_ahorro_pct || 0.13);
     const aport = parseFloat((daily * dias * pct).toFixed(2));
     const d = desglosarPrestacion({ tipo:'fondo_ahorro', montoPeriodo:aport, aportacionTrabajador:aport, salarioBasePeriodo:daily*dias, diasPeriodo:dias }, daily, uma);
-    filas.push({ icono:'🐷', label:'Fondo de ahorro', monto:d.montoPeriodo, ind:_indicadorSBC(d), fund:d.fundamento, editable:false });
+    filas.push({ icono:'', label:'Fondo de ahorro', monto:d.montoPeriodo, ind:_indicadorSBC(d), fund:d.fundamento, editable:false });
   }
   // Prestaciones adicionales (tabla prestaciones_trabajador)
   for (const p of extra) {
     const monto = p.modalidad === 'porcentaje_salario' ? parseFloat((daily*dias*(parseFloat(p.valor)||0)/100).toFixed(2)) : parseFloat(p.valor || 0);
     const d = desglosarPrestacion({ tipo:p.tipo, montoPeriodo:monto, diasPeriodo:dias }, daily, uma);
-    filas.push({ icono:TIPOS_PRESTACION[p.tipo]?.icono||'📎', label:TIPOS_PRESTACION[p.tipo]?.label||p.tipo, monto:d.montoPeriodo, ind:_indicadorSBC(d), fund:d.fundamento, editable:true, id:p.id, activo:p.activo });
+    filas.push({ icono:TIPOS_PRESTACION[p.tipo]?.icono||'', label:TIPOS_PRESTACION[p.tipo]?.label||p.tipo, monto:d.montoPeriodo, ind:_indicadorSBC(d), fund:d.fundamento, editable:true, id:p.id, activo:p.activo });
   }
 
   const tabla = filas.length === 0
-    ? `<div class="empty-state" style="padding:20px;"><div class="empty-state-icon">🎁</div><div class="empty-state-title">Sin prestaciones registradas</div></div>`
+    ? `<div class="empty-state" style="padding:20px;"><div class="empty-state-icon"><svg class="ic"><use href="#i-gift"></use></svg></div><div class="empty-state-title">Sin prestaciones registradas</div></div>`
     : `<div class="table-wrap"><table class="data-table">
         <thead><tr><th>Prestación</th><th>Monto/periodo</th><th>Integración SBC</th><th></th></tr></thead>
         <tbody>${filas.map(f => `
@@ -79,7 +79,7 @@ async function renderTabPrestaciones(trabajadorId) {
             <td>${f.icono} ${f.label}</td>
             <td>${fmt(f.monto)}</td>
             <td><span style="color:${f.ind.color};font-weight:700;font-size:.82rem;" title="${f.fund}">${f.ind.texto}</span></td>
-            <td>${f.editable ? `<button class="btn-danger btn-sm" onclick="_suspenderPrestacion('${f.id}','${trabajadorId}')">🗑 Quitar</button>` : `<span style="font-size:.72rem;color:var(--text-muted);">Editar en Datos/Mi Empresa</span>`}</td>
+            <td>${f.editable ? `<button class="btn-danger btn-sm" onclick="_suspenderPrestacion('${f.id}','${trabajadorId}')">Quitar</button>` : `<span style="font-size:.72rem;color:var(--text-muted);">Editar en Datos/Mi Empresa</span>`}</td>
           </tr>`).join('')}
         </tbody>
       </table></div>`;
@@ -90,7 +90,7 @@ async function renderTabPrestaciones(trabajadorId) {
       <button class="btn-primary btn-sm" onclick="_mostrarFormPrestacion('${trabajadorId}')">+ Agregar premio/ayuda</button>
     </div>
     ${tabla}
-    <div id="form-prestacion" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:rgba(255,255,255,.02);"></div>
+    <div id="form-prestacion" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
   `;
 }
 
@@ -99,15 +99,15 @@ function _mostrarFormPrestacion(trabajadorId) {
   if (!form) return;
   form.style.display = '';
   form.innerHTML = `
-    <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">🎁 Nueva prestación</div>
+    <div style="font-weight:700;font-size:.9rem;margin-bottom:14px;">Nueva prestación</div>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label" for="prs-tipo">Tipo <span class="req">*</span></label>
         <select id="prs-tipo" class="form-select" required aria-required="true">
-          <option value="premio_puntualidad">⏱️ Premio de puntualidad</option>
-          <option value="premio_asistencia">📅 Premio de asistencia</option>
-          <option value="ayuda_transporte">🚌 Ayuda de transporte</option>
-          <option value="otro">📎 Otra</option>
+          <option value="premio_puntualidad">Premio de puntualidad</option>
+          <option value="premio_asistencia">Premio de asistencia</option>
+          <option value="ayuda_transporte">Ayuda de transporte</option>
+          <option value="otro">Otra</option>
         </select>
       </div>
       <div class="form-group">
@@ -128,7 +128,7 @@ function _mostrarFormPrestacion(trabajadorId) {
     <div id="prs-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
       <button class="btn-secondary btn-sm" onclick="_cerrarFormPrestacion()">Cancelar</button>
-      <button id="prs-btn-guardar" class="btn-primary btn-sm" onclick="_guardarPrestacion('${trabajadorId}')">💾 Guardar</button>
+      <button id="prs-btn-guardar" class="btn-primary btn-sm" onclick="_guardarPrestacion('${trabajadorId}')">Guardar</button>
     </div>
   `;
   form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -154,13 +154,13 @@ async function _guardarPrestacion(trabajadorId) {
   }
 
   const btn = eid('prs-btn-guardar');
-  if (btn) { btn.textContent = 'Guardando…'; btn.disabled = true; }
+  btnCargando(btn, 'Guardando…');
 
   const { error } = await window.supabase.from('prestaciones_trabajador').insert({
     empresa_id: CTX.empresa.id, trabajador_id: trabajadorId, tipo, modalidad, valor,
   });
 
-  if (btn) { btn.textContent = '💾 Guardar'; btn.disabled = false; }
+  btnRestaurar(btn);
 
   if (error) {
     errEl.textContent = 'Error al guardar: ' + error.message;
@@ -171,7 +171,7 @@ async function _guardarPrestacion(trabajadorId) {
 }
 
 async function _suspenderPrestacion(id, trabajadorId) {
-  if (!confirm('¿Quitar esta prestación? Dejará de pagarse en las próximas nóminas.')) return;
+  if (!(await showConfirmacion('¿Quitar esta prestación? Dejará de pagarse en las próximas nóminas.', { peligro:true, textoOk:'Quitar' }))) return;
   const { error } = await window.supabase.from('prestaciones_trabajador').update({ activo: false }).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   await renderTabPrestaciones(trabajadorId);

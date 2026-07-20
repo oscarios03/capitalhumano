@@ -482,6 +482,7 @@ input[type="date"], input[type="time"] { color-scheme:light; }
   text-align:center; padding:60px 20px; color:var(--text-muted);
 }
 .empty-state-icon { font-size:3rem; margin-bottom:16px; opacity:.6; }
+.empty-state-icon svg.ic { width:44px; height:44px; color:var(--text-muted); }
 .empty-state-title { font-size:1.1rem; font-weight:600; color:var(--text-secondary); margin-bottom:8px; }
 
 /* Animaciones */
@@ -492,6 +493,11 @@ input[type="date"], input[type="time"] { color-scheme:light; }
 ::-webkit-scrollbar { width:9px; height:9px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:rgba(120,130,140,.3); border-radius:8px; }
+
+/* Truncado de textos largos del topbar (nombre de empresa / usuario) */
+.topbar-empresa, .topbar-user {
+  max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 
 /* Responsive sidebar */
 @media(max-width:768px) {
@@ -505,6 +511,15 @@ input[type="date"], input[type="time"] { color-scheme:light; }
   }
   .sidebar.open { transform:translateX(0); }
   .main-view { padding:20px 16px; }
+  .topbar { padding:0 14px; }
+  .topbar-right { gap:8px; }
+  .topbar-empresa, .topbar-user { max-width:110px; }
+}
+/* En pantallas muy angostas la identidad de la sesión pasa a segundo plano:
+   se conserva el buscador, el menú y el botón de salir. */
+@media(max-width:480px) {
+  .topbar-empresa { display:none; }
+  .topbar-user { display:none; }
 }
 
 /* ── Sucursales / Centros de Trabajo ── */
@@ -1038,8 +1053,16 @@ input[type="date"], input[type="time"] { color-scheme:light; }
 .form-group-login { margin-bottom:18px; }
 .form-group-login .form-label { text-align:left; }
 
+/* Marca dentro de la tarjeta de login — visible solo cuando el panel navy
+   (que lleva el logo en escritorio) está oculto por la media query. */
+.login-brand-mobile { display:none; }
+
 @media(max-width:860px) {
   .login-page { grid-template-columns:1fr; }
   .login-side { display:none; }
   .login-card { padding:40px 24px; max-width:440px; }
+  .login-brand-mobile {
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-bottom:28px;
+  }
 }

@@ -21,7 +21,7 @@
   <div class="login-side">
     <div class="login-side-top">
       <div class="login-brand-icon">C</div>
-      <div class="login-brand-name" style="color:#fff;-webkit-text-fill-color:#fff;">Capital Humano</div>
+      <div class="login-brand-name" style="color:#fff;-webkit-text-fill-color:#fff;">Capital Humano MX</div>
     </div>
     <div class="login-side-mid">
       <div class="login-side-kicker">Gestión integral de personal</div>
@@ -36,6 +36,12 @@
   <!-- Panel formulario -->
   <div style="background:#fff;display:grid;place-items:center;padding:40px;">
   <div class="login-card animate-in" id="login-card">
+
+    <!-- Marca visible solo en móvil (el panel navy se oculta en pantallas angostas) -->
+    <div class="login-brand-mobile">
+      <div class="login-brand-icon">C</div>
+      <div class="login-brand-name">Capital Humano MX</div>
+    </div>
 
     <div class="login-title">Bienvenido de vuelta</div>
     <div class="login-subtitle">Ingresa a tu cuenta para continuar</div>
@@ -82,12 +88,15 @@
       <div id="reg-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
       <button id="btn-reg" class="btn-full" onclick="handleRegistro()">Crear cuenta <svg class="ic" style="width:16px;height:16px;"><use href="#i-arrow"></use></svg></button>
       <p style="text-align:center;font-size:.75rem;color:var(--text-muted);margin-top:10px;">
-        ✨ Incluye <b>7 días de prueba gratis</b> — sin tarjeta.
+        Incluye <b>7 días de prueba gratis</b> — sin tarjeta.
       </p>
     </div>
 
     <p style="text-align:center;font-size:.75rem;color:var(--text-muted);margin-top:20px;">
       Al registrarte aceptas usar esta herramienta conforme a la LFT 2026.
+    </p>
+    <p style="text-align:center;font-size:.72rem;margin-top:8px;">
+      <a href="aviso-privacidad.html">Aviso de privacidad</a> · <a href="terminos.html">Términos y condiciones</a>
     </p>
   </div>
   </div>
@@ -219,6 +228,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ── UI helpers ──────────────────────────────────────────
+// Contenido original de los botones (con su icono SVG) para restaurarlos
+// después de un estado de carga sin que pierdan el icono.
+const _HTML_BTN_LOGIN = 'Entrar <svg class="ic" style="width:16px;height:16px;"><use href="#i-arrow"></use></svg>';
+const _HTML_BTN_REG   = 'Crear cuenta <svg class="ic" style="width:16px;height:16px;"><use href="#i-arrow"></use></svg>';
+
 function showTab(tab) {
   document.getElementById('panel-login').style.display    = tab === 'login'    ? '' : 'none';
   document.getElementById('panel-registro').style.display = tab === 'registro' ? '' : 'none';
@@ -228,7 +242,7 @@ function showTab(tab) {
 
 function mostrarError(id, msg) {
   const el = document.getElementById(id);
-  if (el) { el.textContent = msg; el.style.display = ''; }
+  if (el) { el.textContent = msg; el.style.display = ''; el.style.color = ''; }
 }
 
 function ocultarError(id) {
@@ -249,7 +263,7 @@ function mostrarCargando(msg) {
 function mostrarRevisionCorreo(email) {
   document.getElementById('login-card').innerHTML = `
     <div style="text-align:center;padding:10px 0;">
-      <div style="font-size:3.5rem;margin-bottom:18px;">📧</div>
+      <svg class="ic" style="width:52px;height:52px;color:var(--accent);margin-bottom:18px;"><use href="#i-mail"></use></svg>
       <div style="font-family:var(--font-serif);font-size:1.3rem;font-weight:600;color:var(--text-primary);margin-bottom:14px;">
         Confirma tu correo electrónico
       </div>
@@ -263,7 +277,7 @@ function mostrarRevisionCorreo(email) {
       </p>
       <div style="background:rgba(217,138,43,.10);border:1px solid rgba(217,138,43,.30);
            border-radius:12px;padding:14px;font-size:.82rem;color:#a9752a;margin-bottom:20px;">
-        💡 Si no encuentras el correo, revisa tu carpeta de <strong>spam</strong> o correo no deseado.
+        Si no encuentras el correo, revisa tu carpeta de <strong>spam</strong> o correo no deseado.
       </div>
       <button onclick="location.reload()" class="btn-secondary" style="width:100%;">
         ← Regresar al inicio de sesión
@@ -290,7 +304,7 @@ async function handleLogin() {
     if ((e.message || '').includes('Invalid login credentials')) {
       document.getElementById('recover-link').style.display = 'block';
     }
-    btn.textContent = 'Entrar →'; btn.disabled = false;
+    btn.innerHTML = _HTML_BTN_LOGIN; btn.disabled = false;
   }
 }
 
@@ -307,7 +321,7 @@ async function handleRecuperar() {
   } else {
     document.getElementById('recover-link').style.display = 'none';
     errEl.style.display = 'block';
-    errEl.style.color = 'green';
+    errEl.style.color = 'var(--green-ok)';
     errEl.textContent = 'Te enviamos un correo para restablecer tu contraseña.';
   }
 }
@@ -349,7 +363,7 @@ async function handleRegistro() {
     }
   } catch(e) {
     mostrarError('reg-error', traducirError(e.message || e.toString()));
-    btn.textContent = 'Crear cuenta →'; btn.disabled = false;
+    btn.innerHTML = _HTML_BTN_REG; btn.disabled = false;
   }
 }
 
@@ -373,12 +387,12 @@ async function revisarEmpresa(btn) {
       window.location.href = 'app.html';
     } else {
       // Sin empresa configurada: mostrar modal
-      if (btn) { btn.textContent = 'Entrar →'; btn.disabled = false; }
+      if (btn) { btn.innerHTML = _HTML_BTN_LOGIN; btn.disabled = false; }
       document.getElementById('modal-empresa').style.display = 'grid';
     }
   } catch(e) {
     console.error('revisarEmpresa error:', e);
-    if (btn) { btn.textContent = 'Entrar →'; btn.disabled = false; }
+    if (btn) { btn.innerHTML = _HTML_BTN_LOGIN; btn.disabled = false; }
     mostrarError('login-error', traducirError(e.message || e.toString()));
   }
 }
@@ -407,7 +421,7 @@ async function handleCrearEmpresa() {
     window.location.href = 'app.html';
   } catch(e) {
     mostrarError('empresa-error', traducirError(e.message || e.toString()));
-    btn.textContent = '💾 Guardar y continuar →'; btn.disabled = false;
+    btn.textContent = 'Guardar y continuar →'; btn.disabled = false;
   }
 }
 

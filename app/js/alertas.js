@@ -5,25 +5,25 @@
 
 // ── Config visual por tipo ───────────────────────────────────────────────────
 const ALERTA_CFG = {
-  contrato_vencimiento:  { icono:'📄', ruta:'contratos',    label:'Contrato por vencer'          },
-  periodo_prueba:        { icono:'⏱️', ruta:'empleado',     label:'Período de prueba'             },
-  capacitacion_inicial:  { icono:'🎓', ruta:'empleado',     label:'Capacitación inicial'          },
-  vacaciones_pendientes: { icono:'🌴', ruta:'empleados',    label:'Vacaciones pendientes'         },
-  aniversario:           { icono:'🎂', ruta:'empleado',     label:'Aniversario laboral'           },
-  aguinaldo:             { icono:'🎄', ruta:'bajas',        label:'Aguinaldo por pagar'           },
-  ptu:                   { icono:'💰', ruta:'bajas',        label:'PTU por distribuir'            },
-  prima_antiguedad_15:   { icono:'🏅', ruta:'empleado',     label:'Prima antigüedad 15 años'      },
-  revision_salarial:     { icono:'💵', ruta:'empleado',     label:'Revisión salarial'             },
-  nomina_por_pagar:      { icono:'💰', ruta:'nomina',      label:'Nómina por pagar'              },
-  nomina_por_generar:    { icono:'🗓️', ruta:'nomina',      label:'Nómina por generar'            },
-  descuento_liquidado:   { icono:'✅', ruta:'nomina',      label:'Crédito liquidado'             },
+  contrato_vencimiento:  { icono:'', ruta:'contratos',    label:'Contrato por vencer'          },
+  periodo_prueba:        { icono:'', ruta:'empleado',     label:'Período de prueba'             },
+  capacitacion_inicial:  { icono:'', ruta:'empleado',     label:'Capacitación inicial'          },
+  vacaciones_pendientes: { icono:'', ruta:'empleados',    label:'Vacaciones pendientes'         },
+  aniversario:           { icono:'', ruta:'empleado',     label:'Aniversario laboral'           },
+  aguinaldo:             { icono:'', ruta:'bajas',        label:'Aguinaldo por pagar'           },
+  ptu:                   { icono:'', ruta:'bajas',        label:'PTU por distribuir'            },
+  prima_antiguedad_15:   { icono:'', ruta:'empleado',     label:'Prima antigüedad 15 años'      },
+  revision_salarial:     { icono:'', ruta:'empleado',     label:'Revisión salarial'             },
+  nomina_por_pagar:      { icono:'', ruta:'nomina',      label:'Nómina por pagar'              },
+  nomina_por_generar:    { icono:'', ruta:'nomina',      label:'Nómina por generar'            },
+  descuento_liquidado:   { icono:'', ruta:'nomina',      label:'Crédito liquidado'             },
 };
 
 const PRIORIDAD_CFG = {
-  critica: { color:'#e74c3c', bg:'rgba(231,76,60,.12)',  border:'rgba(231,76,60,.3)',  label:'Crítica',  dot:'🔴' },
-  alta:    { color:'#e67e22', bg:'rgba(230,126,34,.12)', border:'rgba(230,126,34,.3)', label:'Alta',     dot:'🟠' },
-  media:   { color:'#f39c12', bg:'rgba(243,156,18,.12)', border:'rgba(243,156,18,.3)', label:'Media',    dot:'🟡' },
-  baja:    { color:'#95a5a6', bg:'rgba(149,165,166,.1)', border:'rgba(149,165,166,.25)',label:'Baja',    dot:'⚪' },
+  critica: { color:'var(--red-warn)', bg:'rgba(192,57,43,.12)',  border:'rgba(192,57,43,.3)',  label:'Crítica',  dot:'●' },
+  alta:    { color:'#e67e22', bg:'rgba(230,126,34,.12)', border:'rgba(230,126,34,.3)', label:'Alta',     dot:'●' },
+  media:   { color:'var(--amber-warn)', bg:'rgba(217,138,43,.12)', border:'rgba(217,138,43,.3)', label:'Media',    dot:'●' },
+  baja:    { color:'#95a5a6', bg:'rgba(149,165,166,.1)', border:'rgba(149,165,166,.25)',label:'Baja',    dot:'●' },
 };
 
 const PRIORIDAD_ORDER = { critica:0, alta:1, media:2, baja:3 };
@@ -186,7 +186,7 @@ function renderListaAlertas(alertas) {
   if (visibles.length === 0) {
     return `
       <div class="empty-state" style="padding:32px;">
-        <div class="empty-state-icon">✅</div>
+        <div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div>
         <div class="empty-state-title">${_filtroActivo ? 'Sin alertas de prioridad ' + PRIORIDAD_CFG[_filtroActivo]?.label : 'Sin alertas pendientes'}</div>
         <p style="font-size:.82rem;color:var(--text-muted);margin-top:6px;">
           ${_filtroActivo ? '' : 'El sistema revisará los riesgos laborales automáticamente.'}
@@ -196,17 +196,17 @@ function renderListaAlertas(alertas) {
 
   return visibles.map(a => {
     const cfg     = PRIORIDAD_CFG[a.prioridad] || PRIORIDAD_CFG.baja;
-    const tipoCfg = ALERTA_CFG[a.tipo]         || { icono:'⚠️', ruta:'dashboard', label:a.tipo };
+    const tipoCfg = ALERTA_CFG[a.tipo]         || { icono:'', ruta:'dashboard', label:a.tipo };
     const hoy     = new Date(); hoy.setHours(0,0,0,0);
     const venc    = a.fecha_limite ? new Date(a.fecha_limite + 'T00:00:00') : null;
     const diasRest = venc ? Math.ceil((venc - hoy) / 86400000) : null;
     const vencColor = diasRest !== null && diasRest <= 7
       ? 'var(--red-warn)' : diasRest !== null && diasRest <= 15
-      ? '#f39c12' : 'var(--text-muted)';
-    const vencTxt = diasRest === null ? '' : diasRest < 0 ? '⚠️ Vencida'
-      : diasRest === 0 ? '⚠️ Vence hoy'
-      : diasRest === 1 ? '⏰ Mañana'
-      : `📅 ${diasRest} días`;
+      ? 'var(--amber-warn)' : 'var(--text-muted)';
+    const vencTxt = diasRest === null ? '' : diasRest < 0 ? 'Vencida'
+      : diasRest === 0 ? 'Vence hoy'
+      : diasRest === 1 ? 'Mañana'
+      : `${diasRest} días`;
 
     // Botón de acción rápida
     const accionBtn = a.trabajadores?.id
@@ -231,7 +231,7 @@ function renderListaAlertas(alertas) {
           ${a.trabajadores?.nombre ? `
             <div class="alerta-trabajador" onclick="navigate('empleado','${a.trabajadores.id}')"
                  role="button" tabindex="0" style="cursor:pointer;color:var(--blue-accent);">
-              👤 ${escapeHtml(a.trabajadores.nombre)}${a.trabajadores.puesto ? ' — ' + escapeHtml(a.trabajadores.puesto) : ''}
+              ${escapeHtml(a.trabajadores.nombre)}${a.trabajadores.puesto ? ' — ' + escapeHtml(a.trabajadores.puesto) : ''}
             </div>` : ''}
           <div class="alerta-desc">${escapeHtml(a.descripcion) || ''}</div>
           <div class="alerta-footer">
@@ -263,7 +263,7 @@ function renderContratosPorVencer(alertas) {
   if (!items.length) {
     return `
       <div class="empty-state" style="padding:24px;">
-        <div class="empty-state-icon">✅</div>
+        <div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div>
         <div class="empty-state-title">Sin contratos por vencer en los próximos días</div>
       </div>`;
   }
@@ -271,14 +271,14 @@ function renderContratosPorVencer(alertas) {
   return `
     <div class="alertas-lista">
       ${items.map(a => {
-        const cfg   = ALERTA_CFG[a.tipo] || { icono:'⚠️', label:a.tipo };
+        const cfg   = ALERTA_CFG[a.tipo] || { icono:'', label:a.tipo };
         const hoy   = new Date(); hoy.setHours(0,0,0,0);
         const venc  = a.fecha_limite ? new Date(a.fecha_limite + 'T00:00:00') : null;
         const dias  = venc ? Math.ceil((venc - hoy) / 86400000) : null;
         const vencTxt = dias === null ? '—'
-          : dias < 0  ? `<span style="color:var(--red-warn);font-weight:800;">VENCIDO hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''}</span>`
-          : dias === 0 ? `<span style="color:var(--red-warn);font-weight:800;">Vence hoy</span>`
-          : `<span style="color:${dias<=3?'var(--red-warn)':'#f39c12'};font-weight:700;">${dias} día${dias!==1?'s':''} restantes</span>`;
+          : dias < 0  ? `<span style="color:var(--red-warn);font-weight:700;">VENCIDO hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''}</span>`
+          : dias === 0 ? `<span style="color:var(--red-warn);font-weight:700;">Vence hoy</span>`
+          : `<span style="color:${dias<=3?'var(--red-warn)':'var(--amber-warn)'};font-weight:700;">${dias} día${dias!==1?'s':''} restantes</span>`;
         const trabId = a.trabajadores?.id || a.trabajador_id;
 
         return `
@@ -292,11 +292,11 @@ function renderContratosPorVencer(alertas) {
               <div class="alerta-desc">${vencTxt}</div>
             </div>
             <div class="alerta-acciones" style="flex-wrap:wrap;gap:6px;">
-              <button class="btn-secondary btn-sm" onclick="_prorrogarContrato('${trabId}')">📄 Prorrogar/renovar</button>
+              <button class="btn-secondary btn-sm" onclick="_prorrogarContrato('${trabId}')">Prorrogar/renovar</button>
               <button class="btn-secondary btn-sm" style="color:var(--gold-primary);border-color:var(--gold-border);"
-                onclick="_convertirAIndeterminado('${trabId}','${a.id}')">🔄 Convertir a indeterminado</button>
+                onclick="_convertirAIndeterminado('${trabId}','${a.id}')">Convertir a indeterminado</button>
               <button class="btn-secondary btn-sm" style="color:var(--red-warn);border-color:var(--red-warn);"
-                onclick="_iniciarBajaDesdeAlerta('${trabId}')">🚪 Iniciar baja</button>
+                onclick="_iniciarBajaDesdeAlerta('${trabId}')">Iniciar baja</button>
             </div>
           </div>`;
       }).join('')}
@@ -314,12 +314,12 @@ function _prorrogarContrato(trabId) {
 /** "Convertir a indeterminado" → actualiza tipo_contrato y genera, vía el
  *  Agente IA, el convenio de conversión a tiempo indeterminado. */
 async function _convertirAIndeterminado(trabId, alertaId) {
-  if (!confirm('¿Convertir este contrato a tiempo indeterminado? Se limpiará la fecha de vencimiento del contrato.')) return;
+  if (!(await showConfirmacion('¿Convertir este contrato a tiempo indeterminado? Se limpiará la fecha de vencimiento del contrato.'))) return;
   try {
     await db.updateTrabajador(trabId, { tipo_contrato: 'indeterminado', fecha_vencimiento_contrato: null });
     if (alertaId) await resolverAlerta(alertaId);
     if (typeof abrirAgenteIA === 'function') await abrirAgenteIA(trabId, 'convenio_conversion_indeterminado');
-    if (typeof showToast === 'function') showToast('✅ Contrato convertido a tiempo indeterminado', 'success');
+    if (typeof showToast === 'function') showToast('Contrato convertido a tiempo indeterminado', 'success');
   } catch (e) {
     alert('No se pudo convertir el contrato: ' + e.message);
   }

@@ -43,7 +43,7 @@ function _renderOrgHTML() {
   main.innerHTML = `
     <div class="view-header animate-in">
       <div>
-        <div class="view-title">🏗 Organigrama</div>
+        <div class="view-title">Organigrama</div>
         <div class="view-subtitle">${_ORG.trabajadores.length} trabajadores activos</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -54,8 +54,8 @@ function _renderOrgHTML() {
             ${suc.map(s => `<option value="${s.id}">${escapeHtml(s.nombre)}</option>`).join('')}
           </select>
         ` : ''}
-        <button class="btn-secondary btn-sm" onclick="_switchOrgVista('cards')" id="org-btn-cards">🃏 Tarjetas</button>
-        ${hayArbol ? `<button class="btn-secondary btn-sm" onclick="_switchOrgVista('tree')" id="org-btn-tree">🌳 Árbol</button>` : ''}
+        <button class="btn-secondary btn-sm" onclick="_switchOrgVista('cards')" id="org-btn-cards">Tarjetas</button>
+        ${hayArbol ? `<button class="btn-secondary btn-sm" onclick="_switchOrgVista('tree')" id="org-btn-tree">Árbol</button>` : ''}
       </div>
     </div>
     <div id="org-vista" class="animate-in"></div>
@@ -81,7 +81,7 @@ function _renderOrgVista() {
     : _ORG.trabajadores;
 
   if (!filtrados.length) {
-    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏗</div><div class="empty-state-title">Sin trabajadores</div></div>`;
+    c.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-network"></use></svg></div><div class="empty-state-title">Sin trabajadores</div></div>`;
     return;
   }
 
@@ -107,7 +107,7 @@ function _renderOrgCards(c, trabajadores) {
     return `
       <div class="card animate-in" style="margin-bottom:16px;overflow:hidden;">
         <div style="background:${color};padding:12px 16px;margin:-20px -20px 16px;display:flex;align-items:center;justify-content:space-between;">
-          <span style="color:#fff;font-weight:800;font-size:.95rem;text-shadow:0 1px 3px rgba(0,0,0,.2);">🏢 ${escapeHtml(dept)}</span>
+          <span style="color:#fff;font-weight:700;font-size:.95rem;text-shadow:0 1px 3px rgba(0,0,0,.2);">${escapeHtml(dept)}</span>
           <span style="background:rgba(255,255,255,.2);color:#fff;border-radius:100px;padding:2px 10px;font-size:.78rem;font-weight:700;">${trabs.length} trabajador${trabs.length!==1?'es':''}</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
@@ -115,7 +115,7 @@ function _renderOrgCards(c, trabajadores) {
             const ini = (t.nombre||'?').split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();
             return `
               <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);cursor:pointer;transition:background .15s;" onclick="navigate('empleado','${t.id}')" role="button" tabindex="0">
-                <div style="width:38px;height:38px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.88rem;flex-shrink:0;">${ini}</div>
+                <div style="width:38px;height:38px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.88rem;flex-shrink:0;">${ini}</div>
                 <div style="overflow:hidden;">
                   <div style="font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(t.nombre)}">${escapeHtml(t.nombre)}</div>
                   <div style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(t.puesto) || ''}">${escapeHtml(t.puesto) || '—'}</div>
@@ -134,7 +134,7 @@ function _renderOrgTree(c, trabajadores) {
   if (!hayArbol) {
     c.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">🌳</div>
+        <div class="empty-state-icon"><svg class="ic"><use href="#i-network"></use></svg></div>
         <div class="empty-state-title">Sin jerarquía configurada</div>
         <p style="margin-top:8px;font-size:.82rem;color:var(--text-muted);">Configura el campo "Reporta a" en el expediente de cada trabajador para ver el árbol jerárquico.</p>
       </div>`;

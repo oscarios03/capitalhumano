@@ -35,8 +35,8 @@ function htmlBotonWhatsApp(tel, mensaje, opts = {}) {
   if (!link) {
     return opts.ocultarSiFalta
       ? ''
-      : `<span style="font-size:.72rem;color:var(--text-muted);" title="Captura el teléfono del trabajador en su perfil para poder escribirle por WhatsApp">📱 sin teléfono</span>`;
+      : `<span style="font-size:.72rem;color:var(--text-muted);" title="Captura el teléfono del trabajador en su perfil para poder escribirle por WhatsApp">sin teléfono</span>`;
   }
   const clase = opts.clase || 'btn-secondary btn-sm';
-  return `<a class="${clase}" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;" href="${link}" target="_blank" rel="noopener">📱 WhatsApp</a>`;
+  return `<a class="${clase}" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;" href="${link}" target="_blank" rel="noopener">WhatsApp</a>`;
 }
