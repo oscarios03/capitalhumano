@@ -123,6 +123,8 @@ async function generarReciboNominaBlob(reciboId) {
   const dedRows = [];
   if (parseFloat(recibo.monto_faltas||0) > 0)
     dedRows.push(['Desc. por faltas', `${recibo.dias_falta} días × ${np(fmt(daily))}`, `-${fmt(recibo.monto_faltas)}`]);
+  if (parseFloat(recibo.monto_falta_justif||0) > 0)
+    dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} días × ${np(fmt(daily))}`, `-${fmt(recibo.monto_falta_justif)}`]);
   if (parseFloat(recibo.monto_permiso_sin||0) > 0)
     dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} días`, `-${fmt(recibo.monto_permiso_sin)}`]);
   if (parseFloat(recibo.cuota_imss||0) > 0)

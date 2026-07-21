@@ -1017,8 +1017,10 @@ async function _tabDetalle() {
                   ${r.prima_vacacional>0?`${fmt(r.prima_vacacional)}`:''}
                   ${!r.vales_despensa&&!r.bonos&&!r.monto_horas_extra&&!r.prima_vacacional?'—':''}
                 </td>
-                <td style="color:${r.monto_faltas>0?'var(--red-warn)':'inherit'};">
-                  ${r.dias_falta>0?`${r.dias_falta} día${r.dias_falta!==1?'s':''} (-${fmt(r.monto_faltas)})`:'—'}
+                <td style="color:${(r.monto_faltas>0||r.monto_falta_justif>0)?'var(--red-warn)':'inherit'};">
+                  ${r.dias_falta>0?`${r.dias_falta} día${r.dias_falta!==1?'s':''} (-${fmt(r.monto_faltas)})`:''}
+                  ${r.dias_falta_justif>0?`${r.dias_falta>0?'<br>':''}${r.dias_falta_justif} just. (-${fmt(r.monto_falta_justif)})`:''}
+                  ${(!r.dias_falta&&!r.dias_falta_justif)?'—':''}
                 </td>
                 <td>-${fmt(r.cuota_imss)}</td>
                 <td>-${fmt(r.isr_retenido)}</td>
@@ -1282,7 +1284,13 @@ function _imssObreroRecibo(r, salBase) {
   const sbcD = parseFloat(t.sbc) > 0
     ? parseFloat(t.sbc)
     : calcSalarioDiario(parseFloat(t.salario_mensual || 0), t.periodo_salario || 'mensual');
-  const dias = parseInt(r.dias_laborados) || 0;
+  // Días cotizados = pagados menos ausencias sin goce (faltas, faltas
+  // justificadas y permisos sin goce). No se cotiza por días que el
+  // trabajador no cobra (mismo criterio que la generación automática).
+  const dias = Math.max(0, (parseInt(r.dias_laborados) || 0)
+    - (parseInt(r.dias_falta) || 0)
+    - (parseInt(r.dias_falta_justif) || 0)
+    - (parseInt(r.dias_permiso_sin) || 0));
   return typeof calcIMSSObrero === 'function'
     ? calcIMSSObrero(sbcD, dias, uma)
     : parseFloat((parseFloat(salBase || 0) * IMSS_OBRERO_PCT).toFixed(2));
@@ -1316,20 +1324,24 @@ function _recalcularPreviewRecibo() {
   const otrosIngresos = parseFloat(r.otros_ingresos || 0); // p. ej. pago patronal de incapacidad
   const totalPerc = parseFloat((salBase + comVentas + comRecup + bonoMeta + primaVac + aguinaldo + montoHE + primaDom + primaFest + vales + bonos + otrosIngresos).toFixed(2));
 
-  // ISR e IMSS recalculados sobre total percepciones
-  const { isrNeto } = calcISR(totalPerc, periodoTipo);
+  // Ausencias sin goce (capturadas en asistencia, no editables aquí)
+  const montoFaltas      = parseFloat(r.monto_faltas || 0);
+  const montoFaltaJustif = parseFloat(r.monto_falta_justif || 0);
+  const montoPSin        = parseFloat(r.monto_permiso_sin || 0);
+
+  // ISR e IMSS sobre la base devengada (percepciones menos ausencias sin goce)
+  const percGravable = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
+  const { isrNeto } = calcISR(percGravable, periodoTipo);
   const imss        = _imssObreroRecibo(r, salBase);
 
   // Deducciones
-  const montoFaltas = parseFloat(r.monto_faltas || 0);
-  const montoPSin   = parseFloat(r.monto_permiso_sin || 0);
   const fondoAhorro = g('re-fondo-ahorro');
   const prestamo    = g('re-prestamo');
   const infonavit   = g('re-infonavit');
   const pension     = g('re-pension');
   const otrasDed    = g('re-otras-ded');
 
-  const totalDed  = parseFloat((montoFaltas + montoPSin + imss + isrNeto + fondoAhorro + prestamo + infonavit + pension + otrasDed).toFixed(2));
+  const totalDed  = parseFloat((montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto + fondoAhorro + prestamo + infonavit + pension + otrasDed).toFixed(2));
   const neto      = parseFloat((totalPerc - totalDed).toFixed(2));
 
   const el = (id) => document.getElementById(id);
@@ -1375,12 +1387,17 @@ async function guardarEdicionRecibo(reciboId) {
   const periodoTipo = _trabEdit?.periodo_salario
     || (_N.periodos.find(p => p.id === _N.periodoActualId) || {}).tipo
     || 'mensual';
-  const { isrNeto } = calcISR(totalPerc, periodoTipo);
+  // Ausencias sin goce (capturadas en asistencia, no editables aquí)
+  const montoFaltas      = parseFloat(r.monto_faltas || 0);
+  const montoFaltaJustif = parseFloat(r.monto_falta_justif || 0);
+  const montoPSin        = parseFloat(r.monto_permiso_sin || 0);
+
+  // ISR e IMSS sobre la base devengada (percepciones menos ausencias sin goce)
+  const percGravable = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
+  const { isrNeto } = calcISR(percGravable, periodoTipo);
   const imss        = _imssObreroRecibo(r, salBase);
 
   // Deducciones
-  const montoFaltas = parseFloat(r.monto_faltas || 0);
-  const montoPSin   = parseFloat(r.monto_permiso_sin || 0);
   const fondoAhorro = g('re-fondo-ahorro');
   const fondoPatron = g('re-fondo-patron');
   const prestamo    = g('re-prestamo');
@@ -1390,7 +1407,7 @@ async function guardarEdicionRecibo(reciboId) {
   const notas       = gs('re-notas');
 
   const totalDed = parseFloat((
-    montoFaltas + montoPSin + imss + isrNeto +
+    montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto +
     fondoAhorro + prestamo + infonavit + pension + otrasDed
   ).toFixed(2));
   const neto = parseFloat((totalPerc - totalDed).toFixed(2));
@@ -1711,9 +1728,10 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
   for (const t of trabs) {
     const asist = asistMap[t.id] || [];
 
-    const faltas     = asist.filter(a => a.tipo === 'falta').length;
-    const permisoSin = asist.filter(a => a.tipo === 'permiso_sin').length;
-    const incapDias  = asist.filter(a => a.tipo === 'incapacidad').length;
+    const faltas      = asist.filter(a => a.tipo === 'falta').length;
+    const faltaJustif = asist.filter(a => a.tipo === 'falta_justif').length;
+    const permisoSin  = asist.filter(a => a.tipo === 'permiso_sin').length;
+    const incapDias   = asist.filter(a => a.tipo === 'incapacidad').length;
 
     // Días que cubre el salario base = TODOS los días naturales del período,
     // menos los de incapacidad (los cubre el IMSS vía subsidio; el patrón solo
@@ -1810,24 +1828,35 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     const totalPerc = parseFloat((salBase + vales + bono + montoHE + primaDom + primaFestivo + otrasPrestacionesMonto + incapacidadMonto + primaVacGoce).toFixed(2));
 
     // Deducciones base
-    const montoFaltas = parseFloat((daily * faltas).toFixed(2));
-    const montoPSin   = parseFloat((daily * permisoSin).toFixed(2));
+    const montoFaltas      = parseFloat((daily * faltas).toFixed(2));
+    const montoFaltaJustif = parseFloat((daily * faltaJustif).toFixed(2));
+    const montoPSin        = parseFloat((daily * permisoSin).toFixed(2));
+
+    // Días efectivamente devengados y base gravable: se descuentan las
+    // ausencias sin goce (faltas injustificadas, faltas justificadas y
+    // permisos sin goce). El ISR y las cuotas del IMSS se calculan sobre lo
+    // realmente percibido, NO sobre el salario de días que el trabajador no
+    // cobra: hacerlo sobre el bruto inflado le retiene de más (ISR progresivo
+    // y cuota obrera sobre un ingreso que nunca recibe).
+    const diasCotizados = Math.max(0, diasPagados - faltas - faltaJustif - permisoSin);
+    const percGravable  = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
+
     // IMSS obrero por ramos sobre el SBC diario (fallback: salario diario si el
-    // trabajador aún no tiene SBC calculado). Días cotizados = días pagados.
+    // trabajador aún no tiene SBC calculado). Días cotizados = días devengados.
     const sbcDiarioIMSS = parseFloat(t.sbc) > 0 ? parseFloat(t.sbc) : daily;
     const imss        = typeof calcIMSSObrero === 'function'
-      ? calcIMSSObrero(sbcDiarioIMSS, diasPagados, UMA_DIARIA_2026)
-      : parseFloat((salBase * IMSS_OBRERO_PCT).toFixed(2));
-    const { isrNeto, subsidio: subsidioEmpleo } = calcISR(totalPerc, t.periodo_salario || 'mensual');
+      ? calcIMSSObrero(sbcDiarioIMSS, diasCotizados, UMA_DIARIA_2026)
+      : parseFloat((percGravable * IMSS_OBRERO_PCT).toFixed(2));
+    const { isrNeto, subsidio: subsidioEmpleo } = calcISR(percGravable, t.periodo_salario || 'mensual');
 
     // Costo patronal del período (migración 32) — informativo, no afecta el
     // neto del trabajador: cuotas patronales IMSS (con la prima de riesgo de
     // la empresa) e ISN estatal sobre las percepciones.
     const imssPatronal = typeof calcIMSSPatronal === 'function'
-      ? calcIMSSPatronal(sbcDiarioIMSS, diasPagados, UMA_DIARIA_2026,
+      ? calcIMSSPatronal(sbcDiarioIMSS, diasCotizados, UMA_DIARIA_2026,
                          CTX.empresa.prima_riesgo_pct, t.smg_zone || 'general').total
       : 0;
-    const isnPeriodo   = parseFloat((totalPerc * (parseFloat(CTX.empresa.isn_pct) || 0)).toFixed(2));
+    const isnPeriodo   = parseFloat((percGravable * (parseFloat(CTX.empresa.isn_pct) || 0)).toFixed(2));
 
     // ── Deducciones especiales según config del trabajador ──────────────────
 
@@ -1930,7 +1959,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     }
 
     const totalDed = parseFloat((
-      montoFaltas + montoPSin + imss + isrNeto + fondoAhorroObrero +
+      montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto + fondoAhorroObrero +
       infonavitDescuento + pensionAlimenticia + prestamoEmpresa +
       descuentosDetalle.reduce((s, d) => s + d.monto, 0)
     ).toFixed(2));
@@ -1967,6 +1996,8 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       total_percepciones:   totalPerc,
       dias_falta:           faltas,
       monto_faltas:         montoFaltas,
+      dias_falta_justif:    faltaJustif,
+      monto_falta_justif:   montoFaltaJustif,
       dias_permiso_sin:     permisoSin,
       monto_permiso_sin:    montoPSin,
       cuota_imss:           imss,
@@ -2300,6 +2331,8 @@ async function descargarReciboNomina(reciboId) {
     const dedRows = [];
     if (parseFloat(recibo.monto_faltas || 0) > 0)
       dedRows.push(['Desc. por faltas', `${recibo.dias_falta} días × ${fmt(daily)}  Art. 58 LFT`, recibo.monto_faltas]);
+    if (parseFloat(recibo.monto_falta_justif || 0) > 0)
+      dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} días × ${fmt(daily)}  Arts. 82-84 LFT`, recibo.monto_falta_justif]);
     if (parseFloat(recibo.monto_permiso_sin || 0) > 0)
       dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} días`, recibo.monto_permiso_sin]);
     if (parseFloat(recibo.cuota_imss || 0) > 0)
@@ -2638,6 +2671,7 @@ async function _generarReciboNominaBlob(reciboId) {
   // 4. DEDUCCIONES
   const dedRows = [];
   if (parseFloat(recibo.monto_faltas||0) > 0)           dedRows.push(['Desc. por faltas', `${recibo.dias_falta} dias x ${np(fmt(daily))}  Art. 58 LFT`, `-${fmt(recibo.monto_faltas)}`]);
+  if (parseFloat(recibo.monto_falta_justif||0) > 0)     dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} dias x ${np(fmt(daily))}  Arts. 82-84 LFT`, `-${fmt(recibo.monto_falta_justif)}`]);
   if (parseFloat(recibo.monto_permiso_sin||0) > 0)      dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} dias`, `-${fmt(recibo.monto_permiso_sin)}`]);
   if (parseFloat(recibo.cuota_imss||0) > 0)             dedRows.push(['Cuota IMSS obrero', '2.25% s/base  Art. 25 LSS', `-${fmt(recibo.cuota_imss)}`]);
   if (parseFloat(recibo.isr_retenido||0) > 0)           dedRows.push(['ISR retenido', 'Art. 96 LISR 2026', `-${fmt(recibo.isr_retenido)}`]);
