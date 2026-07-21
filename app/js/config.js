@@ -12,6 +12,15 @@
 const SUPABASE_URL      = 'https://xqbzxkujooarntawzsoc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_AszON9V2sS11z0lKsr0gIA_eNhr04aR';
 
+// ─── Fase beta: reportes de bug ────────────────────────────────────────────
+// Correo del/los desarrollador(es) que ven el panel de reportes. Solo controla
+// la UI (mostrar el panel); el candado real es RLS `es_desarrollador()`
+// (migración 37). Debe coincidir con la tabla `desarrolladores`.
+const DEV_EMAIL   = 'oscar_ius@outlook.com';
+// Etiqueta de versión que se guarda con cada reporte para saber en qué build
+// ocurrió. Actualízala en cada despliegue relevante.
+const APP_VERSION = '2026.07';
+
 // ─── Constantes de Nómina 2026 ────────────────────────────────────────────
 const UMA_DIARIA          = 113.14;   // Unidad de Medida y Actualización 2026
 const IMSS_OBRERO_PCT     = 0.0225;   // 2.25% cuota obrero total simplificada

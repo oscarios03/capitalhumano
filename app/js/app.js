@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // candado real son las políticas RLS (migración 33).
   if (typeof aplicarGatesRol === 'function') aplicarGatesRol();
 
+  // Fase beta: botón flotante de reportes en toda la app + panel del dev
+  // (reportes_bug.js). El candado real es RLS (migración 37).
+  if (typeof initReporteBug === 'function') initReporteBug();
+
   // Multiempresa: mostrar switcher si tiene más de una empresa
   getEmpresasUsuario().then(list => {
     if (list.length > 1) {
@@ -132,7 +136,15 @@ function _renderRoute(route, param) {
     organigrama:   renderOrganigrama,
     reportes:      renderReportes,
     manual:        renderManual,
+    soporte:       renderPanelReportes,
   };
+
+  // Panel de reportes de la beta: solo el desarrollador. Candado real = RLS
+  // (migración 37); esto evita ofrecer la vista a quien no la puede leer.
+  if (route === 'soporte' && !(typeof esDesarrollador === 'function' && esDesarrollador())) {
+    main.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-search"></use></svg></div><p>Vista no encontrada</p></div>`;
+    return;
+  }
   // Gate central de plan: si la ruta requiere una feature no incluida,
   // se muestra la vista bloqueada (el enforcement real son los triggers)
   const feat = ROUTE_FEATURE[route];
