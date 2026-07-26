@@ -337,10 +337,13 @@ function _buildContratoData(trab, empresa, sucursal) {
     razonSocial:         empresa.nombre        || '',
     rfcPatron:           empresa.rfc           || '',
     domicilioFiscal:     empresa.domicilio     || '',
-    // Sin fallback geográfico: imprimir una ciudad ajena somete al cliente a
-    // tribunales que no le corresponden y falsea el lugar de celebración, que
-    // es uno de los puntos de conexión del art. 700 fr. II LFT.
-    ciudadFirma:         empresa.ciudad        || sucursal?.ciudad || '',
+    // La ciudad de celebración sigue al ESTABLECIMIENTO al que está adscrito el
+    // trabajador (su sucursal), no a la matriz/fiscal de la empresa: el lugar de
+    // prestación del servicio es uno de los puntos de conexión de competencia
+    // del art. 700 fr. II LFT, y para un trabajador de sucursal ese lugar es la
+    // sucursal, no donde esté domiciliada fiscalmente la empresa. Sin fallback
+    // a una ciudad ajena a ninguna de las dos: falsearla es peor que fallar.
+    ciudadFirma:         sucursal?.ciudad      || empresa.ciudad    || '',
     representanteLegal:  empresa.representante || '',
     cargoRepresentante:  'Representante Legal',
     domicilioSucursal:   sucursal?.domicilio   || empresa.domicilio || '',
@@ -366,12 +369,17 @@ function _buildContratoData(trab, empresa, sucursal) {
     diasPago:            trab.dias_pago        || '',
     tipoPruebaDias:      trab.periodo_prueba_dias || 30,
     funciones:           trab.funciones        || `Las inherentes al puesto de ${trab.puesto || '[PUESTO]'}`,
-    horaInicio:          trab.hora_inicio      || '09:00',
-    horaFin:             trab.hora_fin         || '18:00',
-    horaDescansoInicio:  trab.hora_descanso_inicio || '14:00',
-    horaDescansoFin:     trab.hora_descanso_fin    || '15:00',
-    diasSemana:          trab.dias_semana      || ['Lunes','Martes','Miercoles','Jueves','Viernes'],
-    diaDescanso:         trab.dia_descanso     || 'Domingo',
+    // Sin horario genérico de respaldo: la jornada debe ser la que realmente se
+    // capturó al dar de alta al trabajador (copiada del puesto o ajustada a
+    // mano). _exigirJornadaCapturada bloquea la generación si falta — imprimir
+    // "09:00 a 18:00, lunes a viernes" cuando nadie pactó eso es fabricar el
+    // contenido de un documento que se firma.
+    horaInicio:          trab.hora_inicio      || '',
+    horaFin:             trab.hora_fin         || '',
+    horaDescansoInicio:  trab.hora_descanso_inicio || '',
+    horaDescansoFin:     trab.hora_descanso_fin    || '',
+    diasSemana:          trab.dias_semana      || [],
+    diaDescanso:         trab.dia_descanso     || '',
     fechaVencimiento:    trab.fecha_vencimiento_contrato || '',
     nombreProyecto:      trab.nombre_proyecto  || '',
     fechaFinProyecto:    trab.fecha_fin_proyecto || '',
@@ -412,6 +420,29 @@ function _exigirCiudad(ciudad) {
 }
 
 /**
+ * Falla de forma visible si la jornada no viene de datos realmente capturados
+ * (puesto asignado o alta del trabajador). El Art. 25 fr. III LFT exige que el
+ * contrato señale la duración de la jornada; un horario genérico impreso por
+ * omisión no es la jornada pactada, es una invención que además el propio
+ * patrón podría no estar cumpliendo.
+ */
+function _exigirJornadaCapturada(data) {
+  const faltantes = [];
+  if (!data.horaInicio) faltantes.push('la hora de inicio');
+  if (!data.horaFin) faltantes.push('la hora de fin');
+  if (!Array.isArray(data.diasSemana) || !data.diasSemana.length) faltantes.push('los días laborales');
+  if (!data.diaDescanso) faltantes.push('el día de descanso semanal');
+  if (!faltantes.length) return;
+  throw new Error(
+    `Falta capturar ${faltantes.join(', ')} de la jornada de este trabajador. ` +
+    `El contrato debe imprimir el horario realmente pactado (Art. 25 fr. III LFT), ` +
+    `no un horario genérico. Captúralo en la pestaña Jornada del trabajador, o ` +
+    `asígnale un puesto que ya tenga su jornada estándar configurada, antes de ` +
+    `generar el contrato.`
+  );
+}
+
+/**
  * Redacción de la jornada: se imprime la efectivamente pactada y el máximo legal
  * queda sólo como referencia. Pactar la meta legislativa (40 h) antes de que sea
  * exigible la convierte en condición adquirida por irreversibilidad (arts. 31,
@@ -448,6 +479,7 @@ function _exigirJornadaLegal(data, anio = new Date().getFullYear()) {
 
 function _initContratoDoc(titulo, subtitulo, data) {
   _exigirCiudad(data.ciudadFirma);
+  _exigirJornadaCapturada(data);
   _exigirJornadaLegal(data);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });

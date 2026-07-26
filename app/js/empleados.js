@@ -1022,6 +1022,21 @@ function _onPuestoSeleccionado() {
   if (p.tipo_salario) { const ts = eid('n-tipo-salario'); if (ts) { ts.value = p.tipo_salario; if (typeof _toggleNominaConfig === 'function') _toggleNominaConfig(); } }
   if (p.pct_comision) { const pc = eid('n-pct-comision'); if (pc && !pc.value) pc.value = parseFloat(p.pct_comision) * 100; }
   if (p.es_puesto_direccion) { const dir = eid('n-es-direccion'); if (dir) { dir.checked = true; if (typeof _actualizarLimitesPrueba === 'function') _actualizarLimitesPrueba(); } }
+
+  // Jornada del puesto (migración 42): mismo criterio "copiar-no-vincular" —
+  // se copia sólo si el trabajador todavía no tiene esa hora capturada, para
+  // no pisar lo que ya se haya ajustado a mano.
+  setIfEmpty('n-hora-ini', p.hora_inicio);
+  setIfEmpty('n-hora-fin', p.hora_fin);
+  setIfEmpty('n-des-ini', p.hora_descanso_inicio);
+  setIfEmpty('n-des-fin', p.hora_descanso_fin);
+  setSel('n-dia-descanso', p.dia_descanso);
+  if (Array.isArray(p.dias_semana) && p.dias_semana.length) {
+    const checks = document.querySelectorAll('input[name="dias-semana"]');
+    const yaHayAlguno = [...checks].some(cb => cb.checked);
+    if (!yaHayAlguno) checks.forEach(cb => { cb.checked = p.dias_semana.includes(cb.value); });
+  }
+
   if (typeof _actualizarPreviewSalario === 'function') _actualizarPreviewSalario();
 }
 

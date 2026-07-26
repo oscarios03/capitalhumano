@@ -10,6 +10,10 @@ const _PERIODOS_PUESTO = [
   ['mensual', 'Mensual'], ['quincenal', 'Quincenal'], ['semanal', 'Semanal'],
 ];
 
+// Mismos valores (con acentos) que usa el checklist de días del alta en
+// empleados.js, para que el autollenado compare y copie el mismo literal.
+const _DIAS_SEMANA_PUESTO = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
 function _fmtMoneda(n) {
   if (n === null || n === undefined || n === '') return null;
   if (typeof fmt === 'function') return fmt(n);
@@ -187,6 +191,44 @@ async function showModalPuesto(id) {
             Puesto de dirección, confianza o técnico/profesional especializado (Art. 39-A/39-B LFT)
           </label>
         </div>
+
+        <div class="form-group span-2" style="margin-top:4px;">
+          <div style="font-weight:600;font-size:.85rem;">Jornada estándar del puesto</div>
+          <div class="helper-text">Se copia al trabajador al elegir este puesto en el alta (solo si el campo aún está vacío). El contrato imprime la jornada realmente capturada en el trabajador, no ésta.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora de inicio</label>
+          <input id="p-hora-ini" type="time" class="form-input" value="${v('hora_inicio')}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora de fin</label>
+          <input id="p-hora-fin" type="time" class="form-input" value="${v('hora_fin')}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Inicio descanso / comida</label>
+          <input id="p-des-ini" type="time" class="form-input" value="${v('hora_descanso_inicio')}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fin descanso / comida</label>
+          <input id="p-des-fin" type="time" class="form-input" value="${v('hora_descanso_fin')}" />
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Días laborales</label>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;">
+            ${_DIAS_SEMANA_PUESTO.map(d => `
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.88rem;color:var(--text-secondary);">
+                <input type="checkbox" name="p-dias-semana" value="${d}" style="width:15px;height:15px;accent-color:var(--gold-primary);"
+                  ${Array.isArray(p?.dias_semana) && p.dias_semana.includes(d) ? 'checked' : ''}> ${d}
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Día de descanso semanal</label>
+          <select id="p-dia-descanso" class="form-select">
+            <option value="">— Seleccionar —</option>
+            ${['Domingo','Sábado','Lunes','Otro'].map(o => `<option value="${o}" ${v('dia_descanso') === o ? 'selected' : ''}>${o}</option>`).join('')}
+          </select>
+        </div>
       </div>
       <div id="p-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
       <div class="modal-footer">
@@ -223,6 +265,12 @@ function _leerDatosPuesto() {
     pct_comision:        num('p-pct-comision') !== null ? num('p-pct-comision') / 100 : null,
     smg_zone:            eid('p-smg')?.value || 'general',
     es_puesto_direccion: eid('p-es-direccion')?.checked || false,
+    hora_inicio:          eid('p-hora-ini')?.value || null,
+    hora_fin:             eid('p-hora-fin')?.value || null,
+    hora_descanso_inicio: eid('p-des-ini')?.value || null,
+    hora_descanso_fin:    eid('p-des-fin')?.value || null,
+    dias_semana:          (() => { const d = [...document.querySelectorAll('input[name="p-dias-semana"]:checked')].map(cb => cb.value); return d.length ? d : null; })(),
+    dia_descanso:         eid('p-dia-descanso')?.value || null,
   };
 }
 
