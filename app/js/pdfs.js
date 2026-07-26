@@ -1220,8 +1220,18 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   // 5. RECUADRO ISR (solo liquidación)
   // ══════════════════════════════════════════════════════════════════════
   if (isLiq) {
-    const montoExento = 90 * result.smg * Math.max(result.completed, 1);
-    const isrTxt = `NOTA FISCAL — ART. 93 LISR: Los pagos por concepto de liquidacion pueden estar exentos de ISR hasta por un monto equivalente a 90 veces el SMG por ano de servicio. Para esta relacion laboral la exencion estimada es de ${fmt(montoExento)} (${result.completed} anos × 90 dias × ${fmt(result.smg)} SMG). El excedente, si lo hubiere, esta sujeto a retencion de ISR. Consulte a su contador para el calculo definitivo antes de efectuar el pago.`;
+    // Art. 93 fr. XIII LISR — la exención equivale a 90 veces la UMA (no el
+    // salario mínimo: desde el desindexamiento de 2016 el SM dejó de ser unidad
+    // de referencia fiscal) por cada año de servicio, y toda fracción mayor a
+    // seis meses se computa como año completo.
+    const uma            = _umaVigente();
+    const anioUma        = new Date().getFullYear();
+    const aniosComputables = result.frac - result.completed > 0.5
+      ? result.completed + 1
+      : result.completed;
+    const aniosExencion  = Math.max(aniosComputables, 1);
+    const montoExento    = 90 * uma * aniosExencion;
+    const isrTxt = `NOTA FISCAL — ART. 93 FRACC. XIII LISR: Los pagos por concepto de indemnizacion, prima de antiguedad y retiro pueden estar exentos de ISR hasta por el equivalente a 90 veces la UMA por cada ano de servicio, computandose como ano completo toda fraccion mayor a seis meses. Para esta relacion laboral la exencion estimada es de ${fmt(montoExento)} (${aniosExencion} ano(s) computable(s) × 90 × ${fmt(uma)} UMA diaria vigente ${anioUma}). El excedente, si lo hubiere, esta sujeto a retencion de ISR. Consulte a su contador para el calculo definitivo antes de efectuar el pago.`;
     ck(28);
     const isrLines = doc.splitTextToSize(np(isrTxt), tw - 10);
     const isrH = isrLines.length * 4.8 + 10;
