@@ -397,17 +397,17 @@ function _buildContratoData(trab, empresa, sucursal) {
 // ── Infraestructura interna del PDF ─────────────────────────────────────────
 
 /**
- * Falla de forma visible si falta la ciudad del patrón. El lugar de celebración
- * del contrato es punto de conexión de competencia (art. 700 fr. II LFT) y consta
- * en el bloque de firmas: no puede inventarse ni dejarse en blanco.
+ * Falla de forma visible si falta la ciudad del patrón. El lugar en que se
+ * suscribe el documento es punto de conexión de competencia (art. 700 fr. II
+ * LFT) y consta al calce: no puede inventarse ni dejarse en blanco.
  */
 function _exigirCiudad(ciudad) {
   if (String(ciudad || '').trim()) return;
   throw new Error(
-    'No está configurada la ciudad de la empresa. El lugar de celebración del ' +
-    'contrato determina la autoridad laboral competente (Art. 700 LFT), por lo ' +
-    'que no puede omitirse. Captúrala en Empresa → Datos fiscales antes de ' +
-    'generar el documento.'
+    'No está configurada la ciudad de la empresa. El lugar en que se suscribe el ' +
+    'documento es uno de los puntos que determinan la autoridad laboral competente ' +
+    '(Art. 700 LFT), por lo que no puede omitirse. Captúrala en Empresa → Datos ' +
+    'fiscales antes de generar el documento.'
   );
 }
 
@@ -1040,73 +1040,484 @@ function generateCartaRenuncia(empresa, trab, sucursal = null) {
   doc.save('carta-renuncia.pdf');
 }
 
-// ─── AVISO DE RESCISIÓN ───────────────────────────────────────────────────────
-function generateAvisoRecision(empresa, trab, result, sucursal = null) {
-  empresa = resolveUbicacion(empresa, sucursal);
+// ═══════════════════════════════════════════════════════════════════════════
+//  AVISOS DE RESCISIÓN Y DE TERMINACIÓN
+//
+//  Sustituyen a generateAvisoRecision(), que mezclaba tres figuras jurídicas
+//  incompatibles: se titulaba "TERMINACION", se subtitulaba con el art. 53
+//  fr. I (mutuo consentimiento) y en el cuerpo invocaba los arts. 49 y 50
+//  anunciando el pago de una "indemnizacion". Los arts. 49 y 50 sólo operan
+//  cuando el patrón YA PERDIÓ el juicio: son la regla de cuantificación de la
+//  indemnización constitucional. Emitir un aviso invocándolos es confesar por
+//  escrito, antes de todo litigio, que se despidió sin causa.
+//
+//  Cada figura tiene ahora su documento y su fundamento:
+//    · Rescisión con causa imputable ......... art. 47      → A
+//    · Negativa a recibir el aviso ........... art. 47 p.f. → B
+//    · Aviso al Tribunal (5 días hábiles) .... art. 47 p.f. → C
+//    · Terminación por agotarse la materia ... art. 53      → D
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Documento legal genérico (mismo marco visual que los contratos). */
+function _initDocLegal(titulo, subtitulo, empresa, prefijoFolio) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
   const ml = 25, mr = 25;
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const tw = pw - ml - mr;
-  let y = pdfHeader(doc, 'AVISO DE TERMINACION DE RELACION LABORAL', 'Articulo 53 fraccion I — Ley Federal del Trabajo', ml, mr);
+  const folio = `${prefijoFolio}-${Date.now().toString().slice(-7)}`;
+  const state = { doc, ml, mr, pw, ph, tw, y: 0, folio };
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(60,60,60);
-  doc.text(`${np(empresa.ciudad)}, a ${npDate(trab.fecha_baja)}`, pw - mr, y, { align:'right' }); y += 12;
+  doc.setFillColor(15, 20, 40);
+  doc.rect(0, 0, pw, 30, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+  doc.text(np(empresa.nombre || ''), pw/2, 10, { align:'center' });
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
+  doc.text(np([empresa.rfc, empresa.domicilio].filter(Boolean).join('  |  ')), pw/2, 18, { align:'center' });
+  doc.setFillColor(21,128,61);
+  doc.rect(ml - 2, 24, pw - ml - mr + 4, 12, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(15, 20, 40);
+  doc.text(np(titulo.toUpperCase()), pw/2, 31.5, { align:'center' });
+  state.y = 42;
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
-  doc.text(`C. ${np(trab.nombre).toUpperCase()}`, ml, y); y += 6;
-  if (trab.puesto) { doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40,40,40); doc.text(`Cargo: ${np(trab.puesto)}`, ml, y); y += 6; }
-  doc.setFont('helvetica','bold'); doc.text('P  R  E  S  E  N  T  E', ml, y); y += 12;
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
-  const rep = empresa.representante ? ` a traves de su Representante Legal ${np(empresa.representante)},` : ',';
-  const b1 = `Por medio del presente, ${np(empresa.nombre)}${rep} con RFC ${np(empresa.rfc || 'N/A')}, le comunica formalmente la TERMINACION DE SU RELACION LABORAL, con efectos a partir del dia ${npDate(trab.fecha_baja)}, en terminos de los articulos 49 y 50 de la Ley Federal del Trabajo.`;
-  let l = doc.splitTextToSize(b1, tw); doc.text(l, ml, y); y += l.length * 5.5 + 8;
-  const b2 = `La empresa procede al pago de la indemnizacion y demas prestaciones legales correspondientes, cuyo desglose se detalla en el Recibo de Liquidacion adjunto.`;
-  l = doc.splitTextToSize(b2, tw); doc.text(l, ml, y); y += l.length * 5.5 + 10;
-
-  y = pdfLine(doc, y, ml, mr) + 4;
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(50,50,50);
-  doc.text('DATOS DE LA RELACION LABORAL', ml, y); y += 8;
-
-  doc.autoTable({
-    startY: y, margin:{ left:ml, right:mr },
-    head:[['Concepto','Dato']],
-    body:[
-      ['Trabajador',       np(trab.nombre)],
-      ['RFC Trabajador',   np(trab.rfc || 'N/A')],
-      ['CURP',             np(trab.curp || 'N/A')],
-      ['NSS (IMSS)',       np(trab.nss || 'N/A')],
-      ['Puesto',           np(trab.puesto || 'N/A')],
-      ['Departamento',     np(trab.departamento || 'N/A')],
-      ['Fecha de ingreso', npDate(trab.fecha_ingreso)],
-      ['Fecha de baja',    npDate(trab.fecha_baja)],
-      ['Antiguedad',              `${result.completed} ano${result.completed!==1?'s':''} (${result.frac.toFixed(2)} fraccion)`],
-      [`Salario ${(trab.periodo_salario||'mensual')}`, fmt(trab.salario_mensual)],
-      ['Salario diario (Art. 89 LFT)', fmt(result.daily || (typeof calcSalarioDiario==='function' ? calcSalarioDiario(trab.salario_mensual, trab.periodo_salario||'mensual') : trab.salario_mensual/30))],
-      ['SDI',                     fmt(result.sdi)],
-      ['Dias laborados (total)',  `${result.diasLaborados} dias`],
-      [`Dias laborados en ${new Date(trab.fecha_baja+'T00:00:00').getFullYear()}`, `${result.diasEnAnio} dias (ano calendario)`],
-    ],
-    styles:{ fontSize:9, cellPadding:3, textColor:[40,40,40] },
-    headStyles:{ fillColor:[21,128,61], textColor:[0,0,0], fontStyle:'bold', fontSize:8 },
-    alternateRowStyles:{ fillColor:[248,248,252] },
-    columnStyles:{ 0:{ fontStyle:'bold', cellWidth:60 } },
-    theme:'grid'
-  });
-  y = doc.lastAutoTable.finalY + 14;
-
-  const b3 = `Conforme a lo anterior, el Trabajador reconoce haber sido notificado de la terminacion de su relacion laboral.`;
-  l = doc.splitTextToSize(b3, tw); doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(40,40,40);
-  doc.text(l, ml, y); y += l.length * 5.5 + 10;
-
-  pdfSignatures(doc, `${np(empresa.nombre)}\nRFC: ${np(empresa.rfc||'N/A')}`, `${np(trab.nombre)}\nRFC: ${np(trab.rfc||'N/A')}`, y, ml, mr);
-
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text('Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
-  doc.save('aviso-rescision.pdf');
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(110,110,110);
+  doc.text(np(subtitulo), pw/2, state.y, { align:'center' });
+  state.y += 10;
+  return state;
 }
+
+/** Encabezado "Ciudad, a fecha" alineado a la derecha. */
+function _ciudadFecha(state, ciudad, fechaISO) {
+  const { doc, pw, mr } = state;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
+  doc.text(np(`${ciudad}, a ${formatDateLong(fechaISO)}`), pw - mr, state.y, { align:'right' });
+  state.y += 12;
+}
+
+/** Bloque de firma con nombre, identificación y domicilio (para testigos). */
+function _firmaConIdentificacion(state, rotulo, nombre, ine, domicilio, x, ancho) {
+  const { doc } = state;
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(x, state.y, x + ancho, state.y);
+  let yy = state.y + 4.5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(30,30,30);
+  doc.text(np(rotulo), x, yy); yy += 4.2;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(70,70,70);
+  const lineas = doc.splitTextToSize(np(nombre || '_______________________________'), ancho);
+  doc.text(lineas, x, yy); yy += lineas.length * 3.8;
+  doc.setFontSize(6.8); doc.setTextColor(110,110,110);
+  doc.text(np(`INE / Identificación: ${ine || '_____________________'}`), x, yy); yy += 3.6;
+  const dl = doc.splitTextToSize(np(`Domicilio: ${domicilio || '_______________________________________'}`), ancho);
+  doc.text(dl, x, yy);
+  return yy + dl.length * 3.4;
+}
+
+/**
+ * Dos testigos con nombre, INE y domicilio. Sin domicilio no se les puede citar
+ * en juicio dos años después, que es cuando suele desahogarse la testimonial.
+ */
+function _bloqueTestigos(state, d) {
+  _checkY(state, 46);
+  const { doc, ml, tw } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+  doc.text('TESTIGOS DE ASISTENCIA', ml, state.y);
+  state.y += 12;
+  const colW = tw / 2 - 6;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'TESTIGO 1', d.testigo1_nombre, d.testigo1_ine, d.testigo1_domicilio, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'TESTIGO 2', d.testigo2_nombre, d.testigo2_ine, d.testigo2_domicilio, ml + colW + 12, colW);
+  state.y = Math.max(y1, y2) + 8;
+}
+
+/** Pie con folio, página y razón social. Sin la nota de "carácter referencial". */
+function _pieLegal(state, empresa) {
+  const { doc, pw, ph, ml, mr, folio } = state;
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
+    doc.line(ml, ph - 11, pw - mr, ph - 11);
+    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(160,160,160);
+    doc.text(np(`Folio ${folio}  |  Pagina ${i} de ${total}  |  ${empresa.nombre || ''}`), pw/2, ph - 7, { align:'center' });
+  }
+}
+
+function _nombreArchivo(base, trab) {
+  return `${base}-${np(trab.nombre || '').replace(/\s+/g,'-').toLowerCase()}.pdf`;
+}
+
+/** Salida uniforme: descarga o Blob, para que el Kit de defensa pueda empaquetar. */
+function _salidaDoc(state, empresa, nombreArchivo, opts = {}) {
+  _pieLegal(state, empresa);
+  if (opts.asBlob) return state.doc.output('blob');
+  state.doc.save(nombreArchivo);
+  return state.doc;
+}
+
+// ─── A. AVISO DE RESCISIÓN — ART. 47 LFT ─────────────────────────────────────
+/**
+ * Aviso de rescisión con causa imputable al trabajador.
+ *
+ * El art. 47 exige que el aviso refiera CLARAMENTE la conducta o conductas que
+ * motivan la rescisión y la fecha o fechas en que se cometieron. Por eso la
+ * descripción circunstanciada y la fracción invocada son obligatorias: un aviso
+ * genérico equivale a no darlo, y su falta presume la separación injustificada.
+ *
+ * @param {Object} datos  { fraccion_art47, descripcion_circunstanciada, evidencia,
+ *                          fecha_efectos, domicilio_trabajador, testigo1_*, testigo2_* }
+ */
+function generateAvisoRescisionArt47(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  const fraccion = String(datos.fraccion_art47 || '').trim();
+  const literal  = typeof textoFraccionArt47 === 'function' ? textoFraccionArt47(fraccion) : null;
+  if (!literal) {
+    throw new Error(
+      `Falta indicar la fracción del artículo 47 LFT que motiva la rescisión, o la ` +
+      `capturada ("${fraccion || 'vacía'}") no existe. El aviso debe citar la fracción ` +
+      `exacta y reproducir su texto: sin ella, la rescisión no se sostiene en juicio.`
+    );
+  }
+  if (!String(datos.descripcion_circunstanciada || '').trim()) {
+    throw new Error(
+      'Falta la descripción circunstanciada de los hechos. El artículo 47 LFT exige ' +
+      'que el aviso refiera claramente la conducta que motiva la rescisión y la fecha ' +
+      'en que se cometió, con circunstancias de modo, tiempo y lugar.'
+    );
+  }
+
+  const fechaEfectos = datos.fecha_efectos || trab.fecha_baja;
+  const state = _initDocLegal(
+    'Aviso de rescisión de la relación de trabajo',
+    'Artículo 47 de la Ley Federal del Trabajo',
+    empresa, 'AVR');
+
+  _ciudadFecha(state, empresa.ciudad, fechaEfectos);
+
+  // Destinatario — el domicilio es indispensable: si el trabajador se niega a
+  // recibir, hay que proporcionárselo al Tribunal (art. 47, párrafo tercero).
+  const { doc, ml } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(np(`C. ${(trab.nombre || '').toUpperCase()}`), ml, state.y); state.y += 5.5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  if (trab.puesto) { doc.text(np(`Puesto: ${trab.puesto}`), ml, state.y); state.y += 4.6; }
+  const domTrab = datos.domicilio_trabajador || trab.domicilio || '';
+  const domLines = doc.splitTextToSize(np(`Domicilio: ${domTrab || '[NO REGISTRADO]'}`), state.tw);
+  doc.text(domLines, ml, state.y); state.y += domLines.length * 4.6 + 2;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text('P R E S E N T E', ml, state.y); state.y += 10;
+
+  _p(state, `Por medio del presente y con fundamento en el articulo 47, fraccion ${fraccion}, de la Ley Federal del Trabajo, ${np(empresa.nombre)} le comunica la RESCISION DE LA RELACION DE TRABAJO que nos vincula, SIN RESPONSABILIDAD PARA EL PATRON, con efectos a partir del ${npDate(fechaEfectos)}.`);
+
+  _gap(state, 2);
+  _p(state, 'CAUSA O CAUSAS QUE MOTIVAN LA RESCISION:', { bold: true, fontSize: 9 });
+  _p(state, datos.descripcion_circunstanciada, { indent: 3 });
+
+  if (String(datos.evidencia || '').trim()) {
+    _p(state, `Los hechos anteriores se acreditan con: ${datos.evidencia}`, { indent: 3 });
+  }
+
+  _p(state, `Dichos hechos actualizan la hipotesis prevista en el articulo 47, fraccion ${fraccion}, de la Ley Federal del Trabajo, consistente en: "${literal}"`);
+
+  _p(state, `Quedan a su disposicion, en el domicilio de la empresa, las cantidades que le correspondan por concepto de partes proporcionales de las prestaciones generadas hasta la fecha de la separacion.`);
+
+  // Acuse — la prescripción de las acciones del trabajador no corre sino hasta
+  // que recibe personalmente el aviso (art. 47, párrafo cuarto).
+  _gap(state, 4);
+  _checkY(state, 44);
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.setFillColor(250,250,252);
+  doc.roundedRect(ml, state.y, state.tw, 36, 2, 2, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(50,50,50);
+  doc.text('ACUSE DE RECIBO', ml + 5, state.y + 7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
+  doc.text('Recibi original del presente aviso el dia ____ de ______________ de ______',
+    ml + 5, state.y + 15);
+  doc.text('a las ____:____ horas.', ml + 5, state.y + 21);
+  doc.setDrawColor(150,150,150);
+  doc.line(ml + 5, state.y + 31, ml + 78, state.y + 31);
+  doc.setFontSize(7); doc.setTextColor(90,90,90);
+  doc.text(np('Firma de EL TRABAJADOR'), ml + 5, state.y + 34.5);
+  doc.rect(state.tw - 24, state.y + 12, 26, 20);
+  doc.setFontSize(6.5); doc.setTextColor(140,140,140);
+  doc.text('Huella digital', state.tw - 23 + 13, state.y + 34.5, { align:'center' });
+  state.y += 44;
+
+  // Firma del patrón
+  _checkY(state, 30);
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y + 16, ml + 90, state.y + 16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text(np('EL PATRON / REPRESENTANTE LEGAL'), ml, state.y + 20.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(empresa.representante || empresa.nombre), ml, state.y + 25);
+  state.y += 34;
+
+  _bloqueTestigos(state, datos);
+
+  return _salidaDoc(state, empresa, _nombreArchivo('aviso-rescision-art47', trab), opts);
+}
+
+// ─── B. ACTA DE NEGATIVA A RECIBIR EL AVISO ──────────────────────────────────
+/**
+ * Se levanta cuando el trabajador se niega a recibir el aviso de rescisión.
+ * Es el soporte del aviso al Tribunal del art. 47: sin ella, la negativa es un
+ * dicho del patrón sin respaldo.
+ */
+function generateActaNegativaRecibirAviso(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  const fecha = datos.fecha_negativa || datos.fecha_efectos || trab.fecha_baja;
+  const state = _initDocLegal(
+    'Acta circunstanciada de negativa a recibir el aviso de rescisión',
+    'Artículo 47 de la Ley Federal del Trabajo',
+    empresa, 'ANR');
+
+  const { doc, ml } = state;
+  const lugar = datos.lugar_exacto || empresa.domicilio || '';
+
+  _p(state, `En ${np(lugar)}, siendo las ${np(datos.hora_inicio || '____:____')} horas del dia ${npDate(fecha)}, el suscrito ${np(empresa.representante || '[REPRESENTANTE]')}, en representacion de ${np(empresa.nombre)}, hace constar los hechos que a continuacion se relacionan.`);
+
+  _p(state, 'PERSONAS QUE INTERVIENEN:', { bold: true, fontSize: 9 });
+  _table(state,
+    [['Carácter','Nombre','INE / Identificación','Domicilio']],
+    [
+      ['Representante del patrón', np(empresa.representante || ''), np(datos.representante_ine || ''), np(datos.representante_domicilio || empresa.domicilio || '')],
+      ['Trabajador',               np(trab.nombre || ''),           np(trab.num_identificacion || ''), np(datos.domicilio_trabajador || trab.domicilio || '')],
+      ['Testigo 1',                np(datos.testigo1_nombre || ''), np(datos.testigo1_ine || ''),      np(datos.testigo1_domicilio || '')],
+      ['Testigo 2',                np(datos.testigo2_nombre || ''), np(datos.testigo2_ine || ''),      np(datos.testigo2_domicilio || '')],
+    ],
+    { columnStyles: { 0:{ cellWidth:32, fontStyle:'bold' }, 1:{ cellWidth:44 }, 2:{ cellWidth:34 }, 3:{ cellWidth:52 } } }
+  );
+
+  _p(state, 'HECHOS:', { bold: true, fontSize: 9 });
+  _p(state, `Encontrandose presente el C. ${np(trab.nombre)}, quien se desempena como ${np(trab.puesto || '')}, se le hizo entrega material del AVISO DE RESCISION DE LA RELACION DE TRABAJO de esta misma fecha, fundado en el articulo 47, fraccion ${np(datos.fraccion_art47 || '____')}, de la Ley Federal del Trabajo, dandole lectura integra a su contenido.`, { indent: 3 });
+
+  _p(state, datos.narracion_negativa || 'Acto seguido, EL TRABAJADOR se NEGO a recibir el documento y a firmar el acuse correspondiente.', { indent: 3 });
+
+  _p(state, 'MANIFESTACION TEXTUAL DE EL TRABAJADOR:', { bold: true, fontSize: 9 });
+  _p(state, `Se concede el uso de la voz a EL TRABAJADOR, quien manifiesta textualmente: "${np(datos.manifestacion_trabajador || '[EL TRABAJADOR NO MANIFESTO NADA]')}"`, { indent: 3 });
+
+  _p(state, `Se hace constar que el ejemplar del aviso quedo a disposicion de EL TRABAJADOR en el domicilio de la empresa, y que ${np(empresa.nombre)} procedera a hacer del conocimiento del Tribunal Laboral competente la presente negativa, dentro de los cinco dias habiles siguientes, proporcionando el ultimo domicilio registrado de EL TRABAJADOR, en terminos del articulo 47 de la Ley Federal del Trabajo.`);
+
+  _p(state, `No habiendo mas hechos que hacer constar, se da por concluida la presente diligencia siendo las ${np(datos.hora_cierre || '____:____')} horas del dia ${npDate(fecha)}, leyendose integramente la presente acta a los que en ella intervinieron, quienes manifiestan estar conformes con su contenido y firman al margen y al calce para constancia.`);
+
+  _gap(state, 6);
+  _checkY(state, 34);
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  const colW = state.tw / 2 - 6;
+  doc.line(ml, state.y + 16, ml + colW, state.y + 16);
+  doc.line(ml + colW + 12, state.y + 16, ml + colW + 12 + colW, state.y + 16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text(np('EL PATRON / REPRESENTANTE'), ml, state.y + 20.5);
+  doc.text(np('EL TRABAJADOR (se nego a firmar)'), ml + colW + 12, state.y + 20.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(empresa.representante || empresa.nombre), ml, state.y + 25);
+  doc.text(np(trab.nombre || ''), ml + colW + 12, state.y + 25);
+  state.y += 34;
+
+  _bloqueTestigos(state, datos);
+
+  return _salidaDoc(state, empresa, _nombreArchivo('acta-negativa-aviso', trab), opts);
+}
+
+// ─── C. AVISO DE RESCISIÓN AL TRIBUNAL LABORAL ───────────────────────────────
+/**
+ * Escrito para hacer del conocimiento del Tribunal la rescisión cuando el
+ * trabajador se negó a recibir el aviso.
+ *
+ * PLAZO FATAL: cinco días hábiles siguientes (art. 47). Vencido, la falta de
+ * aviso presume la separación injustificada.
+ */
+function generateAvisoTribunalArt47(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  const domTrab = datos.domicilio_trabajador || trab.domicilio || '';
+  if (!String(domTrab).trim()) {
+    throw new Error(
+      'Falta el último domicilio registrado del trabajador. El artículo 47 LFT exige ' +
+      'proporcionarlo al Tribunal para que la autoridad pueda notificar el aviso en ' +
+      'forma personal; sin él, el escrito no cumple su finalidad.'
+    );
+  }
+
+  const fechaResc = datos.fecha_efectos || trab.fecha_baja;
+  const fraccion  = String(datos.fraccion_art47 || '').trim();
+  const state = _initDocLegal(
+    'Aviso de rescisión al Tribunal Laboral',
+    'Artículo 47 de la Ley Federal del Trabajo',
+    empresa, 'ATL');
+
+  _ciudadFecha(state, empresa.ciudad, datos.fecha_presentacion_tribunal || new Date().toISOString().slice(0,10));
+
+  const { doc, ml } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text('C. JUEZ DEL TRIBUNAL LABORAL EN TURNO', ml, state.y); state.y += 5.5;
+  doc.text('P R E S E N T E', ml, state.y); state.y += 10;
+
+  _p(state, `${np(empresa.representante || '[REPRESENTANTE LEGAL]')}, en mi caracter de representante legal de ${np(empresa.nombre)}, con Registro Federal de Contribuyentes ${np(empresa.rfc || '[RFC]')} y domicilio en ${np(empresa.domicilio || '')}, personalidad que acredito con ${np(datos.documento_personalidad || '[DOCUMENTO QUE ACREDITA LA PERSONALIDAD]')}, ante ese H. Tribunal comparezco y expongo:`);
+
+  _p(state, `Que por medio del presente escrito, y con fundamento en el articulo 47 de la Ley Federal del Trabajo, vengo a hacer del conocimiento de ese H. Tribunal la RESCISION DE LA RELACION DE TRABAJO que mi representada sostenia con el C. ${np(trab.nombre)}, asi como la NEGATIVA de dicho trabajador a recibir el aviso correspondiente, para los efectos legales a que haya lugar.`);
+
+  _p(state, 'DATOS DE LA RELACION DE TRABAJO:', { bold: true, fontSize: 9 });
+  _table(state, [['Concepto','Dato']], [
+    ['Trabajador',                      np(trab.nombre || '')],
+    ['CURP',                            np(trab.curp || '')],
+    ['Número de Seguridad Social',      np(trab.nss || '')],
+    ['Puesto',                          np(trab.puesto || '')],
+    ['Fecha de ingreso',                trab.fecha_ingreso ? npDate(trab.fecha_ingreso) : ''],
+    ['Fecha de la rescisión',           fechaResc ? npDate(fechaResc) : ''],
+    ['Fracción del art. 47 invocada',   np(fraccion ? `Fracción ${fraccion}` : '')],
+    ['ÚLTIMO DOMICILIO REGISTRADO',     np(domTrab)],
+  ], { columnStyles: { 0:{ cellWidth:62, fontStyle:'bold' } } });
+
+  _p(state, `El ultimo domicilio que mi representada tiene registrado del trabajador es el senalado en el cuadro que antecede, y se proporciona a fin de que ese H. Tribunal se sirva notificarle el aviso de rescision en forma personal, conforme a lo dispuesto por el articulo 47 de la Ley Federal del Trabajo.`);
+
+  _p(state, 'CAUSA DE LA RESCISION:', { bold: true, fontSize: 9 });
+  _p(state, np(datos.descripcion_circunstanciada || '[DESCRIPCION CIRCUNSTANCIADA DE LOS HECHOS]'), { indent: 3 });
+
+  _p(state, 'ANEXOS:', { bold: true, fontSize: 9 });
+  _p(state, '1. Copia del aviso de rescision de la relacion de trabajo.\n2. Acta circunstanciada de negativa a recibir el aviso.\n3. Documento con el que se acredita la personalidad del suscrito.', { indent: 3 });
+
+  _p(state, 'Por lo anteriormente expuesto, a ese H. Tribunal atentamente pido se sirva:', { bold: true, fontSize: 9 });
+  _p(state, `UNICO. Tener por presentado en tiempo y forma el aviso de rescision a que se refiere el articulo 47 de la Ley Federal del Trabajo, y ordenar la notificacion personal al trabajador en el domicilio senalado.`, { indent: 3 });
+
+  _gap(state, 8);
+  _p(state, 'PROTESTO LO NECESARIO', { bold: true, fontSize: 9 });
+  _gap(state, 14);
+  _checkY(state, 26);
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y, ml + 95, state.y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text(np(empresa.representante || '[REPRESENTANTE LEGAL]'), ml, state.y + 5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(`Representante legal de ${empresa.nombre}`), ml, state.y + 9.5);
+  state.y += 20;
+
+  // Acuse de la autoridad
+  _checkY(state, 34);
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.setLineDash([2,2]);
+  doc.rect(state.pw - state.mr - 70, state.y, 70, 28);
+  doc.setLineDash([]);
+  doc.setFontSize(6.8); doc.setTextColor(150,150,150);
+  doc.text('Sello de recepción del Tribunal', state.pw - state.mr - 35, state.y + 15, { align:'center' });
+  state.y += 34;
+
+  return _salidaDoc(state, empresa, _nombreArchivo('aviso-tribunal-art47', trab), opts);
+}
+
+// ─── D. AVISO DE TERMINACIÓN — ART. 53 LFT ───────────────────────────────────
+/**
+ * Terminación por agotarse la materia del contrato. NO es una rescisión: no hay
+ * conducta imputable al trabajador, y por eso este documento sí menciona el pago
+ * de partes proporcionales. Nunca los arts. 49 ni 50.
+ *
+ * @param {Object} datos { fraccion_art53: 'III' | 'IV', ... }
+ */
+function generateAvisoTerminacionArt53(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  const fr = String(datos.fraccion_art53 || 'III').trim().toUpperCase();
+  const SUPUESTOS = {
+    'III': {
+      sub: 'Artículo 53 fracción III de la Ley Federal del Trabajo',
+      txt: 'la conclusion de la obra o el vencimiento del termino o inversion del capital, conforme a los articulos 36, 37 y 38 de la Ley Federal del Trabajo',
+    },
+    'IV': {
+      sub: 'Artículo 53 fracción IV de la Ley Federal del Trabajo',
+      txt: 'la incapacidad fisica o mental o inhabilidad manifiesta de EL TRABAJADOR que hace imposible la prestacion del trabajo',
+    },
+  };
+  const sup = SUPUESTOS[fr];
+  if (!sup) {
+    throw new Error(
+      `La fracción del artículo 53 capturada ("${fr}") no corresponde a un supuesto ` +
+      `de terminación documentable por aviso. Usa la fracción III (conclusión de la ` +
+      `obra o vencimiento del término) o la IV (incapacidad física o mental). Si la ` +
+      `separación obedece a una conducta del trabajador, el documento aplicable es el ` +
+      `aviso de rescisión del artículo 47, no éste.`
+    );
+  }
+
+  const fechaEfectos = datos.fecha_efectos || trab.fecha_baja;
+  const state = _initDocLegal(
+    'Aviso de terminación de la relación de trabajo',
+    sup.sub, empresa, 'ATM');
+
+  _ciudadFecha(state, empresa.ciudad, fechaEfectos);
+
+  const { doc, ml } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(np(`C. ${(trab.nombre || '').toUpperCase()}`), ml, state.y); state.y += 5.5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  if (trab.puesto) { doc.text(np(`Puesto: ${trab.puesto}`), ml, state.y); state.y += 4.6; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text('P R E S E N T E', ml, state.y); state.y += 10;
+
+  _p(state, `Por medio del presente, ${np(empresa.nombre)} le comunica que la relacion de trabajo que nos vincula concluye con efectos a partir del ${npDate(fechaEfectos)}, por actualizarse el supuesto previsto en el articulo 53, fraccion ${fr}, de la Ley Federal del Trabajo, consistente en ${sup.txt}.`);
+
+  if (String(datos.motivo_detalle || '').trim()) {
+    _p(state, np(datos.motivo_detalle), { indent: 3 });
+  }
+
+  _p(state, `La presente conclusion no obedece a causa imputable a usted ni constituye sancion alguna. Quedan a su disposicion, en el domicilio de la empresa, las cantidades que le corresponden por concepto de partes proporcionales de aguinaldo, vacaciones y prima vacacional generadas hasta la fecha senalada, asi como la prima de antiguedad en los terminos del articulo 162 de la Ley Federal del Trabajo.`);
+
+  _p(state, `Se agradece a usted el desempeno prestado durante la vigencia de la relacion de trabajo.`);
+
+  _gap(state, 4);
+  _checkY(state, 40);
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.setFillColor(250,250,252);
+  doc.roundedRect(ml, state.y, state.tw, 32, 2, 2, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(50,50,50);
+  doc.text('ACUSE DE RECIBO', ml + 5, state.y + 7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
+  doc.text('Recibi original del presente aviso el dia ____ de ______________ de ______',
+    ml + 5, state.y + 15);
+  doc.setDrawColor(150,150,150);
+  doc.line(ml + 5, state.y + 26, ml + 78, state.y + 26);
+  doc.setFontSize(7); doc.setTextColor(90,90,90);
+  doc.text(np('Firma de EL TRABAJADOR'), ml + 5, state.y + 29.5);
+  state.y += 40;
+
+  _checkY(state, 30);
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y + 16, ml + 90, state.y + 16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text(np('EL PATRON / REPRESENTANTE LEGAL'), ml, state.y + 20.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(empresa.representante || empresa.nombre), ml, state.y + 25);
+  state.y += 34;
+
+  _bloqueTestigos(state, datos);
+
+  return _salidaDoc(state, empresa, _nombreArchivo('aviso-terminacion-art53', trab), opts);
+}
+
+/**
+ * @deprecated Eliminada. Mezclaba rescisión (art. 47), terminación (art. 53) e
+ * indemnización por despido injustificado (arts. 49-50) en un solo documento.
+ * No se conserva un alias funcional a propósito: seguir emitiendo aquel PDF es
+ * peor que fallar, porque equivale a confesar un despido injustificado.
+ */
+function generateAvisoRecision() {
+  throw new Error(
+    'El "Aviso de Rescisión" anterior fue retirado porque invocaba los artículos 49 ' +
+    'y 50 de la LFT, que sólo operan cuando el patrón ya perdió el juicio, y anunciaba ' +
+    'el pago de una indemnización. Usa el documento que corresponda: ' +
+    'generateAvisoRescisionArt47 (causa imputable al trabajador), ' +
+    'generateAvisoTerminacionArt53 (conclusión de obra, vencimiento del término o ' +
+    'incapacidad), generateActaNegativaRecibirAviso o generateAvisoTribunalArt47.'
+  );
+}
+
 
 // ─── RECIBO DE LIQUIDACIÓN / FINIQUITO — v2 ──────────────────────────────────
 /**

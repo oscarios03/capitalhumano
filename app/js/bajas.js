@@ -1,6 +1,9 @@
 /**
  * Capital Humano MX — Módulo Bajas
- * Depende de: app.js (CTX, eid, navigate, showModal, closeModal, db, helpers, calcLiquidacion, calcFiniquito, generateAvisoRecision, generateRecibo, generateCartaRenuncia)
+ * Depende de: app.js (CTX, eid, navigate, showModal, closeModal, db, helpers,
+ * calcLiquidacion, calcFiniquito, generateRecibo, generateCartaRenuncia,
+ * generateAvisoRescisionArt47, generateActaNegativaRecibirAviso,
+ * generateAvisoTribunalArt47), calculo.js (FALTAS_CATALOG)
  */
 
 // ═══════════════════════════════════════════════════════
@@ -82,6 +85,68 @@ async function renderBajas(preselId) {
               Incluir prima de antigüedad por acuerdo voluntario (si tiene menos de 15 años)
             </label>
           </div>
+
+          <!-- Datos que el Art. 47 LFT exige para que la rescisión se sostenga.
+               Sólo se piden en la rescisión justificada. -->
+          <div class="form-group span-2" id="baja-art47-group" style="display:none;">
+            <div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;background:var(--bg-surface);">
+              <div style="font-weight:700;font-size:.9rem;margin-bottom:4px;">Datos de la rescisión — Artículo 47 LFT</div>
+              <div class="helper-text" style="margin-bottom:14px;">
+                El aviso debe referir claramente la conducta que motiva la rescisión y la fecha en que se cometió.
+                Sin estos datos el aviso no cumple el Art. 47 y su falta presume la separación injustificada.
+              </div>
+
+              <div class="form-grid" style="gap:14px;">
+                <div class="form-group">
+                  <label class="form-label" for="baja-conocimiento">Fecha en que se conoció la causa <span class="req">*</span></label>
+                  <input id="baja-conocimiento" type="date" class="form-input" onchange="revisarPrescripcion517()" />
+                  <div class="helper-text">Inicia el plazo de un mes del Art. 517 fracc. I.</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="baja-fraccion47">Fracción del Art. 47 <span class="req">*</span></label>
+                  <select id="baja-fraccion47" class="form-select"></select>
+                </div>
+                <div class="form-group span-2" id="baja-prescripcion-warn"></div>
+                <div class="form-group span-2">
+                  <label class="form-label" for="baja-descripcion">Descripción circunstanciada de los hechos <span class="req">*</span></label>
+                  <textarea id="baja-descripcion" class="form-textarea" rows="4"
+                            placeholder="Modo, tiempo y lugar. Ej.: El 12 de julio de 2026, siendo las 09:40 horas, en el andén de carga del centro de trabajo ubicado en…, el trabajador…"></textarea>
+                </div>
+                <div class="form-group span-2">
+                  <label class="form-label" for="baja-evidencia">Evidencia con la que se acreditan los hechos</label>
+                  <input id="baja-evidencia" type="text" class="form-input"
+                         placeholder="Ej.: video de la cámara 3, acta administrativa del 12/07/2026, testimonio de…" />
+                </div>
+                <div class="form-group span-2">
+                  <label class="form-label" for="baja-domicilio-trab">Domicilio del trabajador <span class="req">*</span></label>
+                  <input id="baja-domicilio-trab" type="text" class="form-input"
+                         placeholder="Se necesita para el aviso al Tribunal si se niega a recibir" />
+                </div>
+
+                <div class="form-group span-2" style="margin-top:2px;">
+                  <div style="font-weight:600;font-size:.82rem;color:var(--text-secondary);">
+                    Testigos — se piden INE y domicilio porque la testimonial suele desahogarse dos años después
+                  </div>
+                </div>
+                <div class="form-group"><label class="form-label" for="baja-t1-nombre">Testigo 1 — nombre completo</label><input id="baja-t1-nombre" type="text" class="form-input" /></div>
+                <div class="form-group"><label class="form-label" for="baja-t1-ine">Testigo 1 — INE</label><input id="baja-t1-ine" type="text" class="form-input" /></div>
+                <div class="form-group span-2"><label class="form-label" for="baja-t1-dom">Testigo 1 — domicilio</label><input id="baja-t1-dom" type="text" class="form-input" /></div>
+                <div class="form-group"><label class="form-label" for="baja-t2-nombre">Testigo 2 — nombre completo</label><input id="baja-t2-nombre" type="text" class="form-input" /></div>
+                <div class="form-group"><label class="form-label" for="baja-t2-ine">Testigo 2 — INE</label><input id="baja-t2-ine" type="text" class="form-input" /></div>
+                <div class="form-group span-2"><label class="form-label" for="baja-t2-dom">Testigo 2 — domicilio</label><input id="baja-t2-dom" type="text" class="form-input" /></div>
+
+                <div class="form-group span-2">
+                  <label class="form-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <input type="checkbox" id="baja-aviso-rechazado" style="width:16px;height:16px;accent-color:var(--gold-primary);" />
+                    El trabajador <strong>se negó a recibir</strong> el aviso
+                  </label>
+                  <div class="helper-text">
+                    Activa el acta de negativa y el escrito al Tribunal, que debe presentarse dentro de los cinco días hábiles siguientes.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div id="baja-tipo-desc" class="alert alert-info" style="margin-bottom:16px;">
@@ -147,13 +212,83 @@ function actualizarTipoBaja() {
   if (!desc || !antig) return;
 
   const msgs = {
-    injustificada: `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Despido sin justificación:</strong> Se generará Aviso de Rescisión + Recibo de Liquidación (incluye indemnización constitucional de 90 días SDI).</span>`,
+    injustificada: `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Despido sin justificación:</strong> Se generará el Recibo de Liquidación (incluye indemnización constitucional de 90 días SDI). No se emite aviso de rescisión: no hay causa que invocar, y un aviso sin causa acredita el despido injustificado.</span>`,
     renuncia:      `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Renuncia voluntaria:</strong> Se generará Carta de Renuncia + Recibo de Finiquito (prestaciones proporcionales).</span>`,
-    justificada:   `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Rescisión con causa justificada (Art. 47):</strong> Se generará Recibo de Finiquito. Debe existir acta rescisoria previa.</span>`,
+    justificada:   `<svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span><strong>Rescisión con causa justificada (Art. 47):</strong> Se generará el Aviso de Rescisión del Art. 47 + Recibo de Finiquito. Captura la fracción y los hechos: sin aviso, la separación se presume injustificada.</span>`,
   };
   desc.innerHTML = msgs[tipo] || '';
   desc.className = tipo === 'injustificada' ? 'alert alert-warn' : tipo === 'justificada' ? 'alert alert-danger' : 'alert alert-info';
   antig.style.display = tipo === 'renuncia' ? '' : 'none';
+
+  const art47 = eid('baja-art47-group');
+  if (art47) {
+    art47.style.display = tipo === 'justificada' ? '' : 'none';
+    if (tipo === 'justificada') _llenarFraccionesArt47();
+  }
+}
+
+/** Opciones del select de fracciones, tomadas del catálogo verificado. */
+function _llenarFraccionesArt47() {
+  const sel = eid('baja-fraccion47');
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = '<option value="">— Selecciona la causa —</option>';
+  (typeof FALTAS_CATALOG !== 'undefined' ? FALTAS_CATALOG : [])
+    .filter(f => f.fraccion && f.severity.includes('rescisoria'))
+    .forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.fraccion;
+      o.textContent = `Fracc. ${f.fraccion} — ${f.label}`;
+      sel.appendChild(o);
+    });
+}
+
+/**
+ * Advertencia de prescripción del Art. 517 fracc. I: el patrón tiene UN MES
+ * desde el día siguiente a aquel en que conoció la causa. Rescindir vencido ese
+ * plazo convierte el despido en injustificado, así que la advertencia escala
+ * conforme se acerca el vencimiento y no se puede descartar una vez cumplido.
+ */
+function revisarPrescripcion517() {
+  const box = eid('baja-prescripcion-warn');
+  const val = eid('baja-conocimiento')?.value;
+  if (!box) return;
+  if (!val) { box.innerHTML = ''; return; }
+
+  const conocimiento = new Date(val + 'T00:00:00');
+  const hoy = new Date(new Date().toISOString().slice(0,10) + 'T00:00:00');
+  // El plazo es de un mes calendario, no de 30 días: febrero y julio no miden igual.
+  const vence = new Date(conocimiento);
+  vence.setMonth(vence.getMonth() + 1);
+  const diasRestantes = Math.floor((vence - hoy) / 86400000);
+  const transcurridos = Math.floor((hoy - conocimiento) / 86400000);
+
+  if (diasRestantes < 0) {
+    box.innerHTML = `
+      <div class="alert alert-danger" style="align-items:flex-start;">
+        <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+        <span><strong>La causa de rescisión pudo haber prescrito.</strong>
+        El artículo 517 fracción I de la LFT concede al patrón <strong>un mes</strong> para ejercer la acción
+        de rescisión, contado a partir del día siguiente a la fecha en que se tuvo conocimiento de la causa.
+        Han transcurrido ${transcurridos} días. Rescindir fuera de este plazo hace que el despido se considere
+        injustificado. Consulta a tu abogado antes de continuar.</span>
+      </div>`;
+  } else if (diasRestantes <= 5) {
+    box.innerHTML = `
+      <div class="alert alert-danger" style="align-items:flex-start;">
+        <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+        <span><strong>Quedan ${diasRestantes} día(s) para que prescriba la acción</strong> (Art. 517 fracc. I LFT).
+        Vencido el mes, la rescisión se considera despido injustificado.</span>
+      </div>`;
+  } else if (diasRestantes <= 10) {
+    box.innerHTML = `
+      <div class="alert alert-warn" style="align-items:flex-start;">
+        <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+        <span>Quedan ${diasRestantes} días del plazo de un mes del Art. 517 fracc. I LFT para ejercer la rescisión.</span>
+      </div>`;
+  } else {
+    box.innerHTML = '';
+  }
+  return diasRestantes;
 }
 
 async function handleProcesarBaja() {
@@ -171,6 +306,42 @@ async function handleProcesarBaja() {
   const trab = await db.getTrabajador(trabId);
   if (!trab) { err.textContent = 'Trabajador no encontrado.'; err.style.display=''; return; }
   const sucursalTrab = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
+
+  // Datos del Art. 47 — obligatorios en la rescisión justificada
+  let datosArt47 = null;
+  if (tipo === 'justificada') {
+    datosArt47 = {
+      fecha_conocimiento_causa:    eid('baja-conocimiento')?.value || '',
+      fraccion_art47:              eid('baja-fraccion47')?.value || '',
+      descripcion_circunstanciada: eid('baja-descripcion')?.value.trim() || '',
+      evidencia:                   eid('baja-evidencia')?.value.trim() || '',
+      domicilio_trabajador:        eid('baja-domicilio-trab')?.value.trim() || trab.domicilio || '',
+      testigo1_nombre:             eid('baja-t1-nombre')?.value.trim() || '',
+      testigo1_ine:                eid('baja-t1-ine')?.value.trim() || '',
+      testigo1_domicilio:          eid('baja-t1-dom')?.value.trim() || '',
+      testigo2_nombre:             eid('baja-t2-nombre')?.value.trim() || '',
+      testigo2_ine:                eid('baja-t2-ine')?.value.trim() || '',
+      testigo2_domicilio:          eid('baja-t2-dom')?.value.trim() || '',
+      aviso_rechazado:             eid('baja-aviso-rechazado')?.checked || false,
+      fecha_efectos:               fecha,
+    };
+    const faltantes = [];
+    if (!datosArt47.fecha_conocimiento_causa)    faltantes.push('la fecha en que se conoció la causa');
+    if (!datosArt47.fraccion_art47)              faltantes.push('la fracción del Art. 47');
+    if (!datosArt47.descripcion_circunstanciada) faltantes.push('la descripción circunstanciada de los hechos');
+    if (!datosArt47.domicilio_trabajador)        faltantes.push('el domicilio del trabajador');
+    if (faltantes.length) {
+      err.innerHTML = `Para la rescisión justificada falta capturar ${faltantes.join(', ')}. ` +
+        `El Art. 47 LFT exige que el aviso refiera claramente la conducta y la fecha en que se cometió.`;
+      err.style.display = '';
+      return;
+    }
+    if (datosArt47.fecha_conocimiento_causa > fecha) {
+      err.textContent = 'La fecha en que se conoció la causa no puede ser posterior a la fecha de baja.';
+      err.style.display = '';
+      return;
+    }
+  }
 
   const startDate      = new Date(trab.fecha_ingreso + 'T00:00:00');
   const endDate        = new Date(fecha + 'T00:00:00');
@@ -230,11 +401,11 @@ async function handleProcesarBaja() {
     </div>
   `);
 
-  window._pendingBaja = { trabId, fecha, tipo, salario, diasPendientes, result, trab, trabajadorPdf, sucursalTrab };
+  window._pendingBaja = { trabId, fecha, tipo, salario, diasPendientes, result, trab, trabajadorPdf, sucursalTrab, datosArt47 };
 }
 
 async function _confirmarBaja() {
-  const { trabId, fecha, tipo, salario, diasPendientes, result, trab, trabajadorPdf, sucursalTrab } = window._pendingBaja || {};
+  const { trabId, fecha, tipo, salario, diasPendientes, result, trab, trabajadorPdf, sucursalTrab, datosArt47 } = window._pendingBaja || {};
   if (!trabId) return;
   const err = eid('baja-error');
   // B-4: esta secuencia tiene dos escrituras que NO son atómicas entre sí
@@ -262,7 +433,39 @@ async function _confirmarBaja() {
       }).catch(e => console.warn('No se pudo registrar el movimiento IMSS de baja (no bloquea el proceso):', e.message));
     }
 
-    showResumenBaja(trab, result, tipo, CTX.empresa, trabajadorPdf, sucursalTrab);
+    // Registro de la rescisión: sostiene el aviso y alimenta la vigilancia de
+    // los plazos del Art. 517 fracc. I y del Art. 47 (migración 40). Su falla no
+    // debe deshacer la baja ya consumada, pero sí avisarse: sin este registro no
+    // hay alerta del plazo de cinco días hábiles para el aviso al Tribunal.
+    if (tipo === 'justificada' && datosArt47) {
+      try {
+        await window.supabase.from('rescisiones').insert({
+          empresa_id:                  CTX.empresa.id,
+          trabajador_id:               trabId,
+          fecha_conocimiento_causa:    datosArt47.fecha_conocimiento_causa,
+          fecha_rescision:             fecha,
+          fraccion_art47:              datosArt47.fraccion_art47,
+          descripcion_circunstanciada: datosArt47.descripcion_circunstanciada,
+          evidencia:                   datosArt47.evidencia || null,
+          domicilio_trabajador:        datosArt47.domicilio_trabajador,
+          testigo1_nombre:             datosArt47.testigo1_nombre || null,
+          testigo1_ine:                datosArt47.testigo1_ine || null,
+          testigo1_domicilio:          datosArt47.testigo1_domicilio || null,
+          testigo2_nombre:             datosArt47.testigo2_nombre || null,
+          testigo2_ine:                datosArt47.testigo2_ine || null,
+          testigo2_domicilio:          datosArt47.testigo2_domicilio || null,
+          aviso_entregado:             !datosArt47.aviso_rechazado,
+          aviso_rechazado:             !!datosArt47.aviso_rechazado,
+        });
+      } catch (e) {
+        console.warn('No se pudo registrar la rescisión:', e.message);
+        if (typeof showToast === 'function') {
+          showToast('La baja se procesó, pero no se registró la rescisión: no habrá alerta del plazo de 5 días hábiles del Art. 47. ' + (e.message || ''), 'warn', 9000);
+        }
+      }
+    }
+
+    showResumenBaja(trab, result, tipo, CTX.empresa, trabajadorPdf, sucursalTrab, datosArt47);
   } catch(e) {
     if (err) {
       err.textContent = bajaRegistrada
@@ -274,12 +477,15 @@ async function _confirmarBaja() {
   delete window._pendingBaja;
 }
 
-function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = null) {
+function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = null, datosArt47 = null) {
   const main = eid('main-view');
 
+  const d47 = datosArt47 || {};
   const docsConfig = {
+    // Sin causa que invocar no hay aviso del Art. 47 que emitir. El aviso que se
+    // generaba antes citaba los arts. 49 y 50 y anunciaba una indemnización:
+    // era una confesión escrita de despido injustificado.
     injustificada: [
-      { icon:'', titulo:'Aviso de Rescisión',   desc:'Notificación formal de terminación (Art. 53 LFT)', fn: () => generateAvisoRecision(empresa, trabajadorPdf, result, sucursal) },
       { icon:'', titulo:'Recibo de Liquidación', desc:'Desglose completo de la liquidación',              fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
     ],
     renuncia: [
@@ -287,9 +493,18 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
       { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
     ],
     justificada: [
+      { icon:'', titulo:'Aviso de Rescisión (Art. 47)', desc:'Aviso con la fracción invocada y los hechos. Entrégalo en persona y recaba el acuse.', fn: () => generateAvisoRescisionArt47(empresa, trabajadorPdf, d47, sucursal) },
       { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
     ],
   };
+  // Si el trabajador se negó a recibir, el aviso al Tribunal tiene plazo fatal
+  // de cinco días hábiles (Art. 47); sin él la separación se presume injustificada.
+  if (tipo === 'justificada' && d47.aviso_rechazado) {
+    docsConfig.justificada.push(
+      { icon:'', titulo:'Acta de Negativa a Recibir el Aviso', desc:'Acta circunstanciada con testigos identificados', fn: () => generateActaNegativaRecibirAviso(empresa, trabajadorPdf, d47, sucursal) },
+      { icon:'', titulo:'Aviso al Tribunal Laboral', desc:'PLAZO FATAL: cinco días hábiles desde la rescisión (Art. 47 LFT)', fn: () => generateAvisoTribunalArt47(empresa, trabajadorPdf, d47, sucursal) },
+    );
+  }
   const docs = docsConfig[tipo] || [];
   const fmtMx = n => '$' + (parseFloat(n)||0).toLocaleString('es-MX', { minimumFractionDigits:2 });
 
