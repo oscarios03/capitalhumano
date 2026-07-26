@@ -20,6 +20,8 @@
 -- Sigue el patrón de generar_alertas_nomina (migración 22): función aparte que
 -- borra sólo sus propios tipos, para que generar_alertas —que borra todas las
 -- no resueltas al inicio— pueda seguir ejecutándose antes sin pisarlas.
+--
+-- APLICADA en producción (proyecto KAPITAL HUMANO) el 26/07/2026.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── 1. Días hábiles ────────────────────────────────────────────────────────
@@ -80,6 +82,15 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
+  -- SECURITY DEFINER con empresa_id como parámetro: sin esta compuerta, un
+  -- usuario autenticado podría generar alertas —y leer datos por el mensaje de
+  -- error— de otra empresa. Mismo guardián que generar_alertas (migración 25).
+  IF auth.uid() IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.perfiles WHERE id = auth.uid() AND empresa_id = p_empresa_id
+  ) THEN
+    RAISE EXCEPTION 'No autorizado para esta empresa';
+  END IF;
+
   PERFORM pg_advisory_xact_lock(hashtext(p_empresa_id::text));
 
   -- Sólo los tipos propios: generar_alertas ya borró el resto al inicio.
@@ -200,9 +211,15 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.generar_alertas_rescision(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.dias_habiles_transcurridos(date, date) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.fecha_limite_habil(date, integer) TO authenticated;
+-- Se revoca primero el EXECUTE que Postgres concede a PUBLIC por defecto, y
+-- después se otorga sólo a `authenticated` (mismo criterio que la migración 39).
+REVOKE ALL ON FUNCTION public.generar_alertas_rescision(uuid)       FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.dias_habiles_transcurridos(date,date) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fecha_limite_habil(date, integer)     FROM PUBLIC, anon;
+
+GRANT EXECUTE ON FUNCTION public.generar_alertas_rescision(uuid)       TO authenticated;
+GRANT EXECUTE ON FUNCTION public.dias_habiles_transcurridos(date,date) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fecha_limite_habil(date, integer)     TO authenticated;
 
 COMMENT ON FUNCTION public.generar_alertas_rescision(uuid) IS
   'Alertas de plazos fatales: prescripción del art. 517 fr. I, aviso al Tribunal del art. 47 y vigencias fiscales caducas. Debe invocarse DESPUÉS de generar_alertas.';

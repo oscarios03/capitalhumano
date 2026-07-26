@@ -14,9 +14,11 @@
 --   · Art. 47 — cinco días hábiles para hacer del conocimiento del Tribunal la
 --     negativa del trabajador a recibir el aviso.
 --
--- NOTA DE NUMERACIÓN: las migraciones 38 y 39 están tomadas por ramas en vuelo
--- (38_migration_bajas_documentadas, 39_fix_auditoria_prelanzamiento). Esta
--- migración es independiente de ambas y puede aplicarse en cualquier orden.
+-- NOTA DE NUMERACIÓN: las migraciones 38 y 39 pertenecen a otras ramas y ya
+-- estaban aplicadas en producción al momento de aplicar ésta. Verificado el
+-- 26/07/2026 contra los objetos que crean, no sólo contra el log de migraciones.
+--
+-- APLICADA en producción (proyecto KAPITAL HUMANO) el 26/07/2026.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── 1. Tabla de rescisiones ────────────────────────────────────────────────
@@ -84,29 +86,38 @@ CREATE INDEX IF NOT EXISTS idx_rescisiones_trabajador  ON public.rescisiones(tra
 CREATE INDEX IF NOT EXISTS idx_rescisiones_pendientes  ON public.rescisiones(empresa_id, fecha_rescision)
   WHERE aviso_rechazado AND NOT aviso_tribunal_presentado;
 
--- ── 2. RLS por empresa (mismo patrón que el resto del esquema) ─────────────
+-- ── 2. RLS por empresa y por rol ───────────────────────────────────────────
+-- Mismo patrón que `bajas`, `actas` y `propuestas_baja` (migración 33):
+-- lectura para cualquier miembro de la empresa; escritura sólo para quien
+-- puede gestionar (admin o gerente). Una rescisión es el documento que decide
+-- si un despido se sostiene: no debe poder registrarla ni alterarla un rol
+-- de consulta.
 ALTER TABLE public.rescisiones ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "rescisiones_select" ON public.rescisiones;
 CREATE POLICY "rescisiones_select" ON public.rescisiones FOR SELECT
   TO authenticated
-  USING (empresa_id IN (SELECT empresa_id FROM public.perfiles WHERE id = auth.uid()));
+  USING (empresa_id = (SELECT public.mi_empresa_id()));
 
 DROP POLICY IF EXISTS "rescisiones_insert" ON public.rescisiones;
 CREATE POLICY "rescisiones_insert" ON public.rescisiones FOR INSERT
   TO authenticated
-  WITH CHECK (empresa_id IN (SELECT empresa_id FROM public.perfiles WHERE id = auth.uid()));
+  WITH CHECK (empresa_id = (SELECT public.mi_empresa_id())
+              AND (SELECT public.puede_gestionar()));
 
 DROP POLICY IF EXISTS "rescisiones_update" ON public.rescisiones;
 CREATE POLICY "rescisiones_update" ON public.rescisiones FOR UPDATE
   TO authenticated
-  USING (empresa_id IN (SELECT empresa_id FROM public.perfiles WHERE id = auth.uid()))
-  WITH CHECK (empresa_id IN (SELECT empresa_id FROM public.perfiles WHERE id = auth.uid()));
+  USING (empresa_id = (SELECT public.mi_empresa_id())
+         AND (SELECT public.puede_gestionar()))
+  WITH CHECK (empresa_id = (SELECT public.mi_empresa_id())
+              AND (SELECT public.puede_gestionar()));
 
 DROP POLICY IF EXISTS "rescisiones_delete" ON public.rescisiones;
 CREATE POLICY "rescisiones_delete" ON public.rescisiones FOR DELETE
   TO authenticated
-  USING (empresa_id IN (SELECT empresa_id FROM public.perfiles WHERE id = auth.uid()));
+  USING (empresa_id = (SELECT public.mi_empresa_id())
+         AND (SELECT public.puede_gestionar()));
 
 -- ── 3. actualizado_en ──────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.rescisiones_touch()
@@ -120,6 +131,13 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Postgres concede EXECUTE a PUBLIC por defecto en las funciones nuevas; una
+-- función de trigger no debe poder invocarse directamente desde el cliente
+-- (mismo endurecimiento que la migración 39b).
+REVOKE ALL ON FUNCTION public.rescisiones_touch() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rescisiones_touch() FROM anon;
+REVOKE ALL ON FUNCTION public.rescisiones_touch() FROM authenticated;
 
 DROP TRIGGER IF EXISTS trg_rescisiones_touch ON public.rescisiones;
 CREATE TRIGGER trg_rescisiones_touch
