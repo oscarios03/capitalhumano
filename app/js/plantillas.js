@@ -128,8 +128,9 @@ de autor que pudieran corresponder a EL TRABAJADOR.
 
 DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. Son causas de rescisión sin responsabilidad
 para EL PATRON las establecidas en el artículo 47 de la LFT. Son causas sin
-responsabilidad para EL TRABAJADOR las del artículo 51 LFT. En caso de renuncia
-voluntaria, EL TRABAJADOR otorgará un aviso previo de 15 días naturales.
+responsabilidad para EL TRABAJADOR las del artículo 51 LFT. En caso de separación
+voluntaria, se solicita a EL TRABAJADOR dar aviso con quince días naturales de
+anticipación, a efecto de permitir la debida entrega-recepción de sus funciones.
 
 DÉCIMA CUARTA. BENEFICIARIOS. EL TRABAJADOR designa como beneficiarios para
 recibir el pago de salarios e indemnizaciones en caso de fallecimiento o

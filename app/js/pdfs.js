@@ -572,8 +572,11 @@ function _clausulasComunes(state, data, start) {
   _p(state, `La violacion puede configurar delitos del Art. 210-211 del Codigo Penal Federal (revelacion de secretos), Art. 229 del Codigo Penal de Guanajuato, y Arts. 82-86 y 213 de la Ley Federal de Proteccion a la Propiedad Industrial.`);
   _p(state, `Todos los trabajos, creaciones y desarrollos realizados en ejercicio de las funciones o con recursos del PATRON son de titularidad exclusiva de este; EL TRABAJADOR cede en este acto todos los derechos patrimoniales de autor que pudieran corresponderle.`);
 
+  // Art. 110 LFT es limitativo: sólo admite las deducciones que enumera. La LFT no
+  // impone al trabajador obligación de preaviso ni autoriza descuento por omitirlo;
+  // el preaviso se conserva como buena práctica, sin consecuencia económica.
   _h(state, n++, 'Causas de Rescision y Aviso de Renuncia');
-  _p(state, `Son causas de rescision sin responsabilidad para EL PATRON las del Art. 47 LFT; y sin responsabilidad para EL TRABAJADOR las del Art. 51 LFT. En caso de renuncia voluntaria, EL TRABAJADOR dara un aviso previo de 15 dias naturales para la debida transicion. El incumplimiento del aviso puede dar lugar a descuento de un dia de salario por cada dia de incumplimiento (Art. 49 LFT).`);
+  _p(state, `Son causas de rescision sin responsabilidad para EL PATRON las del Art. 47 LFT; y sin responsabilidad para EL TRABAJADOR las del Art. 51 LFT. En caso de separacion voluntaria, se solicita a EL TRABAJADOR dar aviso con quince dias naturales de anticipacion, a efecto de permitir la debida entrega-recepcion de sus funciones.`);
 
   _h(state, n++, 'Beneficiarios (Art. 25 fracc. X LFT)');
   _p(state, `EL TRABAJADOR designa como beneficiarios para recibir salarios e indemnizaciones en caso de fallecimiento:`);
