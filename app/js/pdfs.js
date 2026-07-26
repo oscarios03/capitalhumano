@@ -888,7 +888,7 @@ function generateContratoComision(data) {
  * @param {Object} empresa  { nombre, rfc, representante, domicilio, ciudad }
  * @param {Object} trab     { nombre, rfc, curp, nss, puesto, departamento, fecha_ingreso, salario_mensual, tipo_contrato, smg_zone }
  */
-function generateContratoPDF(empresa, trab, sucursal = null) {
+function generateContratoPDF(empresa, trab, sucursal = null, opts = {}) {
   empresa = resolveUbicacion(empresa, sucursal);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
@@ -989,7 +989,9 @@ function generateContratoPDF(empresa, trab, sucursal = null) {
   doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text('Documento generado por Capital Humano MX | LFT 2026 | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
 
+  if (opts.asBlob) return doc.output('blob');
   doc.save(`contrato-${np(trab.nombre).replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  return doc;
 }
 
 // ─── CARTA DE RENUNCIA ────────────────────────────────────────────────────────
@@ -1764,7 +1766,7 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
 }
 
 // ─── ACTA ADMINISTRATIVA ──────────────────────────────────────────────────────
-function generateActaPDF(acta, empresa, trab, sucursal = null) {
+function generateActaPDF(acta, empresa, trab, sucursal = null, opts = {}) {
   empresa = resolveUbicacion(empresa, sucursal);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
@@ -1869,7 +1871,9 @@ function generateActaPDF(acta, empresa, trab, sucursal = null) {
 
   doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text(`Folio ${folio} | Capital Humano MX | Referencial — no sustituye asesoria legal`, pw/2, ph-10, { align:'center' });
+  if (opts.asBlob) return doc.output('blob');
   doc.save(`acta-${acta.tipo}.pdf`);
+  return doc;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

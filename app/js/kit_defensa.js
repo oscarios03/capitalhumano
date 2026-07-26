@@ -142,8 +142,7 @@ async function _generarKitDefensa() {
     if (sel('contrato')) {
       paso('Generando el contrato…');
       try {
-        const doc = generateContratoPDF(empresa, t, sucursal);
-        zip.file('01-contrato/contrato-de-trabajo.pdf', doc.output('blob'));
+        zip.file('01-contrato/contrato-de-trabajo.pdf', generateContratoPDF(empresa, t, sucursal, { asBlob: true }));
         indice.push(['Contrato de trabajo', '01-contrato/', '1 archivo']);
       } catch(e) { errores.push('Contrato: ' + e.message); }
     }
@@ -207,9 +206,8 @@ async function _generarKitDefensa() {
           .eq('trabajador_id', _KIT.trabajadorId).order('creado_en');
         for (const a of (actas || [])) {
           try {
-            const doc = generateActaPDF(a, empresa, t, sucursal);
             const f = (a.creado_en || '').split('T')[0];
-            zip.file(`04-actas/${f}-${a.tipo || 'acta'}.pdf`, doc.output('blob'));
+            zip.file(`04-actas/${f}-${a.tipo || 'acta'}.pdf`, generateActaPDF(a, empresa, t, sucursal, { asBlob: true }));
           } catch(e) { errores.push(`Acta ${a.id}: ${e.message}`); }
         }
         if (actas?.length) indice.push(['Actas administrativas', '04-actas/', `${actas.length} archivo(s)`]);
@@ -223,8 +221,7 @@ async function _generarKitDefensa() {
         const { data: res } = await sb.from('resguardos').select('*')
           .eq('trabajador_id', _KIT.trabajadorId).order('fecha_entrega');
         if (res?.length && typeof generarCartaResponsivaPDF === 'function') {
-          const doc = generarCartaResponsivaPDF(empresa, t, res);
-          zip.file('05-resguardos/carta-responsiva.pdf', doc.output('blob'));
+          zip.file('05-resguardos/carta-responsiva.pdf', generarCartaResponsivaPDF(empresa, t, res, { asBlob: true }));
           indice.push(['Cartas responsivas de equipo', '05-resguardos/', `${res.length} artículo(s)`]);
         }
       } catch(e) { errores.push('Resguardos: ' + e.message); }

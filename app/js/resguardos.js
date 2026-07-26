@@ -225,7 +225,7 @@ async function _subirCartaFirmada(trabajadorId, resguardoIds) {
   if (typeof showToast === 'function') showToast('Carta responsiva guardada en el expediente digital', 'success');
 }
 
-function generarCartaResponsivaPDF(empresa, trab, items) {
+function generarCartaResponsivaPDF(empresa, trab, items, opts = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
   const ml = 25, mr = 25;
@@ -280,7 +280,9 @@ function generarCartaResponsivaPDF(empresa, trab, items) {
   doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text('Documento generado por Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
 
+  if (opts.asBlob) return doc.output('blob');
   doc.save(`carta-responsiva-${(trab.nombre||'trabajador').replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  return doc;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
