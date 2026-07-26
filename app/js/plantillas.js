@@ -59,7 +59,10 @@ QUINTA. LUGAR Y JORNADA. EL TRABAJADOR prestará sus servicios en [DOMICILIO_SUC
 o en el lugar que EL PATRON designe. La jornada ordinaria de trabajo será de
 [HORA_INICIO] a [HORA_FIN] horas, con período de descanso para alimentos de
 [DESCANSO_INICIO] a [DESCANSO_FIN] horas, los días [DIAS_SEMANA]. La jornada
-semanal no excederá de 40 horas, conforme a la reforma publicada en el DOF.
+semanal pactada es de [HORAS_SEMANALES] horas, sin exceder el máximo legal de
+[JORNADA_MAX_VIGENTE] horas semanales aplicable en [AÑO], conforme al artículo 59
+de la Ley Federal del Trabajo y al régimen de transición previsto en la reforma
+publicada en el Diario Oficial de la Federación el 1 de mayo de 2026.
 
 SEXTA. DESCANSO SEMANAL. EL TRABAJADOR disfrutará de un día de descanso
 semanal por cada seis de trabajo, preferentemente el [DIA_DESCANSO], con

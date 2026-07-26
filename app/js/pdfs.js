@@ -411,8 +411,44 @@ function _exigirCiudad(ciudad) {
   );
 }
 
+/**
+ * Redacción de la jornada: se imprime la efectivamente pactada y el máximo legal
+ * queda sólo como referencia. Pactar la meta legislativa (40 h) antes de que sea
+ * exigible la convierte en condición adquirida por irreversibilidad (arts. 31,
+ * 56 y 57 LFT) y regala como tiempo extraordinario la diferencia con el máximo
+ * vigente.
+ */
+function _textoJornada(data, anio = new Date().getFullYear()) {
+  const max = jornadaMaximaVigente(anio);
+  const hrs = horasSemanalesPactadas(data);
+  const ref = `conforme al articulo 59 de la Ley Federal del Trabajo y al regimen de transicion previsto en la reforma publicada en el Diario Oficial de la Federacion el 1 de mayo de 2026`;
+  if (hrs === null) {
+    return `La jornada semanal pactada no excedera el maximo legal de ${max} horas aplicable en ${anio} ${ref}.`;
+  }
+  return `La jornada semanal pactada es de ${hrs} horas, sin exceder el maximo legal de ${max} horas semanales aplicable en ${anio} ${ref}.`;
+}
+
+/**
+ * Impide emitir un contrato cuyo horario capturado rebase el máximo del
+ * ejercicio. Firmarlo obligaría a pagar el excedente como tiempo
+ * extraordinario desde el primer día.
+ */
+function _exigirJornadaLegal(data, anio = new Date().getFullYear()) {
+  const hrs = horasSemanalesPactadas(data);
+  if (hrs === null) return;
+  const max = jornadaMaximaVigente(anio);
+  if (hrs <= max) return;
+  throw new Error(
+    `El horario capturado suma ${hrs} horas semanales y excede el máximo legal ` +
+    `de ${max} horas vigente en ${anio} (Art. 59 LFT y Transitorio Segundo del ` +
+    `decreto DOF 01-05-2026). Ajusta el horario o los días laborables antes de ` +
+    `generar el contrato: todo excedente se considera tiempo extraordinario.`
+  );
+}
+
 function _initContratoDoc(titulo, subtitulo, data) {
   _exigirCiudad(data.ciudadFirma);
+  _exigirJornadaLegal(data);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
   const ml = 25, mr = 25;
@@ -674,7 +710,7 @@ function generateContratoIndeterminado(data) {
   _p(state, `EL PATRON pagara a EL TRABAJADOR un salario ${np(data.periodoSalario)} de $${Number(data.salario).toFixed(2)} M.N. (${np(numToWords(data.salario))} PESOS 00/100 M.N.) mediante ${np(data.formaPago)}${data.diasPago ? ', los dias '+np(data.diasPago) : ''}. El salario cubre la jornada ordinaria y no sera inferior al salario minimo vigente.`);
 
   _h(state, 5, 'Lugar y Jornada de Trabajo');
-  _p(state, `EL TRABAJADOR prestara sus servicios en ${np(data.domicilioSucursal || data.domicilioFiscal)} o en el lugar que EL PATRON designe. La jornada ordinaria sera de ${np(data.horaInicio)} a ${np(data.horaFin)} horas, con descanso de ${np(data.horaDescansoInicio)} a ${np(data.horaDescansoFin)} horas, los dias ${data.diasSemana.map(np).join(', ')}. La jornada semanal no excedera las 40 horas (Reforma LFT 2023, Art. 61).`);
+  _p(state, `EL TRABAJADOR prestara sus servicios en ${np(data.domicilioSucursal || data.domicilioFiscal)} o en el lugar que EL PATRON designe. La jornada ordinaria sera de ${np(data.horaInicio)} a ${np(data.horaFin)} horas, con descanso de ${np(data.horaDescansoInicio)} a ${np(data.horaDescansoFin)} horas, los dias ${data.diasSemana.map(np).join(', ')}. ${_textoJornada(data)}`);
 
   _h(state, 6, 'Descanso Semanal (Art. 69 LFT)');
   _p(state, `EL TRABAJADOR disfrutara de un dia de descanso por cada seis laborados, preferentemente el ${np(data.diaDescanso)}, con salario integro. Si labora en dia de descanso percibirá el doble del salario ademas del ordinario.`);
@@ -886,7 +922,17 @@ function generateContratoPDF(empresa, trab, sucursal = null) {
     ? `El presente contrato es por TIEMPO INDETERMINADO, a partir del ${npDate(trab.fecha_ingreso)}, con vigencia indefinida, pudiendo concluir por las causas previstas en los articulos 46 a 53 de la Ley Federal del Trabajo.`
     : `El presente contrato es por ${np(tipoLabel)}, con inicio el ${npDate(trab.fecha_ingreso)}, conforme al articulo 37 de la Ley Federal del Trabajo.`);
 
-  parrafo('TERCERA. — JORNADA DE TRABAJO:', `La jornada ordinaria de trabajo sera de 40 horas semanales, conforme a la reforma a la Ley Federal del Trabajo publicada en el DOF en 2026. El PATRON podra autorizar tiempo extraordinario con pago del 200% del salario ordinario (Art. 67 LFT).`);
+  // Art. 59 LFT fija el máximo semanal (el 61 es la jornada diaria) y el 66, tras
+  // la reforma DOF 01-05-2026, es el que ordena pagar el tiempo extraordinario
+  // con un cien por ciento más; el antiguo párrafo segundo del 67 fue derogado.
+  const _anioC   = new Date().getFullYear();
+  const _jorLeg  = { horaInicio: trab.hora_inicio, horaFin: trab.hora_fin,
+                     horaDescansoInicio: trab.hora_descanso_inicio,
+                     horaDescansoFin: trab.hora_descanso_fin,
+                     diasSemana: trab.dias_semana };
+  const _hrsLeg  = horasSemanalesPactadas(_jorLeg);
+  const _maxLeg  = jornadaMaximaVigente(_anioC);
+  parrafo('TERCERA. — JORNADA DE TRABAJO:', `${_hrsLeg !== null ? `La jornada ordinaria pactada es de ${_hrsLeg} horas semanales, sin exceder` : 'La jornada ordinaria de trabajo no excedera'} el maximo legal de ${_maxLeg} horas semanales aplicable en ${_anioC}, conforme al articulo 59 de la Ley Federal del Trabajo y al regimen de transicion previsto en la reforma publicada en el Diario Oficial de la Federacion el 1 de mayo de 2026. El PATRON podra autorizar tiempo extraordinario, que se abonara con un cien por ciento mas de lo fijado para las horas ordinarias (Art. 66 LFT), sin exceder de ${horasExtraMaxVigente(_anioC)} horas a la semana en ${_anioC}.`);
 
   parrafo('CUARTA. — LUGAR DE TRABAJO:', `EL TRABAJADOR prestara sus servicios en el domicilio ${np(empresa.domicilio || empresa.ciudad)}, o en cualquier lugar que EL PATRON designe por necesidades del servicio, con previo aviso.`);
 

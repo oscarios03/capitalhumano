@@ -63,6 +63,66 @@ const FALTAS_CATALOG = [
     severity:['amonestacion','formal','rescisoria'] },
 ];
 
+// ─── JORNADA — RÉGIMEN DE TRANSICIÓN 2026-2030 ───────────────────────────────
+// Decreto de reducción de la jornada laboral, DOF 01-05-2026. El máximo semanal
+// lo fija el art. 59 LFT (el 61 regula la jornada DIARIA: 8 diurna, 7 nocturna,
+// 7.5 mixta). El texto consolidado del art. 59 ya dice 40 horas, pero el
+// Transitorio Segundo escalona su entrada en vigor a partir del 1 de enero de
+// cada año; el Cuarto hace lo propio con la jornada extraordinaria del art. 66.
+//
+// Importa pactar el máximo vigente y no la meta legislativa: por los arts. 31,
+// 56 y 57 LFT y el principio de irreversibilidad, lo pactado por encima del
+// mínimo legal se vuelve condición adquirida. Un contrato que hoy fije 40 horas
+// no podrá volver a 48, y las 8 horas de diferencia se vuelven tiempo
+// extraordinario pagado al doble.
+const JORNADA_SEMANAL_MAX   = { 2026: 48, 2027: 46, 2028: 44, 2029: 42, 2030: 40 };
+const HORAS_EXTRA_MAX_SEMANA = { 2026: 9,  2027: 9,  2028: 10, 2029: 11, 2030: 12 };
+
+/** Jornada semanal máxima aplicable al año dado (Transitorio Segundo). */
+function jornadaMaximaVigente(anio = new Date().getFullYear()) {
+  if (anio >= 2030) return 40;
+  return JORNADA_SEMANAL_MAX[anio] ?? 48;
+}
+
+/** Tope semanal de horas extraordinarias del año dado (Transitorio Cuarto). */
+function horasExtraMaxVigente(anio = new Date().getFullYear()) {
+  if (anio >= 2030) return 12;
+  return HORAS_EXTRA_MAX_SEMANA[anio] ?? 9;
+}
+
+/**
+ * Horas semanales que resultan del horario capturado. Descuenta el descanso
+ * intermedio sólo si está definido, y cuenta únicamente los días laborables
+ * pactados.
+ * @returns {number|null} null si el horario está incompleto o es inconsistente
+ */
+function horasSemanalesPactadas({ horaInicio, horaFin, horaDescansoInicio, horaDescansoFin, diasSemana }) {
+  const min = (hhmm) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+    if (!m) return null;
+    const h = +m[1], mm = +m[2];
+    return (h >= 0 && h <= 23 && mm >= 0 && mm <= 59) ? h * 60 + mm : null;
+  };
+  const ini = min(horaInicio), fin = min(horaFin);
+  if (ini === null || fin === null) return null;
+
+  // Jornada que cruza la medianoche (turno nocturno)
+  let bruto = fin - ini;
+  if (bruto <= 0) bruto += 24 * 60;
+
+  const dIni = min(horaDescansoInicio), dFin = min(horaDescansoFin);
+  let descanso = 0;
+  if (dIni !== null && dFin !== null) {
+    descanso = dFin - dIni;
+    if (descanso < 0) descanso += 24 * 60;
+    if (descanso >= bruto) return null;
+  }
+
+  const dias = Array.isArray(diasSemana) ? diasSemana.length : 0;
+  if (!dias) return null;
+  return parseFloat((((bruto - descanso) / 60) * dias).toFixed(2));
+}
+
 const MESES = ['enero','febrero','marzo','abril','mayo','junio',
                'julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
