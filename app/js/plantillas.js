@@ -447,16 +447,10 @@ III. PROCESO DISCIPLINARIO PREVIO:
 IV. EVIDENCIA:
 [EVIDENCIA_DETALLADA]
 
-V. DERECHOS DEL TRABAJADOR:
-Conforme al artículo 47 último párrafo de la LFT, el trabajador dispondrá de
-30 días naturales para impugnar la presente rescisión ante el Tribunal Laboral
-competente. En caso de impugnación, el patrón deberá acreditar la causa de
-rescisión.
-
-VI. ACUERDO ECONÓMICO:
+V. ACUERDO ECONÓMICO:
 [ACUERDO_ECONOMICO]
 
-VII. POSICIÓN DEL TRABAJADOR:
+VI. POSICIÓN DEL TRABAJADOR:
 [REACCION_TRABAJADOR]
 
 NOTA: El trabajador se negó a firmar — Se hace constar ante la presencia de

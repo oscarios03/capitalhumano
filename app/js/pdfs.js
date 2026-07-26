@@ -1338,7 +1338,10 @@ function generateActaPDF(acta, empresa, trab, sucursal = null) {
   } else if (acta.tipo === 'formal') {
     clausula = `Por medio del presente, ${np(empresa.nombre)} levanta ACTA ADMINISTRATIVA al C. ${np(trab.nombre)} por incurrir en la conducta antes descrita, la cual contraviene ${np(acta.causal||'')}. Se le APERCIBE que de reincidir, la empresa podra rescindir el contrato sin responsabilidad patronal en terminos del articulo 47 de la LFT.`;
   } else {
-    clausula = `Con fundamento en el articulo 47 de la LFT, ${np(empresa.nombre)} notifica al C. ${np(trab.nombre)} la RESCISION DE SU CONTRATO SIN RESPONSABILIDAD PARA EL PATRON. La empresa queda a disposicion del trabajador para el pago de prestaciones proporcionales. NOTA: El trabajador dispone de 30 dias naturales para impugnar ante el Tribunal Laboral (Art. 518 LFT).`;
+    // No se informan plazos de impugnación: no es obligación del patrón asesorar
+    // al trabajador, y el art. 518 LFT concede dos meses (no 30 días) desde el día
+    // siguiente a la separación. Consignar un plazo más corto acredita mala fe.
+    clausula = `Con fundamento en el articulo 47 de la LFT, ${np(empresa.nombre)} notifica al C. ${np(trab.nombre)} la RESCISION DE SU CONTRATO SIN RESPONSABILIDAD PARA EL PATRON. La empresa queda a disposicion del trabajador para el pago de prestaciones proporcionales.`;
   }
   doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30,30,30);
   const cl = doc.splitTextToSize(clausula, tw); doc.text(cl, ml, y); y += cl.length * 5.2 + 8;
