@@ -685,6 +685,23 @@ function calcLiquidacion(p) {
   const sdi    = calcSDI(daily, entitlement, prest.primaVacPct, prest.aguinaldoDias);
   const sdiCap = Math.min(sdi, 2 * smg);
 
+  // Periodo de devengo de cada concepto, para que el recibo lo cite (no basta
+  // con el importe: el trabajador debe poder verificar a qué lapso corresponde).
+  const aniversario = new Date(p.startDate);
+  aniversario.setFullYear(aniversario.getFullYear() + completed);
+  const inicioAno = new Date(p.endDate.getFullYear(), 0, 1);
+  const inicioAguinaldo = p.startDate > inicioAno ? p.startDate : inicioAno;
+  const periodoRelacion  = `${formatDateShort(p.startDate)} – ${formatDateShort(p.endDate)}`;
+  const periodoVacActual = `${formatDateShort(aniversario)} – ${formatDateShort(p.endDate)}`;
+  const periodoAguinaldo = `${formatDateShort(inicioAguinaldo)} – ${formatDateShort(p.endDate)}`;
+
+  // Trato fiscal: Art. 93 fr. XIII LISR exenta hasta 90 UMA por año de
+  // servicio los pagos por indemnización, prima de antigüedad y retiro; el
+  // resto de las prestaciones es ingreso ordinario sujeto a la retención
+  // normal de nómina, no a ese tope.
+  const EXENTO  = 'Exento hasta el tope (Art. 93 fr. XIII LISR)';
+  const GRAVADO = 'Gravado — retención ordinaria de nómina';
+
   // Vacaciones: proporcionales del año en curso + devengadas pendientes
   const propVac = propVacDays(p.startDate, p.endDate, prest.vacDiasExtra);
   const vacPend = p.vacacionesPendientes || 0;
@@ -707,10 +724,13 @@ function calcLiquidacion(p) {
   // Desglose de vacaciones (puede ser 1 o 2 filas)
   const itemsVac = vacPend > 0
     ? [
-        { name:'Vacaciones devengadas (años anteriores)', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi },
-        { name:'Vacaciones proporcionales (año en curso)', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi },
+        { name:'Vacaciones devengadas (años anteriores)', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi,
+          fundamento:'Art. 76 LFT', periodo:`Ejercicios anteriores al ${formatDateShort(aniversario)}`, tratoFiscal: GRAVADO },
+        { name:'Vacaciones proporcionales (año en curso)', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi,
+          fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
       ]
-    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac }];
+    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac,
+         fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO }];
 
   const salarioIngresado = p.salario || p.monthlySalary;
 
@@ -724,25 +744,25 @@ function calcLiquidacion(p) {
     salario: salarioIngresado, periodoSalario: p.periodoSalario || 'mensual',
     ic, veintePorAnio, pa, vac, pv, ag, sp,
     items:[
-      { name:'Indemnización constitucional (Art. 50 fr. I LFT)',
+      { name:'Indemnización constitucional',
         calc:`${INDEM_CONST_DAYS} días × ${fmt(sdi)} SDI`,
-        amount: ic },
-      { name:'20 días por año (Art. 50 fr. II LFT)',
+        amount: ic, fundamento:'Art. 50 fracc. I LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
+      { name:'20 días por año',
         calc:`${frac.toFixed(2)} años × ${DIAS_20_POR_ANIO} días × ${fmt(sdi)} SDI`,
-        amount: veintePorAnio },
-      { name:'Prima de antigüedad (Art. 162 LFT)',
+        amount: veintePorAnio, fundamento:'Art. 50 fracc. II LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
+      { name:'Prima de antigüedad',
         calc:`${frac.toFixed(2)} años × ${PRIMA_ANTIG_DAYS} días × ${fmt(sdiCap)} (tope 2×SMG = ${fmt(2*smg)})`,
-        amount: pa },
+        amount: pa, fundamento:'Art. 162 LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
       ...itemsVac,
-      { name:'Prima vacacional (Art. 80 LFT)',
+      { name:'Prima vacacional',
         calc:`${fmt(vac)} × ${(prest.primaVacPct*100).toFixed(0)}%`,
-        amount: pv },
-      { name:'Aguinaldo proporcional (Art. 87 LFT)',
+        amount: pv, fundamento:'Art. 80 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
+      { name:'Aguinaldo proporcional',
         calc: p.aguinaldoPagado ? 'Ya pagado este año' : `${diasAg} días (${p.endDate.getFullYear()}) × ${fmt(sdi)} ÷ 365`,
-        amount: ag },
+        amount: ag, fundamento:'Art. 87 LFT', periodo: p.aguinaldoPagado ? 'Ya cubierto' : periodoAguinaldo, tratoFiscal: GRAVADO },
       { name:'Salarios pendientes de pago',
         calc:`${p.diasPendientes||0} días × ${fmt(daily)}`,
-        amount: sp },
+        amount: sp, fundamento:'Arts. 82 y 88 LFT', periodo:'Días previos a la baja no cubiertos en nómina', tratoFiscal: GRAVADO },
     ],
     total
   };
@@ -759,6 +779,17 @@ function calcFiniquito(p) {
   const sdi    = calcSDI(daily, entitlement, prest.primaVacPct, prest.aguinaldoDias);
   const sdiCap = Math.min(sdi, 2 * smg);
   const hasAntig = completed >= 15 || p.tieneAntig;
+
+  // Periodo de devengo de cada concepto (ver nota en calcLiquidacion).
+  const aniversario = new Date(p.startDate);
+  aniversario.setFullYear(aniversario.getFullYear() + completed);
+  const inicioAno = new Date(p.endDate.getFullYear(), 0, 1);
+  const inicioAguinaldo = p.startDate > inicioAno ? p.startDate : inicioAno;
+  const periodoRelacion  = `${formatDateShort(p.startDate)} – ${formatDateShort(p.endDate)}`;
+  const periodoVacActual = `${formatDateShort(aniversario)} – ${formatDateShort(p.endDate)}`;
+  const periodoAguinaldo = `${formatDateShort(inicioAguinaldo)} – ${formatDateShort(p.endDate)}`;
+  const EXENTO  = 'Exento hasta el tope (Art. 93 fr. XIII LISR)';
+  const GRAVADO = 'Gravado — retención ordinaria de nómina';
 
   // Vacaciones: proporcionales del año en curso + devengadas pendientes
   const propVac  = propVacDays(p.startDate, p.endDate, prest.vacDiasExtra);
@@ -777,25 +808,15 @@ function calcFiniquito(p) {
   const sp = (p.diasPendientes || 0) * daily;
   const total = vac + pv + ag + pa + sp;
 
-  const itemsVac = vacPend > 0
-    ? [
-        { name:'Vacaciones devengadas (años anteriores)', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi },
-        { name:'Vacaciones proporcionales (año en curso)', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi },
-      ]
-    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac }];
-
   const itemsVacFin = vacPend > 0
     ? [
-        { name:'Vacaciones de años anteriores (Art. 76 LFT)',
-          calc:`${vacPend} días × ${fmt(sdi)}`,
-          amount: vacPend * sdi },
-        { name:'Vacaciones proporcionales año en curso (Art. 76 LFT)',
-          calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`,
-          amount: propVac * sdi },
+        { name:'Vacaciones de años anteriores', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi,
+          fundamento:'Art. 76 LFT', periodo:`Ejercicios anteriores al ${formatDateShort(aniversario)}`, tratoFiscal: GRAVADO },
+        { name:'Vacaciones proporcionales año en curso', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi,
+          fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
       ]
-    : [{ name:'Vacaciones proporcionales (Art. 76 LFT)',
-         calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`,
-         amount: vac }];
+    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac,
+         fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO }];
 
   const diasLaborados = daysBetween(p.startDate, p.endDate);
   const diasEnAnio    = diasEnAnoCalendario(p.startDate, p.endDate);
@@ -808,20 +829,20 @@ function calcFiniquito(p) {
     pa, vac, pv, ag, sp,
     items:[
       ...itemsVacFin,
-      { name:'Prima vacacional (Art. 80 LFT)',
+      { name:'Prima vacacional',
         calc:`${fmt(vac)} × ${(prest.primaVacPct*100).toFixed(0)}%`,
-        amount: pv },
-      { name:'Aguinaldo proporcional (Art. 87 LFT)',
+        amount: pv, fundamento:'Art. 80 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
+      { name:'Aguinaldo proporcional',
         calc: p.aguinaldoPagado ? 'Ya pagado este año' : `${diasAg} días (${p.endDate.getFullYear()}) × ${fmt(sdi)} ÷ 365`,
-        amount: ag },
-      { name:'Prima de antigüedad (Art. 162 LFT)',
+        amount: ag, fundamento:'Art. 87 LFT', periodo: p.aguinaldoPagado ? 'Ya cubierto' : periodoAguinaldo, tratoFiscal: GRAVADO },
+      { name:'Prima de antigüedad',
         calc: hasAntig
           ? `${frac.toFixed(2)} años × ${PRIMA_ANTIG_DAYS} días × ${fmt(sdiCap)} (tope 2×SMG = ${fmt(2*smg)})`
           : 'No aplica (antigüedad menor a 15 años)',
-        amount: pa },
+        amount: pa, fundamento:'Art. 162 LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
       { name:'Salarios pendientes de pago',
         calc:`${p.diasPendientes||0} días × ${fmt(daily)}`,
-        amount: sp },
+        amount: sp, fundamento:'Arts. 82 y 88 LFT', periodo:'Días previos a la baja no cubiertos en nómina', tratoFiscal: GRAVADO },
     ],
     total
   };

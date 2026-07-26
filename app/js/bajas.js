@@ -555,16 +555,17 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
 
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Concepto</th><th>Cálculo</th><th style="text-align:right;">Importe</th></tr></thead>
+            <thead><tr><th>Concepto</th><th>Fundamento</th><th>Cálculo</th><th style="text-align:right;">Importe</th></tr></thead>
             <tbody>
               ${result.items.map(i => `
                 <tr>
                   <td><strong>${i.name}</strong></td>
+                  <td style="color:var(--text-muted);font-size:.78rem;">${i.fundamento || ''}</td>
                   <td style="color:var(--text-muted);font-size:.82rem;">${i.calc}</td>
                   <td style="text-align:right;font-weight:700;color:${i.amount > 0 ? 'var(--green-ok)' : 'var(--text-muted)'};">${fmtMx(i.amount)}</td>
                 </tr>`).join('')}
               <tr style="background:var(--gold-dim);">
-                <td colspan="2" style="font-weight:700;font-size:1rem;">TOTAL</td>
+                <td colspan="3" style="font-weight:700;font-size:1rem;">TOTAL</td>
                 <td style="text-align:right;font-weight:700;font-size:1rem;color:var(--gold-primary);">${fmtMx(result.total)}</td>
               </tr>
             </tbody>

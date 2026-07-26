@@ -1690,26 +1690,32 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   y = doc.lastAutoTable.finalY + 10;
 
   // ══════════════════════════════════════════════════════════════════════
-  // 4. TABLA DE CONCEPTOS
+  // 4. TABLA DE CONCEPTOS — con fundamento y periodo de devengo de cada uno
   // ══════════════════════════════════════════════════════════════════════
   doc.autoTable({
     startY: y, margin: { left:ml, right:mr },
-    head: [['Concepto', 'Calculo', 'Importe']],
-    body: result.items.map(item => [np(item.name), np(item.calc), fmt(item.amount)]),
-    foot: [['', 'TOTAL', fmt(result.total)]],
-    styles:      { fontSize:9, cellPadding:3.5, textColor:[40,40,40] },
+    head: [['Concepto', 'Periodo', 'Calculo', 'Importe']],
+    body: result.items.map(item => [
+      np(item.fundamento ? `${item.name} (${item.fundamento})` : item.name),
+      np(item.periodo || ''),
+      np(item.calc),
+      fmt(item.amount),
+    ]),
+    foot: [['', '', 'TOTAL', fmt(result.total)]],
+    styles:      { fontSize:8.3, cellPadding:3, textColor:[40,40,40] },
     headStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:8.5 },
     footStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:11 },
     alternateRowStyles: { fillColor:[248,248,252] },
     columnStyles:{
-      0:{ cellWidth:76, fontStyle:'bold' },
-      1:{ cellWidth:66, textColor:[100,100,100], fontSize:8.2 },
-      2:{ cellWidth:38, halign:'right', fontStyle:'bold' },
+      0:{ cellWidth:52, fontStyle:'bold' },
+      1:{ cellWidth:34, textColor:[100,100,100], fontSize:7.3 },
+      2:{ cellWidth:50, textColor:[100,100,100], fontSize:7.8 },
+      3:{ cellWidth:30, halign:'right', fontStyle:'bold' },
     },
     theme: 'grid',
     didParseCell: (data) => {
       // Resaltar conceptos con importe 0 en gris
-      if (data.section === 'body' && data.column.index === 2 && data.cell.raw === fmt(0)) {
+      if (data.section === 'body' && data.column.index === 3 && data.cell.raw === fmt(0)) {
         data.cell.styles.textColor = [180,180,180];
       }
     },
@@ -1717,9 +1723,13 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   y = doc.lastAutoTable.finalY + 12;
 
   // ══════════════════════════════════════════════════════════════════════
-  // 5. RECUADRO ISR (solo liquidación)
+  // 5. RECUADRO ISR — conceptos indemnizatorios (indemnización constitucional,
+  // 20 días por año y/o prima de antigüedad), en finiquito o en liquidación
   // ══════════════════════════════════════════════════════════════════════
-  if (isLiq) {
+  const montoIndemnizatorio = result.items
+    .filter(it => it.tratoFiscal && it.tratoFiscal.startsWith('Exento'))
+    .reduce((s, it) => s + it.amount, 0);
+  if (montoIndemnizatorio > 0) {
     // Art. 93 fr. XIII LISR — la exención equivale a 90 veces la UMA (no el
     // salario mínimo: desde el desindexamiento de 2016 el SM dejó de ser unidad
     // de referencia fiscal) por cada año de servicio, y toda fracción mayor a
@@ -1730,8 +1740,9 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
       ? result.completed + 1
       : result.completed;
     const aniosExencion  = Math.max(aniosComputables, 1);
-    const montoExento    = 90 * uma * aniosExencion;
-    const isrTxt = `NOTA FISCAL — ART. 93 FRACC. XIII LISR: Los pagos por concepto de indemnizacion, prima de antiguedad y retiro pueden estar exentos de ISR hasta por el equivalente a 90 veces la UMA por cada ano de servicio, computandose como ano completo toda fraccion mayor a seis meses. Para esta relacion laboral la exencion estimada es de ${fmt(montoExento)} (${aniosExencion} ano(s) computable(s) × 90 × ${fmt(uma)} UMA diaria vigente ${anioUma}). El excedente, si lo hubiere, esta sujeto a retencion de ISR. Consulte a su contador para el calculo definitivo antes de efectuar el pago.`;
+    const topeExencion   = 90 * uma * aniosExencion;
+    const montoExento    = Math.min(montoIndemnizatorio, topeExencion);
+    const isrTxt = `NOTA FISCAL — ART. 93 FRACC. XIII LISR: Los pagos por concepto de indemnizacion, prima de antiguedad y retiro pueden estar exentos de ISR hasta por el equivalente a 90 veces la UMA por cada ano de servicio, computandose como ano completo toda fraccion mayor a seis meses. De los ${fmt(montoIndemnizatorio)} pagados por estos conceptos en el presente recibo, la exencion estimada es de ${fmt(montoExento)} (tope: ${aniosExencion} ano(s) computable(s) × 90 × ${fmt(uma)} UMA diaria vigente ${anioUma}). El excedente, si lo hubiere, esta sujeto a retencion de ISR. Consulte a su contador para el calculo definitivo antes de efectuar el pago.`;
     ck(28);
     const isrLines = doc.splitTextToSize(np(isrTxt), tw - 10);
     const isrH = isrLines.length * 4.8 + 10;
@@ -1744,25 +1755,42 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
 
   // ══════════════════════════════════════════════════════════════════════
   // 6. DECLARACIÓN LEGAL
+  //
+  // El recibo acredita el PAGO de los conceptos desglosados en la tabla; no
+  // es un finiquito "total y absoluto" ni una renuncia a reclamar conceptos
+  // NO incluidos aquí (esa renuncia sería nula de pleno derecho: Art. 5o.
+  // fracc. XIII LFT). Citar los Arts. 50, 76, 80, 87 y 162 en la declaración
+  // — como hacía la versión anterior — no aporta nada (esos artículos ya
+  // fundamentan cada concepto en la tabla) y en el caso del Art. 50 sugiere
+  // indebidamente que el trabajador declara aceptar una indemnización
+  // constitucional también en el FINIQUITO, donde no existe tal concepto.
+  // Si las partes quieren cerrar el asunto con efecto de cosa juzgada, el
+  // vehículo correcto es el Convenio de Terminación ratificado ante el
+  // Centro de Conciliación (Art. 33 LFT), no esta declaración de pago.
   // ══════════════════════════════════════════════════════════════════════
   ck(36);
   const ciudad    = empresa.ciudad || '[CIUDAD]';
   const fechaBaja = npDate(trab.fecha_baja);
   const totalFmt  = fmt(result.total);
-  const totalLetr = numToWords(result.total);
+  // Redondear primero a centavos evita que el error de punto flotante empuje
+  // valores como 99.995 a un "100/100" de tres dígitos.
+  const totalRedondeado = Math.round(result.total * 100) / 100;
+  const totalEntero = Math.floor(totalRedondeado + 1e-9);
+  const centavosNum = Math.round((totalRedondeado - totalEntero) * 100);
+  const centavos  = String(centavosNum === 100 ? 0 : centavosNum).padStart(2, '0');
+  const totalLetr = numToWords(centavosNum === 100 ? totalEntero + 1 : totalEntero);
 
-  let declTxt;
-  if (isLiq) {
-    declTxt = `En la Ciudad de ${np(ciudad)}, a ${fechaBaja}, el C. ${np(trab.nombre)}, con RFC ${np(trab.rfc||'N/A')}, declara haber recibido de ${np(empresa.nombre)} la cantidad total de ${np(totalFmt)} (${np(totalLetr)} PESOS 00/100 M.N.) por concepto de LIQUIDACION, en los terminos de los Articulos 50, 76, 80, 87 y 162 de la Ley Federal del Trabajo, manifestando que con dicho pago no tiene reclamacion adicional alguna en contra del Patron por concepto de salarios, prestaciones, indemnizaciones o cualquier otro concepto derivado de la relacion laboral que existio entre las partes, la cual queda extinguida en todos sus efectos a partir de la fecha indicada.`;
-  } else {
-    declTxt = `En la Ciudad de ${np(ciudad)}, a ${fechaBaja}, el C. ${np(trab.nombre)}, con RFC ${np(trab.rfc||'N/A')}, declara haber recibido de ${np(empresa.nombre)} la cantidad total de ${np(totalFmt)} (${np(totalLetr)} PESOS 00/100 M.N.) por concepto de FINIQUITO, en los terminos de los Articulos 76, 80, 87 y 162 de la Ley Federal del Trabajo, en virtud de la terminacion de la relacion laboral ocurrida el dia ${fechaBaja}, manifestando que con dicho pago queda completamente liquidado y no tiene reclamacion adicional alguna en contra del Patron por ningun concepto derivado de la relacion laboral que queda extinguida en todos sus efectos.`;
-  }
+  const declTxt1 = `En la Ciudad de ${np(ciudad)}, a ${fechaBaja}, el C. ${np(trab.nombre)}, con RFC ${np(trab.rfc||'N/A')}, declara haber recibido de ${np(empresa.nombre)} la cantidad de ${np(totalFmt)} (${np(totalLetr)} PESOS ${centavos}/100 M.N.) por los conceptos desglosados en el presente recibo, correspondientes a las prestaciones generadas durante la relacion de trabajo que concluyo el ${fechaBaja}.`;
+  const declTxt2 = `El presente documento acredita el pago de los conceptos que en el se detallan. No constituye renuncia de derechos, la cual seria nula en terminos del articulo 5o. fraccion XIII de la Ley Federal del Trabajo.`;
 
   doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30,30,30);
-  const dLines = doc.splitTextToSize(np(declTxt), tw);
-  ck(dLines.length * 5.4 + 6);
-  doc.text(dLines, ml, y, { lineHeightFactor:1.5 });
-  y += dLines.length * 5.4 + 8;
+  const dLines1 = doc.splitTextToSize(np(declTxt1), tw);
+  const dLines2 = doc.splitTextToSize(np(declTxt2), tw);
+  ck(dLines1.length * 5.4 + dLines2.length * 5.4 + 12);
+  doc.text(dLines1, ml, y, { lineHeightFactor:1.5 });
+  y += dLines1.length * 5.4 + 6;
+  doc.text(dLines2, ml, y, { lineHeightFactor:1.5 });
+  y += dLines2.length * 5.4 + 8;
 
   // ══════════════════════════════════════════════════════════════════════
   // 7. FIRMAS (3 bloques: Patrón | Trabajador | Testigo)

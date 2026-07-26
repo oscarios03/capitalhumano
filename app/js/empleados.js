@@ -1569,7 +1569,7 @@ function _cardCostoYSalida(trab) {
       <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:8px;">${sub}</div>
       <div style="font-size:1.35rem;font-weight:700;color:${color};">${fmt(r.total)}</div>
       <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px;">
-        ${r.items.filter(i => i.amount > 0).map(i => `${i.name.replace(/\s*\(Art[^)]*\)/,'')}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
+        ${r.items.filter(i => i.amount > 0).map(i => `${i.name}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
       </div>
     </div>`;
 
