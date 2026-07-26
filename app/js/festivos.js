@@ -109,6 +109,57 @@ function esFestivo(fechaISO) {
   return _festivosCache.get(clave) || null;
 }
 
+/**
+ * Días hábiles transcurridos entre dos fechas, sin contar el día inicial.
+ * Espejo en JS de dias_habiles_transcurridos() (migración 41), para la cuenta
+ * regresiva en vivo de la UI; la fuente de verdad para las alertas es la SQL.
+ *
+ * Calendario conservador a propósito: sábados, domingos y festivos OFICIALES
+ * del art. 74 LFT. NO se descuentan los días de descanso propios de la empresa,
+ * porque el plazo de cinco días hábiles del art. 47 corre ante el Tribunal y su
+ * calendario no es el del patrón. Descontar de más alargaría el plazo aparente
+ * y llevaría a perderlo.
+ *
+ * @param {string} desdeISO  YYYY-MM-DD (exclusivo)
+ * @param {string} hastaISO  YYYY-MM-DD (inclusivo)
+ */
+function diasHabiles(desdeISO, hastaISO) {
+  const desde = new Date(String(desdeISO).slice(0,10) + 'T00:00:00');
+  const hasta = new Date(String(hastaISO).slice(0,10) + 'T00:00:00');
+  if (isNaN(desde.getTime()) || isNaN(hasta.getTime()) || hasta <= desde) return 0;
+
+  let n = 0;
+  const cur = new Date(desde);
+  cur.setDate(cur.getDate() + 1);
+  while (cur <= hasta) {
+    const dow = cur.getDay();               // 0 domingo, 6 sábado
+    if (dow !== 0 && dow !== 6) {
+      const iso = cur.toISOString().slice(0,10);
+      const f = _festivosCache ? _festivosCache.get(iso) : null;
+      if (!f || !f.oficial || f.empresa_id) n++;   // sólo descuenta el oficial
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return n;
+}
+
+/** Fecha límite tras N días hábiles contados desde la fecha dada. */
+function fechaLimiteHabil(desdeISO, dias) {
+  const cur = new Date(String(desdeISO).slice(0,10) + 'T00:00:00');
+  if (isNaN(cur.getTime())) return null;
+  let n = 0;
+  while (n < dias) {
+    cur.setDate(cur.getDate() + 1);
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) {
+      const iso = cur.toISOString().slice(0,10);
+      const f = _festivosCache ? _festivosCache.get(iso) : null;
+      if (!f || !f.oficial || f.empresa_id) n++;
+    }
+  }
+  return cur.toISOString().slice(0,10);
+}
+
 /** ¿La fecha ISO cae en domingo? */
 function esDomingo(fechaISO) {
   const d = new Date(String(fechaISO || '').slice(0, 10) + 'T00:00:00');

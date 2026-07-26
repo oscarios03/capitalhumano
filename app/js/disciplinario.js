@@ -105,8 +105,9 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
         </div>
         <div class="form-group">
           <label class="form-label" for="ac-fecha">Fecha de la falta <span class="req">*</span></label>
-          <input id="ac-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" required aria-required="true" />
+          <input id="ac-fecha" type="date" class="form-input" value="${new Date().toISOString().split('T')[0]}" required aria-required="true" onchange="revisarPrescripcionActa()" />
         </div>
+        <div class="form-group span-2" id="ac-prescripcion-warn"></div>
         <div class="form-group">
           <label class="form-label" for="ac-hora">Hora (aprox.)</label>
           <input id="ac-hora" type="time" class="form-input" />
@@ -167,8 +168,63 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
   }
 }
 
+/**
+ * Advertencia roja no descartable cuando la falta pudo prescribir.
+ *
+ * El art. 517 fr. I concede al patrón un mes —desde el día siguiente a aquel en
+ * que tuvo conocimiento de la causa— para despedir y para disciplinar faltas.
+ * Es, en la práctica, lo que más rescisiones tumba: el patrón junta expediente
+ * durante meses y cuando por fin rescinde, la causa ya prescribió.
+ *
+ * Sólo se muestra en el acta rescisoria: en la amonestación el plazo también
+ * corre, pero su consecuencia no es un despido injustificado.
+ */
+function revisarPrescripcionActa() {
+  const box = eid('ac-prescripcion-warn');
+  if (!box) return;
+  const tipo  = eid('ac-tipo')?.value;
+  const fecha = eid('ac-fecha')?.value;
+  if (tipo !== 'rescisoria' || !fecha) { box.innerHTML = ''; return; }
+
+  const falta = new Date(fecha + 'T00:00:00');
+  const hoy   = new Date(new Date().toISOString().slice(0,10) + 'T00:00:00');
+  // Un mes calendario, no 30 días: febrero y julio no miden lo mismo.
+  const vence = new Date(falta);
+  vence.setMonth(vence.getMonth() + 1);
+  const restantes = Math.floor((vence - hoy) / 86400000);
+
+  if (restantes < 0) {
+    box.innerHTML = `
+      <div class="alert alert-danger" style="align-items:flex-start;">
+        <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+        <span><strong>La causa de rescisión pudo haber prescrito.</strong>
+        El artículo 517 fracción I de la LFT concede al patrón <strong>un mes</strong> para ejercer la acción
+        de rescisión, contado a partir del día siguiente a la fecha en que se tuvo conocimiento de la causa.
+        Rescindir fuera de este plazo hace que el despido se considere injustificado.
+        Consulta a tu abogado antes de continuar.</span>
+      </div>`;
+  } else if (restantes <= 5) {
+    box.innerHTML = `
+      <div class="alert alert-danger" style="align-items:flex-start;">
+        <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+        <span><strong>Quedan ${restantes} día(s)</strong> del plazo de un mes del Art. 517 fracc. I LFT
+        para ejercer la rescisión.</span>
+      </div>`;
+  } else if (restantes <= 10) {
+    box.innerHTML = `
+      <div class="alert alert-warn" style="align-items:flex-start;">
+        <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+        <span>Quedan ${restantes} días del plazo del Art. 517 fracc. I LFT para ejercer la rescisión.</span>
+      </div>`;
+  } else {
+    box.innerHTML = '';
+  }
+  return restantes;
+}
+
 function actualizarCatalogoFaltas() {
   const tipo = eid('ac-tipo')?.value || 'amonestacion';
+  revisarPrescripcionActa();
   const sel  = eid('ac-tipo-falta');
   if (!sel) return;
   const prev = sel.value;
@@ -202,6 +258,24 @@ async function handleGuardarActa() {
 
   if (!trabId || !tipo || !fecha || !desc || !causal) {
     err.textContent = 'Completa todos los campos requeridos.'; err.style.display=''; return;
+  }
+
+  // Bloqueo con confirmación explícita: pasado el mes del art. 517 fr. I la
+  // rescisión ya no se sostiene, y el patrón debe decidirlo a sabiendas.
+  if (tipo === 'rescisoria') {
+    const restantes = revisarPrescripcionActa();
+    if (typeof restantes === 'number' && restantes < 0 && typeof showConfirmacion === 'function') {
+      const seguir = await showConfirmacion(
+        'La causa de rescisión pudo haber prescrito. El artículo 517 fracción I de la LFT ' +
+        'concede al patrón un mes para ejercer la acción de rescisión, contado a partir del ' +
+        'día siguiente a la fecha en que se tuvo conocimiento de la causa. Rescindir fuera de ' +
+        'este plazo hace que el despido se considere injustificado.\n\n' +
+        '¿Deseas generar el acta de todas formas?',
+        { titulo: 'Posible prescripción de la causa', textoOk: 'Generar de todas formas',
+          textoCancelar: 'Cancelar', peligro: true }
+      );
+      if (!seguir) return;
+    }
   }
 
   const datos = {
