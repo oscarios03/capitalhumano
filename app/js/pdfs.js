@@ -828,8 +828,12 @@ function generateContratoComision(data) {
   _h(state, 1, 'Duracion (Art. 285 LFT)');
   _p(state, `El presente contrato se celebra por TIEMPO INDETERMINADO entre ${np(data.razonSocial)} (EL PATRON) y el C. ${np(data.nombre)} (EL TRABAJADOR COMISIONISTA), con inicio el ${npDate(data.fechaIngreso+'T00:00:00')}.`);
 
-  _h(state, 2, 'Periodo de Prueba — 60 dias');
-  _p(state, `Se establece un periodo de prueba de 60 dias naturales para evaluar desempeno en ventas, zona de trabajo y cumplimiento de objetivos comerciales. Al concluir el periodo sin notificacion en contrario, el contrato queda ratificado.`);
+  // El art. 39-A sólo admite 30 días como regla general y 180 exclusivamente
+  // para dirección, gerencia y labores técnicas o profesionales especializadas.
+  // 60 días no es un valor previsto por la ley: pactarlo excede el tope y el
+  // excedente es nulo, de modo que la terminación en ese lapso es despido.
+  _h(state, 2, `Periodo de Prueba — ${data.tipoPruebaDias} dias (Art. 39-A LFT)`);
+  _p(state, `Se establece un periodo de prueba de ${data.tipoPruebaDias} dias naturales para evaluar el desempeno en ventas, la zona de trabajo y el cumplimiento de objetivos comerciales. Al concluir el periodo sin notificacion en contrario, el contrato queda ratificado de pleno derecho.`);
 
   _h(state, 3, 'Objeto, Zona y Actividades');
   _p(state, `EL TRABAJADOR desempenara el cargo de ${np(data.puesto)} con cobertura en: ${np(data.zonaAsignada || '[ZONA ASIGNADA]')}. Actividades principales: ${np(data.funciones)}.`);

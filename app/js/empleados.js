@@ -450,8 +450,11 @@ async function showModalTrabajador(id = null) {
           </div>
           <div class="form-group" id="grupo-prueba" style="display:none;">
             <label class="form-label" for="n-prueba">Duración del período a prueba (días)</label>
-            <input id="n-prueba" type="number" class="form-input" min="1" value="${v('periodo_prueba_dias',30)}" onchange="calcularFechaVencimiento()" />
-            <div class="helper-text" id="n-prueba-hint">Máximo 30 días (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.</div>
+            <select id="n-prueba" class="form-select" onchange="calcularFechaVencimiento()">
+              <option value="30" ${Number(v('periodo_prueba_dias',30))!==180?'selected':''}>30 días</option>
+              <option value="180" ${Number(v('periodo_prueba_dias',30))===180?'selected':''}>180 días — sólo dirección, gerencia o labores técnicas especializadas</option>
+            </select>
+            <div class="helper-text" id="n-prueba-hint">El Art. 39-A LFT sólo admite 30 días como regla general. La fecha de vencimiento se calcula automáticamente.</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-capacitacion">Días de capacitación inicial pactados <span style="font-size:.68rem;color:var(--text-muted);">(Art. 39-B LFT, opcional)</span></label>
@@ -796,8 +799,19 @@ function _actualizarLimitesPrueba() {
   const hintPrueba = eid('n-prueba-hint');
   if (hintPrueba) {
     hintPrueba.textContent = esDireccion
-      ? 'Máximo 180 días para puestos de dirección/confianza (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.'
-      : 'Máximo 30 días (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.';
+      ? 'Puede pactarse 180 días por tratarse de un puesto de dirección, gerencia o labores técnicas especializadas (Art. 39-A LFT).'
+      : 'El Art. 39-A LFT sólo admite 30 días como regla general. La fecha de vencimiento se calcula automáticamente.';
+  }
+  // La opción de 180 días existe únicamente para los puestos del segundo
+  // párrafo del art. 39-A. Fuera de ellos el excedente sobre 30 días es nulo,
+  // y terminar la relación en ese lapso equivale a un despido injustificado.
+  const selPrueba = eid('n-prueba');
+  if (selPrueba) {
+    const op180 = [...selPrueba.options].find(o => o.value === '180');
+    if (op180) {
+      op180.disabled = !esDireccion;
+      if (!esDireccion && selPrueba.value === '180') selPrueba.value = '30';
+    }
   }
   const hintCap = eid('n-capacitacion-hint');
   if (hintCap) {
