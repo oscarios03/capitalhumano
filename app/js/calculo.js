@@ -4,12 +4,11 @@
  */
 
 // ─── CONSTANTES LFT 2026 ──────────────────────────────────────────────────────
-// Valores de respaldo: se usan solo si config_valores (migración 15) no está
-// disponible todavía. La fuente de verdad vive en la tabla config_valores;
-// consultar con getConfigValor('salario_minimo_general', SMG_GENERAL), etc.
-const SMG_GENERAL      = 315.04;
-const SMG_FRONTERA     = 419.88;
-const UMA_DIARIA_FALLBACK = 113.14;
+// El salario mínimo y la UMA caducan cada año y viven en vigencias.js, que
+// LANZA ErrorVigencia si el año en curso no está configurado. Aquí sólo quedan
+// las constantes que no dependen del ejercicio fiscal.
+//   Salario mínimo → _smgVigente('general' | 'frontera')
+//   UMA diaria     → _umaVigente()
 const AGUINALDO_DAYS   = 15;
 const PRIMA_VAC_PCT    = 0.25;
 const PRIMA_ANTIG_DAYS = 12;
@@ -170,7 +169,8 @@ const CEAV_PATRONAL_1SM = 0.03150;   // SBC de exactamente 1 salario mínimo
 function _ceavPatronalPct(sbcDiario, umaDiaria, smgDiario) {
   // Con SBC ≤ 1 SM aplica la cuota mínima sin progresión (el SBC nunca puede
   // ser menor al SM, pero se tolera por datos capturados a mano).
-  if (sbcDiario <= (smgDiario || SMG_GENERAL) * 1.005) return CEAV_PATRONAL_1SM;
+  // smgDiario siempre llega validado desde _smgVigente(); sin respaldo local.
+  if (sbcDiario <= smgDiario * 1.005) return CEAV_PATRONAL_1SM;
   const enUMA = sbcDiario / umaDiaria;
   return (CEAV_PATRONAL_2026.find(r => enUMA <= r.hastaUMA) || CEAV_PATRONAL_2026.at(-1)).pct;
 }
@@ -202,7 +202,7 @@ function calcIMSSPatronal(sbcDiario, diasCotiz, umaDiaria, primaRiesgoPct, smgZo
   const base      = Math.min(Math.max(0, sbcDiario || 0), 25 * umaDiaria); // tope 25 UMA (Art. 28 LSS)
   const excedente = Math.max(0, base - 3 * umaDiaria);
   const primaRT   = Math.max(0, parseFloat(primaRiesgoPct) || 0.54355) / 100;
-  const smgDiario = typeof _smgVigente === 'function' ? _smgVigente(smgZone) : SMG_GENERAL;
+  const smgDiario = _smgVigente(smgZone);
 
   const d = {
     cuotaFija:     umaDiaria * 0.2040,
@@ -240,7 +240,7 @@ function calcIMSSPatronal(sbcDiario, diasCotiz, umaDiaria, primaRiesgoPct, smgZo
 function costoTotalEmpleado(trab, emp) {
   const e     = emp || (typeof CTX !== 'undefined' && CTX?.empresa) || {};
   const prest = prestacionesEmpresa(e);
-  const uma   = typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK;
+  const uma   = _umaVigente();
 
   const daily    = calcSalarioDiario(parseFloat(trab.salario_mensual) || 0, trab.periodo_salario || 'mensual');
   const salMens  = daily * 30;
@@ -330,17 +330,8 @@ function esFestivoEmpresa(fechaISO, prest) {
   );
 }
 
-/** Salario mínimo vigente (config_valores, migración 15) con respaldo local. */
-function _smgVigente(zona) {
-  const clave = zona === 'frontera' ? 'salario_minimo_frontera' : 'salario_minimo_general';
-  const fallback = zona === 'frontera' ? SMG_FRONTERA : SMG_GENERAL;
-  return typeof getConfigValor === 'function' ? getConfigValor(clave, fallback) : fallback;
-}
-
-/** UMA diaria vigente (config_valores, migración 15) con respaldo local. */
-function _umaVigente() {
-  return typeof getConfigValor === 'function' ? getConfigValor('uma_diaria', UMA_DIARIA_FALLBACK) : UMA_DIARIA_FALLBACK;
-}
+// _smgVigente() y _umaVigente() viven ahora en vigencias.js: validan que el
+// valor corresponda al ejercicio en curso y lanzan ErrorVigencia si caducó.
 
 // ─── PRIMA DOMINICAL Y PAGO DE DÍA FESTIVO (Arts. 71, 74-75 LFT) ─────────────
 /**
@@ -776,7 +767,7 @@ function calcularSBC(trabajador, montoVariableIntegrable = 0, prest) {
   const p = prest || prestacionesEmpresa();
   const daily  = calcSalarioDiario(trabajador.salario_mensual, trabajador.periodo_salario || 'mensual');
   const factor = calcularFactorIntegracion(trabajador, p);
-  const uma    = typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK;
+  const uma    = _umaVigente();
   const piso   = _smgVigente(trabajador.smg_zone);
   const tope   = 25 * uma; // Art. 28 LSS
 

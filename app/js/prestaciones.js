@@ -45,7 +45,7 @@ async function renderTabPrestaciones(trabajadorId) {
     return;
   }
 
-  const uma   = typeof _umaVigente === 'function' ? _umaVigente() : 113.14;
+  const uma   = _umaVigente();
   const daily = calcSalarioDiario(trab.salario_mensual, trab.periodo_salario || 'mensual');
   const dias  = trab.periodo_salario === 'semanal' ? 7 : trab.periodo_salario === 'quincenal' ? 15 : 30;
 

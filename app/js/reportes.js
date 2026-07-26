@@ -485,7 +485,7 @@ async function _repGenConstancia() {
 function _calcularFilasSUA() {
   const IMSS_PAT_ENFF = 0.1049; // cuota patronal enf. y maternidad estimada
   const _prestRep = prestacionesEmpresa();
-  const _umaRep   = typeof _umaVigente === 'function' ? _umaVigente() : (typeof UMA_DIARIA !== 'undefined' ? UMA_DIARIA : 113.14);
+  const _umaRep   = _umaVigente();
   return _REP.trabajadores.filter(t => t.estado === 'activo').map(t => {
     const sd  = calcSalarioDiario(t.salario_mensual, t.periodo_salario || 'mensual');
     const sdi = calcSDI ? calcSDI(sd, vacDaysForYear(0, _prestRep.vacDiasExtra), _prestRep.primaVacPct, _prestRep.aguinaldoDias) : sd * 1.045;
@@ -821,7 +821,7 @@ function _exportarCostoDeptoXLSX() {
 async function _repGenAntiguedades() {
   const res = document.getElementById('rep-resultado');
   const hoy = new Date();
-  const uma = typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK;
+  const uma = _umaVigente();
 
   const filas = _REP.trabajadores.filter(t => t.estado === 'activo').map(t => {
     const ingreso = new Date(t.fecha_ingreso + 'T00:00:00');

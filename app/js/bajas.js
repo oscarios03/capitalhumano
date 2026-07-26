@@ -190,7 +190,18 @@ async function handleProcesarBaja() {
     aguinaldoPagado:      eid('baja-ag-pagado')?.checked || false,
   };
 
-  const result            = (tipo === 'injustificada') ? calcLiquidacion(params) : calcFiniquito(params);
+  // El cálculo depende del salario mínimo y la UMA vigentes (tope de la prima de
+  // antigüedad, Art. 162 fr. II LFT). Si no están configurados para el ejercicio
+  // en curso, vigencias.js lanza en vez de calcular con cifras caducas: el error
+  // debe verse, no morir como promesa rechazada.
+  let result;
+  try {
+    result = (tipo === 'injustificada') ? calcLiquidacion(params) : calcFiniquito(params);
+  } catch (e) {
+    err.textContent = friendlyError(e);
+    err.style.display = '';
+    return;
+  }
   const trabajadorPdf     = { ...trab, salario_mensual: salario, fecha_baja: fecha };
 
   const tipoLabel = { injustificada:'Despido injustificado (Liquidación)', renuncia:'Renuncia voluntaria (Finiquito)', justificada:'Rescisión justificada (Finiquito)' }[tipo] || tipo;

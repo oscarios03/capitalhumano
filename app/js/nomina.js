@@ -77,7 +77,7 @@ const ISR_QUINCENAL_2026 = _escalarTarifaISR(ISR_MENSUAL_2026, 15 / 30.4);
  * @param {number} factorMes    Factor para mensualizar (30.4/7, 30.4/15, 1)
  */
 function _subsidioEmpleoPeriodo(basePeriodo, factorMes) {
-  const uma = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+  const uma = _umaVigente();
   const pct = typeof getConfigValor === 'function' ? getConfigValor('subsidio_pct_uma', 0.1502) : 0.1502;
   const lim = typeof getConfigValor === 'function' ? getConfigValor('subsidio_limite_mensual', 11492.66) : 11492.66;
   if (basePeriodo * factorMes > lim) return 0;
@@ -928,7 +928,7 @@ async function _tabDetalle() {
     // Si ya está guardado en BD lo usa; si no, lo calcula al vuelo
     if (r.infonavit_patronal != null && parseFloat(r.infonavit_patronal) > 0) return s + parseFloat(r.infonavit_patronal);
     const d = r.dias_laborados > 0 ? parseFloat(r.salario_base) / r.dias_laborados : 0;
-    const uma = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    const uma = _umaVigente();
     return s + parseFloat((Math.min(d, 25*uma) * 0.05 * r.dias_laborados).toFixed(2));
   }, 0);
   // Costo patronal IMSS + ISN (migración 32; 0 en recibos generados antes)
@@ -1280,7 +1280,7 @@ function _reTab(n) {
 // trabajador (fallback: salario diario, y en último caso el % plano previo).
 function _imssObreroRecibo(r, salBase) {
   const t   = (_N.trabajadores || []).find(x => x.id === r.trabajador_id) || {};
-  const uma = typeof _umaVigente === 'function' ? _umaVigente() : (typeof UMA_DIARIA !== 'undefined' ? UMA_DIARIA : 113.14);
+  const uma = _umaVigente();
   const sbcD = parseFloat(t.sbc) > 0
     ? parseFloat(t.sbc)
     : calcSalarioDiario(parseFloat(t.salario_mensual || 0), t.periodo_salario || 'mensual');
@@ -1655,7 +1655,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     descMap[d.trabajador_id].push(d);
   });
 
-  const smgDiarioVigente = typeof _smgVigente === 'function' ? _smgVigente('general') : SMG_GENERAL;
+  const smgDiarioVigente = _smgVigente('general');
   const aplicacionesDescuento = []; // se insertan en descuentos_aplicados tras el upsert de recibos
 
   // Prestaciones adicionales de previsión social (migración 18): premios de
@@ -1721,7 +1721,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
   const diasPeriodo = Math.ceil((dFin - dIni) / 86400000) + 1;
 
   // UMA diaria vigente (config_valores, migración 15; con respaldo local)
-  const UMA_DIARIA_2026    = typeof _umaVigente === 'function' ? _umaVigente() : 113.14;
+  const UMA_DIARIA_2026    = _umaVigente();
   const SBC_TOPE_INFONAVIT = 25 * UMA_DIARIA_2026; // tope Art. 29 Ley INFONAVIT
 
   const recibos = [];

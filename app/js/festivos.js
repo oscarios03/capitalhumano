@@ -26,10 +26,15 @@ async function cargarConfigValores(forzar = false) {
     return _configValoresCache;
   }
 
-  // Toma el valor de vigencia más reciente para cada clave
+  // Toma el valor de vigencia más reciente para cada clave. Se conserva
+  // `vigencia_desde`: sin esa fecha no hay forma de saber si el valor caducó,
+  // porque la consulta devuelve para siempre la última fila publicada aunque
+  // sea de un ejercicio anterior. Lo usa vigencias.js.
   const map = {};
   for (const row of (data || [])) {
-    if (!(row.clave in map)) map[row.clave] = parseFloat(row.valor);
+    if (!(row.clave in map)) {
+      map[row.clave] = { valor: parseFloat(row.valor), vigencia_desde: row.vigencia_desde };
+    }
   }
   _configValoresCache = map;
   return map;
@@ -38,10 +43,24 @@ async function cargarConfigValores(forzar = false) {
 /**
  * Obtiene un valor de config_valores ya cacheado (llamar a
  * cargarConfigValores() antes). Si no está disponible, usa el respaldo.
+ *
+ * Para salario mínimo y UMA usa _smgVigente()/_umaVigente() de vigencias.js:
+ * validan la caducidad, esta función no.
  */
 function getConfigValor(clave, fallback) {
-  const v = _configValoresCache ? _configValoresCache[clave] : undefined;
+  const v = _configValoresCache ? _configValoresCache[clave]?.valor : undefined;
   return Number.isFinite(v) ? v : fallback;
+}
+
+/**
+ * Registro completo de una clave, con su fecha de vigencia.
+ * @returns {{valor:number, vigencia_desde:string}|null|undefined}
+ *   el registro; `null` si la clave no está configurada;
+ *   `undefined` si el caché todavía no se ha cargado.
+ */
+function getConfigValorVigencia(clave) {
+  if (!_configValoresCache) return undefined;
+  return _configValoresCache[clave] || null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
