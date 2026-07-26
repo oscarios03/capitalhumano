@@ -128,8 +128,8 @@ async function generarDocumentoIA(tipoDocumento, trabajadorId, contexto) {
   ]);
   const { data: empresa } = await _sb.from('empresas').select('*').eq('id', perfil.empresa_id).single();
 
-  // 2. Construir objeto de datos del caso
-  const datosCaso = _buildDatosCaso(empresa, trab, contexto);
+  // 2. Construir objeto de datos del caso (minimizado según el tipo de documento)
+  const datosCaso = _buildDatosCaso(empresa, trab, contexto, tipoDocumento);
 
   // 3. Obtener plantilla base (lazy — plantillas.js ya cargado)
   const plantillaKey = TIPOS_DOCUMENTO[tipoDocumento]?.plantilla;
@@ -146,17 +146,32 @@ async function generarDocumentoIA(tipoDocumento, trabajadorId, contexto) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
     },
+    // `model` y `max_tokens` NO se mandan: los fija la Edge Function del lado
+    // del servidor. Mandarlos desde aquí solo daría la falsa impresión de que
+    // el cliente los controla.
     body: JSON.stringify({
-      model: 'claude-opus-4-5',
-      max_tokens: 8000,
+      tipo_doc: tipoDocumento,
       system: SYSTEM_PROMPT_LABORAL,
       messages: [{ role: 'user', content: userPrompt }],
     }),
   });
 
   if (!response.ok) {
+    // 429 = cuota de uso agotada. Es una condición esperada y accionable para
+    // el usuario, no un error técnico: se muestra el mensaje del servidor.
+    let cuerpo = {};
+    try { cuerpo = await response.clone().json(); } catch { /* no era JSON */ }
+    if (response.status === 429) {
+      throw new Error(cuerpo.message || 'Alcanzaste el límite de generaciones con el Agente IA. Intenta más tarde.');
+    }
+    if (response.status === 403) {
+      throw new Error(cuerpo.message || 'El Agente IA no está disponible en tu plan actual.');
+    }
+    // Cualquier otro error: no reflejar el cuerpo crudo de la respuesta al
+    // usuario (puede traer detalle interno del proveedor); queda en consola.
     const errTxt = await response.text();
-    throw new Error(`API ${response.status}: ${errTxt.slice(0, 200)}`);
+    console.error(`agente-ia respondió ${response.status}:`, errTxt.slice(0, 500));
+    throw new Error('El Agente IA no pudo generar el documento en este momento. Intenta de nuevo en unos minutos.');
   }
 
   const apiData = await response.json();
@@ -179,7 +194,34 @@ async function generarDocumentoIA(tipoDocumento, trabajadorId, contexto) {
 }
 
 // ─── Construcción del objeto de datos ────────────────────────────────────────
-function _buildDatosCaso(empresa, trab, contexto) {
+// MINIMIZACIÓN DE DATOS PERSONALES (auditoría 2026-07, Fase 2/9):
+// este objeto se serializa completo dentro del prompt que viaja a la API de
+// Anthropic. Antes se mandaba SIEMPRE el expediente entero del trabajador —
+// NSS, domicilio, identificación oficial y hasta el nombre y teléfono de sus
+// beneficiarios (personas que ni siquiera son el titular del dato) — sin
+// importar qué documento se estaba generando.
+//
+// Ahora se recorta por categoría de documento, verificado campo por campo
+// contra las plantillas reales de plantillas.js:
+//   · contrato     → usa CURP, NSS y beneficiarios (cláusula DÉCIMA CUARTA)
+//   · terminacion  → usa CURP y NSS (finiquito/renuncia), NO beneficiarios
+//   · acta         → no usa NSS, beneficiarios, domicilio ni identificación
+// Quitar un campo que la plantilla no imprime no puede degradar el documento.
+const _CAMPOS_SENSIBLES_POR_CATEGORIA = {
+  contrato:    { nss: true,  beneficiarios: true,  domicilio: true,  identificacion: true  },
+  terminacion: { nss: true,  beneficiarios: false, domicilio: true,  identificacion: true  },
+  acta:        { nss: false, beneficiarios: false, domicilio: false, identificacion: false },
+};
+
+function _buildDatosCaso(empresa, trab, contexto, tipoDocumento) {
+  const categoria = TIPOS_DOCUMENTO[tipoDocumento]?.categoria;
+  // Ante un tipo desconocido se elige el perfil MÁS restrictivo, no el más
+  // permisivo: si algún día se agrega un tipo nuevo y se olvida clasificarlo,
+  // el fallo es "faltó un dato en el documento", no "se filtró PII de más".
+  const permite = _CAMPOS_SENSIBLES_POR_CATEGORIA[categoria]
+    || _CAMPOS_SENSIBLES_POR_CATEGORIA.acta;
+  const soloSi = (cond, valor) => (cond ? valor : undefined);
+
   const suc = trab.sucursales;
   return {
     empresa: {
@@ -199,13 +241,13 @@ function _buildDatosCaso(empresa, trab, contexto) {
       nombre:              trab.nombre,
       rfc:                 trab.rfc,
       curp:                trab.curp,
-      nss:                 trab.nss,
+      nss:                 soloSi(permite.nss, trab.nss),
       edad:                trab.edad,
       estadoCivil:         trab.estado_civil,
       nacionalidad:        trab.nacionalidad || 'Mexicana',
-      domicilio:           trab.domicilio,
-      tipoIdentificacion:  trab.tipo_identificacion,
-      numIdentificacion:   trab.num_identificacion,
+      domicilio:           soloSi(permite.domicilio, trab.domicilio),
+      tipoIdentificacion:  soloSi(permite.identificacion, trab.tipo_identificacion),
+      numIdentificacion:   soloSi(permite.identificacion, trab.num_identificacion),
       puesto:              trab.puesto,
       departamento:        trab.departamento,
       fechaIngreso:        trab.fecha_ingreso,
@@ -231,8 +273,10 @@ function _buildDatosCaso(empresa, trab, contexto) {
       diasPresentacion:    trab.dias_presentacion,
       horarioPresentacion: trab.horario_presentacion,
       tablaComisiones:     trab.tabla_comisiones,
-      beneficiario1: { nombre: trab.beneficiario1_nombre, parentesco: trab.beneficiario1_parentesco, telefono: trab.beneficiario1_telefono },
-      beneficiario2: { nombre: trab.beneficiario2_nombre, parentesco: trab.beneficiario2_parentesco, telefono: trab.beneficiario2_telefono },
+      beneficiario1: soloSi(permite.beneficiarios,
+        { nombre: trab.beneficiario1_nombre, parentesco: trab.beneficiario1_parentesco, telefono: trab.beneficiario1_telefono }),
+      beneficiario2: soloSi(permite.beneficiarios,
+        { nombre: trab.beneficiario2_nombre, parentesco: trab.beneficiario2_parentesco, telefono: trab.beneficiario2_telefono }),
     },
     contexto,
   };

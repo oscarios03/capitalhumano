@@ -82,7 +82,10 @@ Deno.serve(async (req: Request) => {
   const { data: pendientes, error } = await supabase
     .rpc('send_emails_claim', { p_max: MAX_BATCH });
 
-  if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  if (error) {
+    console.error('send-emails: send_emails_claim falló:', error.code, error.message);
+    return new Response(JSON.stringify({ error: 'No se pudo reclamar la cola de correos' }), { status: 500 });
+  }
   if (!pendientes?.length) return new Response(JSON.stringify({ enviados: 0 }));
 
   let enviados = 0;

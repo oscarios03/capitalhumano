@@ -284,7 +284,7 @@ async function _tabPeriodos() {
                       <button class="btn-secondary btn-sm" onclick="exportarSPEI('${p.id}')">SPEI</button>
                       <button class="btn-secondary btn-sm" onclick="descargarZIPRecibos('${p.id}')">ZIP</button>` : ''}
                     ${!p.cerrado ? `<button class="btn-secondary btn-sm" onclick="cerrarPeriodo('${p.id}', this)">✓ Cerrar</button>` : ''}
-                    <button class="btn-sm" style="background:rgba(192,57,43,.12);color:var(--red-warn);border:1px solid rgba(192,57,43,.3);" onclick="confirmarEliminarPeriodo('${p.id}','${p.nombre.replace(/'/g,"\\'")}',${cnt.n})"><svg class="ic"><use href="#i-trash"></use></svg></button>
+                    <button class="btn-sm" style="background:rgba(192,57,43,.12);color:var(--red-warn);border:1px solid rgba(192,57,43,.3);" onclick="confirmarEliminarPeriodo('${p.id}','${escapeAttrJs(p.nombre)}',${cnt.n})"><svg class="ic"><use href="#i-trash"></use></svg></button>
                   </div>
                 </td>
               </tr>`;

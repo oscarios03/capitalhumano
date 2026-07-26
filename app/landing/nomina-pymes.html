@@ -111,10 +111,15 @@
 
 <script src="../js/config.js?v=4"></script>
 <script src="../js/tracking.js?v=1"></script>
+<script src="../js/consentimiento.js?v=1"></script>
 <script src="landing.js?v=1"></script>
 <script>
   // Inicializa pixels y registra la vista de esta landing (best-effort)
-  initTracking();
+  // Pixels SOLO con consentimiento previo (banner de cookies). Antes se
+  // llamaba initTracking() sin condicion, cargando gtag y el Meta Pixel en la
+  // primera visita sin que nadie hubiera aceptado nada. Best-effort siempre.
+  mostrarBannerCookies();
+  initTrackingConConsentimiento();
   trackLandingView('nomina-pymes');
   propagarUTMs('nomina-pymes');
 </script>

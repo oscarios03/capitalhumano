@@ -85,6 +85,17 @@
         </label>
         <input id="r-pass" type="password" class="form-input" placeholder="••••••••" autocomplete="new-password" />
       </div>
+      <!-- Consentimiento explícito, NO preseleccionado. Es requisito de la Ley
+           Federal de Protección de Datos Personales en Posesión de los
+           Particulares que la aceptación sea un acto afirmativo del titular. -->
+      <div class="form-group-login" style="margin-bottom:10px;">
+        <label style="display:flex;align-items:flex-start;gap:9px;font-size:.8rem;line-height:1.5;color:var(--text-secondary);cursor:pointer;">
+          <input id="r-acepto" type="checkbox" style="margin-top:2px;flex-shrink:0;width:16px;height:16px;cursor:pointer;" />
+          <span>He leído y acepto el
+            <a href="aviso-privacidad.html" target="_blank" rel="noopener">Aviso de Privacidad</a> y los
+            <a href="terminos.html" target="_blank" rel="noopener">Términos y Condiciones</a>.</span>
+        </label>
+      </div>
       <div id="reg-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
       <button id="btn-reg" class="btn-full" onclick="handleRegistro()">Crear cuenta <svg class="ic" style="width:16px;height:16px;"><use href="#i-arrow"></use></svg></button>
       <p style="text-align:center;font-size:.75rem;color:var(--text-muted);margin-top:10px;">
@@ -92,11 +103,16 @@
       </p>
     </div>
 
-    <p style="text-align:center;font-size:.75rem;color:var(--text-muted);margin-top:20px;">
-      Al registrarte aceptas usar esta herramienta conforme a la LFT 2026.
-    </p>
-    <p style="text-align:center;font-size:.72rem;margin-top:8px;">
+    <p style="text-align:center;font-size:.72rem;margin-top:20px;">
       <a href="aviso-privacidad.html">Aviso de privacidad</a> · <a href="terminos.html">Términos y condiciones</a>
+    </p>
+    <!-- Aviso simplificado en el punto de captura: la ley exige informar en el
+         momento en que se recaban los datos, no solo en una página aparte. -->
+    <p style="text-align:center;font-size:.7rem;color:var(--text-muted);margin-top:8px;line-height:1.5;">
+      Tus datos de cuenta se usan para darte acceso a la plataforma, cobrarte la suscripción
+      y brindarte soporte. Los datos de tus trabajadores que captures se tratan por tu cuenta
+      y bajo tus instrucciones. Consulta el aviso completo para conocer las transferencias y
+      cómo ejercer tus derechos.
     </p>
   </div>
   </div>
@@ -140,13 +156,18 @@
   </div>
 </div>
 
-<!-- Supabase CDN -->
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"
+<!-- Supabase CDN — versión exacta + SRI (ver nota en app.html).
+     `crossorigin="anonymous"` es obligatorio para que el navegador verifique
+     el `integrity`; sin él, el recurso se descarta sin comprobar. -->
+<script src="https://unpkg.com/@supabase/supabase-js@2.110.8/dist/umd/supabase.js"
+        crossorigin="anonymous"
+        integrity="sha384-M65KxMm/JqBppck6onbmAgPVMBHrmPCf1L17Q+71EcvI9/VVI8j5cqoxQf6lj6h2"
         onerror="mostrarErrorCDN()"></script>
 
 <!-- Configuración global (SUPABASE_URL, TRACKING_CONFIG) + tracking de marketing -->
-<script src="js/config.js?v=4"></script>
+<script src="js/config.js?v=5"></script>
 <script src="js/tracking.js?v=1"></script>
+<script src="js/consentimiento.js?v=1"></script>
 
 <script>
 // ── Inicialización del cliente Supabase ─────────────────
@@ -200,8 +221,12 @@ function leerAtribucionUTM() {
 
 // ── Al cargar la página ─────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Tracking de marketing (best-effort, nunca bloquea el login)
-  try { initTracking(); } catch (e) { console.warn('initTracking:', e); }
+  // Tracking de marketing: SOLO si ya hay consentimiento de cookies previo.
+  // Antes se llamaba initTracking() sin condición, así que gtag y el Meta Pixel
+  // se cargaban en la primera visita sin que nadie hubiera aceptado nada.
+  // Sigue siendo best-effort: nunca bloquea el login ni el registro.
+  try { initTrackingConConsentimiento(); } catch (e) { console.warn('initTracking:', e); }
+  try { mostrarBannerCookies(); } catch (e) { console.warn('bannerCookies:', e); }
   guardarAtribucionUTM();
 
   if (!sb) {
@@ -228,6 +253,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ── UI helpers ──────────────────────────────────────────
+// index.html no carga app.js, así que necesita su propio escape. Todo dato que
+// venga del usuario o del servidor y se interpole en innerHTML debe pasar por aquí.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
 // Contenido original de los botones (con su icono SVG) para restaurarlos
 // después de un estado de carga sin que pierdan el icono.
 const _HTML_BTN_LOGIN = 'Entrar <svg class="ic" style="width:16px;height:16px;"><use href="#i-arrow"></use></svg>';
@@ -256,7 +288,7 @@ function mostrarCargando(msg) {
       <div style="width:40px;height:40px;border:3px solid var(--border);
            border-top-color:var(--accent);border-radius:50%;
            animation:spin .7s linear infinite;margin:0 auto 20px;"></div>
-      <p style="color:var(--text-secondary);">${msg}</p>
+      <p style="color:var(--text-secondary);">${escapeHtml(msg)}</p>
     </div>`;
 }
 
@@ -269,7 +301,7 @@ function mostrarRevisionCorreo(email) {
       </div>
       <p style="color:var(--text-secondary);line-height:1.6;margin-bottom:14px;">
         Enviamos un enlace de activación a<br>
-        <strong style="color:var(--text-primary);">${email}</strong>
+        <strong style="color:var(--text-primary);">${escapeHtml(email)}</strong>
       </p>
       <p style="color:var(--text-secondary);line-height:1.6;margin-bottom:20px;">
         Haz clic en el enlace del correo para activar tu cuenta.
@@ -333,6 +365,14 @@ async function handleRegistro() {
   const btn = document.getElementById('btn-reg');
   btn.textContent = 'Creando cuenta…'; btn.disabled = true;
   try {
+    // Consentimiento explícito: sin él no se crea la cuenta. Se valida antes
+    // de cualquier llamada a la red para no dejar un usuario a medias.
+    if (!document.getElementById('r-acepto').checked) {
+      mostrarError('reg-error', 'Para crear tu cuenta debes aceptar el Aviso de Privacidad y los Términos y Condiciones.');
+      btn.innerHTML = _HTML_BTN_REG; btn.disabled = false;
+      return;
+    }
+
     const email    = document.getElementById('r-email').value.trim();
     const password = document.getElementById('r-pass').value;
     const nombre   = document.getElementById('r-nombre').value.trim();
@@ -344,7 +384,11 @@ async function handleRegistro() {
     const { data, error } = await sb.auth.signUp({
       email, password,
       options: {
-        data: { full_name: nombre, ...atribucion },
+        // Los metadatos de consentimiento se guardan EN EL ALTA porque cuando
+        // la confirmación de correo está activada no hay sesión todavía y el
+        // INSERT en `consentimientos_legales` (que exige auth.uid()) no se
+        // puede hacer aún. La fila de la tabla se crea en el primer login.
+        data: { full_name: nombre, ...atribucion, ...metadatosConsentimiento() },
         emailRedirectTo: redirectTo,
       }
     });
@@ -356,6 +400,7 @@ async function handleRegistro() {
 
     // Si la sesión ya está activa (confirmación desactivada), ir directo
     if (data.session) {
+      await registrarConsentimientoLegal(sb);
       await revisarEmpresa(btn);
     } else {
       // Si requiere confirmación de correo
@@ -373,6 +418,12 @@ async function revisarEmpresa(btn) {
     const { data: { user }, error: uErr } = await sb.auth.getUser();
     if (uErr) throw uErr;
     if (!user) throw new Error('Sesión no encontrada');
+
+    // Registro de la aceptación legal. Se hace aquí y no solo en el alta
+    // porque cuando la confirmación de correo está activada, en el momento del
+    // signUp todavía no hay sesión (y la política RLS exige auth.uid()). Es
+    // idempotente por versión y best-effort: nunca bloquea el acceso.
+    registrarConsentimientoLegal(sb);
 
     // Consulta simple: solo empresa_id del perfil
     const { data: perfil, error: pErr } = await sb
@@ -449,7 +500,21 @@ function traducirError(msg) {
   for (const [clave, traduccion] of traducciones) {
     if (msg.includes(clave)) return traduccion;
   }
-  return `Ocurrió un error inesperado: ${msg}`;
+  // Nada matcheó: NO devolver el mensaje crudo. Los errores de Postgres/Supabase
+  // filtran nombres de tablas, constraints y detalles de políticas RLS al usuario
+  // final. Se devuelve un mensaje genérico con un código de referencia corto y el
+  // detalle completo queda en la consola bajo ese mismo código, para poder
+  // correlacionarlo si el usuario lo reporta.
+  const ref = _codigoReferencia();
+  console.error(`[${ref}] Error no traducido:`, msg);
+  return `Ocurrió un error inesperado. Si el problema persiste, repórtalo con el código ${ref}.`;
+}
+
+// Código de referencia corto (ej. ERR-4F2A) para correlacionar lo que ve el
+// usuario con el detalle técnico logueado. No es un identificador de seguridad:
+// solo sirve para soporte, así que Math.random() es suficiente.
+function _codigoReferencia() {
+  return 'ERR-' + Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
 }
 
 // ── ENTER para enviar ───────────────────────────────────

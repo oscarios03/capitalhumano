@@ -44,8 +44,9 @@
   </div>
 </div>
 
-<script src="js/config.js?v=4"></script>
+<script src="js/config.js?v=5"></script>
 <script src="js/tracking.js?v=1"></script>
+<script src="js/consentimiento.js?v=1"></script>
 <script>
 // Página de éxito del checkout de Stripe. Configurar en Stripe el success_url:
 //   https://tudominio.com/pago-exitoso.html?plan=Pyme&valor=499&session_id={CHECKOUT_SESSION_ID}
@@ -62,9 +63,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Conversión de pago (Google Ads + Meta Pixel). Best-effort: un fallo de
   // tracking jamás afecta la vista de éxito.
+  // Pixels SOLO con consentimiento previo de cookies. Si la persona rechazó,
+  // la conversión del navegador no se dispara — pero la conversión server-side
+  // (Meta CAPI desde webhook-stripe) sigue funcionando, así que no se pierde
+  // la medición del pago. Best-effort: nada de esto afecta la vista de éxito.
   try {
-    initTracking();
-    await trackPago(valor, plan, eventId);
+    mostrarBannerCookies();
+    initTrackingConConsentimiento();
+    if (consentimientoCookies() === 'aceptado') {
+      await trackPago(valor, plan, eventId);
+    }
   } catch (e) {
     console.warn('trackPago:', e);
   }
