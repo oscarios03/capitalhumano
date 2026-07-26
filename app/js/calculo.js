@@ -24,43 +24,97 @@ const VACATION_TABLE = [
   { from:35, to:39, days:32 },
 ];
 
+// ─── ART. 47 LFT — TEXTO LITERAL DE LAS FRACCIONES ───────────────────────────
+// Transcripción del texto consolidado publicado por la Cámara de Diputados
+// (LFT, última reforma DOF 14-05-2026). El aviso de rescisión debe reproducir
+// la fracción invocada: citar mal una fracción en un documento que se exhibe en
+// juicio tumba la rescisión, así que estos textos NO se parafrasean.
+const ART47_FRACCIONES = {
+  'I': 'Engañarlo el trabajador o en su caso, el sindicato que lo hubiese propuesto o recomendado con certificados falsos o referencias en los que se atribuyan al trabajador capacidad, aptitudes o facultades de que carezca. Esta causa de rescisión dejará de tener efecto después de treinta días de prestar sus servicios el trabajador;',
+  'II': 'Incurrir el trabajador, durante sus labores, en faltas de probidad u honradez, en actos de violencia, amagos, injurias o malos tratamientos en contra del patrón, sus familiares o del personal directivo o administrativo de la empresa o establecimiento, o en contra de clientes y proveedores del patrón, salvo que medie provocación o que obre en defensa propia;',
+  'III': 'Cometer el trabajador contra alguno de sus compañeros, cualquiera de los actos enumerados en la fracción anterior, si como consecuencia de ellos se altera la disciplina del lugar en que se desempeña el trabajo;',
+  'IV': 'Cometer el trabajador, fuera del servicio, contra el patrón, sus familiares o personal directivo administrativo, alguno de los actos a que se refiere la fracción II, si son de tal manera graves que hagan imposible el cumplimiento de la relación de trabajo;',
+  'V': 'Ocasionar el trabajador, intencionalmente, perjuicios materiales durante el desempeño de las labores o con motivo de ellas, en los edificios, obras, maquinaria, instrumentos, materias primas y demás objetos relacionados con el trabajo;',
+  'VI': 'Ocasionar el trabajador los perjuicios de que habla la fracción anterior siempre que sean graves, sin dolo, pero con negligencia tal, que ella sea la causa única del perjuicio;',
+  'VII': 'Comprometer el trabajador, por su imprudencia o descuido inexcusable, la seguridad del establecimiento o de las personas que se encuentren en él;',
+  'VIII': 'Cometer el trabajador actos inmorales o de hostigamiento y/o acoso sexual contra cualquier persona en el establecimiento o lugar de trabajo;',
+  'IX': 'Revelar el trabajador los secretos de fabricación o dar a conocer asuntos de carácter reservado, con perjuicio de la empresa;',
+  'X': 'Tener el trabajador más de tres faltas de asistencia en un período de treinta días, sin permiso del patrón o sin causa justificada;',
+  'XI': 'Desobedecer el trabajador al patrón o a sus representantes, sin causa justificada, siempre que se trate del trabajo contratado;',
+  'XII': 'Negarse el trabajador a adoptar las medidas preventivas o a seguir los procedimientos indicados para evitar accidentes o enfermedades;',
+  'XIII': 'Concurrir el trabajador a sus labores en estado de embriaguez o bajo la influencia de algún narcótico o droga enervante, salvo que, en este último caso, exista prescripción médica. Antes de iniciar su servicio, el trabajador deberá poner el hecho en conocimiento del patrón y presentar la prescripción suscrita por el médico;',
+  'XIV': 'La sentencia ejecutoriada que imponga al trabajador una pena de prisión, que le impida el cumplimiento de la relación de trabajo;',
+  'XIV Bis': 'La falta de documentos que exijan las leyes y reglamentos, necesarios para la prestación del servicio cuando sea imputable al trabajador y que exceda del periodo a que se refiere la fracción IV del artículo 43; y',
+  'XV': 'Las análogas a las establecidas en las fracciones anteriores, de igual manera graves y de consecuencias semejantes en lo que al trabajo se refiere.',
+};
+
+/** Texto literal de una fracción del art. 47, o null si no existe. */
+function textoFraccionArt47(fraccion) {
+  return ART47_FRACCIONES[String(fraccion || '').trim().toUpperCase().replace(/\s+BIS$/, ' Bis')] || null;
+}
+
+// Catálogo de faltas. `fraccion` es la del art. 47 que sustenta la RESCISIÓN;
+// las faltas que sólo admiten amonestación se apoyan en el art. 134 y en el
+// Reglamento Interior de Trabajo, y por eso llevan `fraccion: null`.
+// Toda entrada con severidad 'rescisoria' debe tener fracción del art. 47.
 const FALTAS_CATALOG = [
-  { value:'impuntualidad', label:'Impuntualidad reiterada',
-    causal:'Art. 134 Fracc. II LFT — Obligación de desempeñar el servicio con la intensidad, cuidado y esmero apropiados / Reglamento Interior de Trabajo',
+  { value:'impuntualidad', label:'Impuntualidad reiterada', fraccion:null,
+    causal:'Art. 134 Fracc. IV LFT — Obligación de observar el horario de trabajo / Reglamento Interior de Trabajo',
     severity:['amonestacion','formal'] },
-  { value:'desobediencia', label:'Desobediencia / Negativa a cumplir instrucciones',
-    causal:'Art. 134 Fracc. II LFT — Obligación de obedecer al patrón y a sus representantes en todo lo concerniente al trabajo',
+  { value:'desobediencia', label:'Desobediencia / Negativa a cumplir instrucciones', fraccion:'XI',
+    causal:'Art. 47 Fracc. XI LFT — Desobedecer al patrón o a sus representantes, sin causa justificada, siempre que se trate del trabajo contratado',
     severity:['amonestacion','formal','rescisoria'] },
-  { value:'medidas', label:'Negativa a adoptar medidas de seguridad e higiene',
-    causal:'Art. 47 Fracc. VII LFT — Negativa a adoptar las medidas preventivas o procedimientos indicados para evitar accidentes o enfermedades',
+  { value:'medidas', label:'Negativa a adoptar medidas de seguridad e higiene', fraccion:'XII',
+    causal:'Art. 47 Fracc. XII LFT — Negarse a adoptar las medidas preventivas o a seguir los procedimientos indicados para evitar accidentes o enfermedades',
     severity:['amonestacion','formal','rescisoria'] },
-  { value:'asistencia', label:'Falta de asistencia injustificada',
-    causal:'Art. 47 Fracc. X LFT — Más de tres faltas de asistencia en un período de treinta días sin permiso del patrón ni causa justificada',
+  { value:'asistencia', label:'Falta de asistencia injustificada', fraccion:'X',
+    causal:'Art. 47 Fracc. X LFT — Más de tres faltas de asistencia en un período de treinta días, sin permiso del patrón o sin causa justificada',
     severity:['formal','rescisoria'] },
-  { value:'danos', label:'Daño intencional a bienes de la empresa',
-    causal:'Art. 47 Fracc. IV LFT — Daño intencional al edificio, obras, maquinaria, instrumentos, materias primas y demás objetos de la empresa',
+  { value:'danos', label:'Daño intencional a bienes de la empresa', fraccion:'V',
+    causal:'Art. 47 Fracc. V LFT — Ocasionar intencionalmente perjuicios materiales en edificios, obras, maquinaria, instrumentos, materias primas y demás objetos relacionados con el trabajo',
     severity:['formal','rescisoria'] },
-  { value:'negligencia', label:'Daño grave por negligencia o imprudencia',
-    causal:'Art. 47 Fracc. V LFT — Perjuicio material causado directamente por negligencia grave e inexcusable del trabajador',
+  { value:'negligencia', label:'Daño grave por negligencia (sin dolo)', fraccion:'VI',
+    causal:'Art. 47 Fracc. VI LFT — Ocasionar los mismos perjuicios, graves, sin dolo, pero con negligencia tal que sea la causa única del perjuicio',
     severity:['formal','rescisoria'] },
-  { value:'embriaguez', label:'Presentarse bajo efectos de alcohol o drogas',
-    causal:'Art. 47 Fracc. VIII LFT — Presentarse al trabajo en estado de embriaguez o bajo la influencia de algún narcótico o droga enervante',
+  { value:'seguridad_establecimiento', label:'Comprometer la seguridad del establecimiento o de las personas', fraccion:'VII',
+    causal:'Art. 47 Fracc. VII LFT — Comprometer, por imprudencia o descuido inexcusable, la seguridad del establecimiento o de las personas que se encuentren en él',
     severity:['formal','rescisoria'] },
-  { value:'violencia', label:'Violencia / Agresión física o verbal',
-    causal:'Art. 47 Fracc. III LFT — Actos de violencia, amagos, injurias o malos tratamientos contra el patrón, compañeros o clientes',
+  { value:'embriaguez', label:'Presentarse bajo efectos de alcohol o drogas', fraccion:'XIII',
+    causal:'Art. 47 Fracc. XIII LFT — Concurrir a sus labores en estado de embriaguez o bajo la influencia de algún narcótico o droga enervante, salvo prescripción médica avisada previamente',
     severity:['formal','rescisoria'] },
-  { value:'robo', label:'Robo / Fraude / Deshonestidad',
-    causal:'Art. 47 Fracc. II LFT — Faltas de probidad u honradez en el desempeño de sus funciones',
+  { value:'violencia', label:'Violencia o injurias contra el patrón, jefes, clientes o proveedores', fraccion:'II',
+    causal:'Art. 47 Fracc. II LFT — Faltas de probidad u honradez, actos de violencia, amagos, injurias o malos tratamientos contra el patrón, sus familiares, el personal directivo o administrativo, o contra clientes y proveedores, salvo provocación o defensa propia',
+    severity:['formal','rescisoria'] },
+  { value:'violencia_companeros', label:'Violencia o injurias contra compañeros de trabajo', fraccion:'III',
+    causal:'Art. 47 Fracc. III LFT — Cometer contra algún compañero los actos de la fracción II, si como consecuencia se altera la disciplina del lugar de trabajo',
+    severity:['formal','rescisoria'] },
+  { value:'violencia_fuera', label:'Actos graves fuera del servicio contra el patrón o jefes', fraccion:'IV',
+    causal:'Art. 47 Fracc. IV LFT — Cometer fuera del servicio, contra el patrón, sus familiares o personal directivo administrativo, los actos de la fracción II, si son de tal gravedad que hagan imposible el cumplimiento de la relación de trabajo',
     severity:['rescisoria'] },
-  { value:'secretos', label:'Revelación de información confidencial',
-    causal:'Art. 47 Fracc. VII LFT — Revelar los secretos técnicos, comerciales o de fabricación de los que tenga conocimiento con motivo de su trabajo',
+  { value:'robo', label:'Robo / Fraude / Faltas de probidad u honradez', fraccion:'II',
+    causal:'Art. 47 Fracc. II LFT — Incurrir durante sus labores en faltas de probidad u honradez',
     severity:['rescisoria'] },
-  { value:'acoso', label:'Acoso laboral o sexual',
-    causal:'Art. 47 Fracc. XI Bis LFT — Hostigamiento o acoso sexual contra cualquier persona en el lugar de trabajo',
+  { value:'secretos', label:'Revelación de secretos o asuntos reservados', fraccion:'IX',
+    causal:'Art. 47 Fracc. IX LFT — Revelar los secretos de fabricación o dar a conocer asuntos de carácter reservado, con perjuicio de la empresa',
     severity:['rescisoria'] },
-  { value:'otra', label:'Otra falta (especificar en descripción)',
+  { value:'acoso', label:'Actos inmorales, hostigamiento o acoso sexual', fraccion:'VIII',
+    causal:'Art. 47 Fracc. VIII LFT — Cometer actos inmorales o de hostigamiento y/o acoso sexual contra cualquier persona en el establecimiento o lugar de trabajo',
+    severity:['rescisoria'] },
+  { value:'certificados_falsos', label:'Engaño con certificados o referencias falsas', fraccion:'I',
+    causal:'Art. 47 Fracc. I LFT — Engañar al patrón con certificados falsos o referencias que atribuyan capacidades de que se carece. Caduca a los treinta días de prestar servicios',
+    severity:['rescisoria'] },
+  { value:'prision', label:'Sentencia ejecutoriada de pena de prisión', fraccion:'XIV',
+    causal:'Art. 47 Fracc. XIV LFT — Sentencia ejecutoriada que imponga pena de prisión que impida el cumplimiento de la relación de trabajo',
+    severity:['rescisoria'] },
+  { value:'falta_documentos', label:'Falta de documentos exigidos por ley para prestar el servicio', fraccion:'XIV Bis',
+    causal:'Art. 47 Fracc. XIV Bis LFT — Falta de documentos que exijan las leyes y reglamentos, imputable al trabajador, que exceda del periodo del art. 43 fracc. IV',
+    severity:['rescisoria'] },
+  { value:'analoga', label:'Causa análoga de igual gravedad (fundamentar en la descripción)', fraccion:'XV',
+    causal:'Art. 47 Fracc. XV LFT — Causas análogas a las anteriores, de igual manera graves y de consecuencias semejantes en lo que al trabajo se refiere',
+    severity:['rescisoria'] },
+  { value:'otra', label:'Otra falta disciplinaria (especificar en descripción)', fraccion:null,
     causal:'Reglamento Interior de Trabajo / Art. 134 LFT — Obligaciones generales del trabajador',
-    severity:['amonestacion','formal','rescisoria'] },
+    severity:['amonestacion','formal'] },
 ];
 
 // ─── JORNADA — RÉGIMEN DE TRANSICIÓN 2026-2030 ───────────────────────────────
