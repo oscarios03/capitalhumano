@@ -22,7 +22,9 @@ const DEV_EMAIL   = 'oscar_ius@outlook.com';
 const APP_VERSION = '2026.07';
 
 // ─── Constantes de Nómina 2026 ────────────────────────────────────────────
-const UMA_DIARIA          = 113.14;   // Unidad de Medida y Actualización 2026
+// La UMA vive en vigencias.js: caduca cada febrero y aquí estaba congelada en
+// 113.14, que es el valor de 2025 pese al comentario que decía "2026" (el de
+// 2026 es 117.31). Usa _umaVigente(), que falla si no está configurada.
 const IMSS_OBRERO_PCT     = 0.0225;   // 2.25% cuota obrero total simplificada
 const INFONAVIT_PCT       = 0.05;     // 5% (aportación patronal — obrero no paga)
 const FACTOR_INTEG_MIN    = 1.0452;   // Factor de integración mínimo LFT

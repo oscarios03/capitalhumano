@@ -998,7 +998,7 @@ async function _tabDetalle() {
               const infonavitDed  = parseFloat(r.infonavit_descuento||0);
               // Aportación patronal 5% SBC (capped 25 UMA diarias = $2,828.50) — informativa, no reduce neto
               const dailyApprox   = r.dias_laborados > 0 ? parseFloat(r.salario_base) / r.dias_laborados : 0;
-              const sdiCap        = Math.min(dailyApprox, 25 * 113.14);
+              const sdiCap        = Math.min(dailyApprox, 25 * _umaVigente()); // tope 25 UMA, Art. 28 LSS
               const infPatronal   = parseFloat((sdiCap * 0.05 * r.dias_laborados).toFixed(2));
               return `<tr id="rn-${r.id}">
                 <td>

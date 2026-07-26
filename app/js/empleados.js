@@ -63,6 +63,16 @@ function switchEmpleadosTab(sub) {
   renderEmpleados();
 }
 
+/**
+ * Etiqueta del salario mínimo por zona para los selectores. Toma el valor
+ * vigente en vez de literales: antes mostraba $315.04 y $419.88, mezcla de 2026
+ * y 2025. Si no está configurado, omite el importe en vez de inventarlo.
+ */
+function _smgEtiqueta(zona) {
+  try { return ` — ${fmt(_smgVigente(zona))}/día`; }
+  catch { return ''; }
+}
+
 async function renderEmpleados() {
   const sub = _empleadosSubvista;
   const segBtn = (id, label) => `
@@ -408,8 +418,8 @@ async function showModalTrabajador(id = null) {
           <div class="form-group">
             <label class="form-label" for="n-smg">Zona SMG</label>
             <select id="n-smg" class="form-select">
-              <option value="general" ${v('smg_zone','general')==='general'?'selected':''}>Área General — $315.04/día</option>
-              <option value="frontera" ${v('smg_zone')==='frontera'?'selected':''}>Zona Frontera Norte — $419.88/día</option>
+              <option value="general" ${v('smg_zone','general')==='general'?'selected':''}>Área General${_smgEtiqueta('general')}</option>
+              <option value="frontera" ${v('smg_zone')==='frontera'?'selected':''}>Zona Frontera Norte${_smgEtiqueta('frontera')}</option>
             </select>
           </div>
           <div class="form-group">

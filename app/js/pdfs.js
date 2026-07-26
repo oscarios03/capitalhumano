@@ -1614,7 +1614,12 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   // ══════════════════════════════════════════════════════════════════════
   // 3. DATOS DE LA RELACIÓN LABORAL
   // ══════════════════════════════════════════════════════════════════════
-  const smgLabel    = (result.smg === 419.88) ? 'Frontera Norte ($419.88)' : 'Area General ($315.04)';
+  // La zona y el importe salen del salario mínimo con que REALMENTE se calculó,
+  // no de literales: el recibo se firma y antes imprimía cifras de 2025.
+  const smgFrontera = (() => { try { return _smgVigente('frontera'); } catch { return null; } })();
+  const smgLabel    = (smgFrontera !== null && result.smg === smgFrontera)
+    ? `Frontera Norte (${fmt(result.smg)})`
+    : `Area General (${fmt(result.smg)})`;
   const topeLabel   = fmt(2 * result.smg);
   const periodoMap  = { mensual:'Mensual', quincenal:'Quincenal', semanal:'Semanal' };
   const periodoLbl  = periodoMap[result.periodoSalario] || result.periodoSalario || 'Mensual';
