@@ -142,9 +142,10 @@ DÉCIMA QUINTA. RECONOCIMIENTO DE ANTIGÜEDAD. Para el cómputo de la antigüeda
 y las prestaciones derivadas, se toma como fecha de inicio el [FECHA_ANTIGUEDAD],
 conforme al artículo 158 de la LFT.
 
-DÉCIMA SEXTA. JURISDICCIÓN. Para la interpretación y cumplimiento del presente
-contrato las partes se someten a la jurisdicción del Tribunal Laboral del Centro
-de Justicia Laboral del Estado de Guanajuato, con sede en León, Guanajuato.
+DÉCIMA SEXTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. Para la interpretación y
+cumplimiento del presente contrato, las partes estarán a lo dispuesto por la Ley
+Federal del Trabajo y se someterán a la autoridad laboral competente en términos
+del artículo 700 de dicho ordenamiento.
 
 DÉCIMA SÉPTIMA. SUPLETORIEDAD. En todo lo no previsto en este contrato se
 aplicará la Ley Federal del Trabajo vigente y demás disposiciones aplicables.

@@ -337,7 +337,10 @@ function _buildContratoData(trab, empresa, sucursal) {
     razonSocial:         empresa.nombre        || '',
     rfcPatron:           empresa.rfc           || '',
     domicilioFiscal:     empresa.domicilio     || '',
-    ciudadFirma:         empresa.ciudad        || 'Leon, Guanajuato',
+    // Sin fallback geográfico: imprimir una ciudad ajena somete al cliente a
+    // tribunales que no le corresponden y falsea el lugar de celebración, que
+    // es uno de los puntos de conexión del art. 700 fr. II LFT.
+    ciudadFirma:         empresa.ciudad        || sucursal?.ciudad || '',
     representanteLegal:  empresa.representante || '',
     cargoRepresentante:  'Representante Legal',
     domicilioSucursal:   sucursal?.domicilio   || empresa.domicilio || '',
@@ -393,7 +396,23 @@ function _buildContratoData(trab, empresa, sucursal) {
 
 // ── Infraestructura interna del PDF ─────────────────────────────────────────
 
+/**
+ * Falla de forma visible si falta la ciudad del patrón. El lugar de celebración
+ * del contrato es punto de conexión de competencia (art. 700 fr. II LFT) y consta
+ * en el bloque de firmas: no puede inventarse ni dejarse en blanco.
+ */
+function _exigirCiudad(ciudad) {
+  if (String(ciudad || '').trim()) return;
+  throw new Error(
+    'No está configurada la ciudad de la empresa. El lugar de celebración del ' +
+    'contrato determina la autoridad laboral competente (Art. 700 LFT), por lo ' +
+    'que no puede omitirse. Captúrala en Empresa → Datos fiscales antes de ' +
+    'generar el documento.'
+  );
+}
+
 function _initContratoDoc(titulo, subtitulo, data) {
+  _exigirCiudad(data.ciudadFirma);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
   const ml = 25, mr = 25;
@@ -593,8 +612,12 @@ function _clausulasComunes(state, data, start) {
   _h(state, n++, 'Trabajadores Menores de Edad (Arts. 22-23 LFT)');
   _p(state, `En caso de que EL TRABAJADOR sea menor de 18 anos, las partes declaran que se cumplen las disposiciones de los Arts. 22-23 LFT: autorizacion de padres o tutores, prohibicion de trabajo nocturno industrial y jornada maxima de 6 horas diarias.`);
 
-  _h(state, n++, 'Jurisdiccion y Competencia');
-  _p(state, `Para la interpretacion y cumplimiento del presente contrato las partes se someten a la jurisdiccion del Tribunal Laboral del Centro de Justicia Laboral del Estado de Guanajuato, con sede en Leon, Guanajuato, renunciando al fuero que pudiera corresponderles por su domicilio u otra causa.`);
+  // Art. 700 fr. II LFT — la competencia territorial la elige el trabajador entre el
+  // lugar de celebración, el domicilio del demandado y el lugar de prestación del
+  // servicio. Es improrrogable: una sumisión expresa con renuncia de fuero es nula
+  // (art. 5 fr. XIII LFT) y proyecta mala fe procesal.
+  _h(state, n++, 'Ley Aplicable y Autoridad Competente');
+  _p(state, `Para la interpretacion y cumplimiento del presente contrato, las partes estaran a lo dispuesto por la Ley Federal del Trabajo y se someteran a la autoridad laboral competente en terminos del articulo 700 de dicho ordenamiento.`);
 
   _h(state, n++, 'Supletoriedad');
   _p(state, `En todo lo no previsto expresamente en el presente contrato se aplicara supletoriamente la Ley Federal del Trabajo vigente y demas disposiciones aplicables. Las condiciones mas favorables para EL TRABAJADOR prevalecen sobre lo aqui estipulado.`);
