@@ -455,7 +455,7 @@ function _exigirJornadaCapturada(data) {
  * hechos, una rescisión disfrazada de traslado).
  */
 function _textoLugarTrabajo(domicilioBase) {
-  return `EL TRABAJADOR prestara sus servicios en ${np(domicilioBase)}. Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de trabajo dentro del mismo municipio o zona metropolitana, se lo notificara con al menos tres dias naturales de anticipacion y cubrira los gastos de traslado que se originen; el cambio no implicara modificacion del salario ni de las demas condiciones de trabajo (Art. 25 fracc. IV LFT). Cualquier reubicacion fuera de dicha zona requerira el consentimiento expreso de EL TRABAJADOR.`;
+  return _sustituir(CLAUSULAS.lugarTrabajo, { DOMICILIO: domicilioBase || '' });
 }
 
 /**
@@ -680,54 +680,42 @@ function _clausulasComunes(state, data, start) {
   }
 
   _h(state, n++, 'Instrumentos y Herramientas de Trabajo');
-  _p(state, `EL PATRON proporcionara los equipos e instrumentos necesarios para el desempeno de las funciones, los cuales son de propiedad exclusiva de EL PATRON. EL TRABAJADOR se obliga a darles uso exclusivamente laboral y a devolverlos en buen estado al terminar la relacion, respondiendo por danos causados por dolo, negligencia o descuido.`);
+  _p(state, CLAUSULAS.herramientas);
 
   _h(state, n++, 'Capacitacion y Adiestramiento (Arts. 153-A al 153-X LFT)');
-  _p(state, `EL TRABAJADOR participara en los programas de capacitacion y adiestramiento que EL PATRON determine, con la finalidad de actualizar y perfeccionar sus conocimientos. La capacitacion recibida no generara derecho adicional de permanencia en la empresa.`);
+  _p(state, CLAUSULAS.capacitacion);
 
   _h(state, n++, 'Obligaciones del Trabajador (Art. 134 LFT)');
-  _p(state, `EL TRABAJADOR se obliga a: I) Ejecutar el trabajo con la intensidad y cuidado apropiados; II) Observar medidas de higiene y seguridad; III) Guardar escrupulosamente los secretos tecnico y comerciales; IV) Observar buenas costumbres; V) Prestar auxilios en casos de siniestro; VI) Comunicar al patron deficiencias que advierta; VII) Someterse a reconocimientos medicos en los terminos que establezca el patron.`);
+  _p(state, CLAUSULAS.obligacionesTrabajador);
 
   _h(state, n++, 'Deducciones de Ley (Art. 110 LFT)');
-  _p(state, `EL PATRON queda autorizado para realizar las deducciones al salario conforme al Art. 110 LFT: I) Deudas por anticipos o articulos del patron; II) Cuotas IMSS e INFONAVIT; III) Pagos de creditos INFONAVIT; IV) Descuentos autorizados por convenio escrito.`);
+  _p(state, CLAUSULAS.deducciones);
 
   // Confidencialidad: el deber de guardar los secretos técnicos y comerciales
   // ya lo impone el Art. 134 fracc. III LFT. Lo que no puede hacer el contrato
   // es imponer un deber de silencio perpetuo sobre CUALQUIER información: sólo
   // el secreto industrial —el que reúne los requisitos del art. 163 fr. I
   // LFPPI— justifica protección indefinida; el resto se acota temporalmente.
-  // Una obligación perpetua y omnicomprensiva es, en los hechos, inejecutable,
-  // y arrastra consigo la validez de la parte que sí lo era.
-  //
-  // La cláusula cita el art. 166 LFPPI de forma deliberada: ese artículo sólo
-  // obliga a abstenerse de divulgar el secreto a quien "se le haya prevenido
-  // sobre su confidencialidad". Firmar esta cláusula ES la prevención, y sin
-  // ella el deber legal no llega a nacer.
+  // Texto y fundamento viven en clausulas.js — ver CLAUSULAS.confidencialidad.
   _h(state, n++, 'Confidencialidad y Secretos Industriales');
-  _p(state, `EL TRABAJADOR guardara los secretos tecnicos, comerciales y de fabricacion de los que tenga conocimiento con motivo de su trabajo, en terminos del articulo 134 fraccion III de la Ley Federal del Trabajo. Por virtud de esta clausula queda prevenido de la confidencialidad de dicha informacion para los efectos del articulo 166 de la Ley Federal de Proteccion a la Propiedad Industrial. Tratandose de secretos industriales que reunan los requisitos del articulo 163 fraccion I de esa misma Ley, la obligacion subsiste mientras la informacion conserve ese caracter. Respecto de la demas informacion reservada de la empresa (datos, procesos, listados de clientes, estrategias comerciales y software), la obligacion de confidencialidad subsistira durante la relacion de trabajo y por los DOS ANOS siguientes a su terminacion.`);
-  _p(state, `Esta obligacion no comprende la informacion que sea o llegue a ser de dominio publico sin intervencion de EL TRABAJADOR, la que este ya poseia licitamente antes de la relacion, ni la que deba revelar por mandato de autoridad competente. Tampoco restringe el ejercicio de los derechos laborales de EL TRABAJADOR ni la denuncia de hechos posiblemente ilicitos ante la autoridad.`);
-  _p(state, `La revelacion indebida de dicha informacion puede generar responsabilidad civil, penal y administrativa en terminos de la legislacion aplicable, incluida la Ley Federal de Proteccion a la Propiedad Industrial.`);
+  CLAUSULAS.confidencialidad.forEach(p => _p(state, p));
 
   // Propiedad intelectual: la versión anterior hacía que el trabajador
   // "cediera en este acto todos los derechos patrimoniales de autor". Una
   // cesión global y anticipada de obra futura e indeterminada no es exigible;
-  // además el Art. 163 LFT (invenciones) reserva al trabajador el derecho a
-  // que su nombre figure como autor y a una compensación complementaria
-  // cuando la importancia del invento no guarde proporción con su salario —
-  // derecho irrenunciable que la cláusula anterior pretendía borrar.
+  // el Art. 163 LFT (invenciones) reserva al trabajador derechos
+  // irrenunciables que esa cláusula pretendía borrar. Texto en clausulas.js.
   _h(state, n++, 'Propiedad Intelectual e Invenciones (Art. 163 LFT)');
-  _p(state, `Las obras y desarrollos que EL TRABAJADOR realice por encargo de EL PATRON, en el ejercicio de las funciones descritas en este contrato y con recursos de la empresa, se consideran obra por encargo y corresponden a EL PATRON en terminos del articulo 83 de la Ley Federal del Derecho de Autor, quedando a salvo los derechos morales de EL TRABAJADOR, que son inalienables e irrenunciables.`);
-  _p(state, `Tratandose de invenciones, se estara a lo dispuesto por el articulo 163 de la Ley Federal del Trabajo: EL TRABAJADOR tendra derecho a que su nombre figure como autor de la invencion; cuando se dedique a trabajos de investigacion o de perfeccionamiento de los procedimientos utilizados en la empresa por cuenta de esta, la propiedad de la invencion y el derecho a explotar la patente corresponderan a EL PATRON, e independientemente del salario percibido EL TRABAJADOR tendra derecho a una compensacion complementaria cuando la importancia de la invencion y los beneficios que reporte a EL PATRON no guarden proporcion con dicho salario. En cualquier otro caso la propiedad de la invencion correspondera a quien la realizo.`);
-  _p(state, `Las partes podran celebrar un convenio anexo de propiedad intelectual para detallar el alcance de lo previsto en esta clausula respecto de proyectos especificos, sin que dicho convenio pueda reducir los derechos que la ley reconoce a EL TRABAJADOR.`);
+  CLAUSULAS.propiedadIntelectual.forEach(p => _p(state, p));
 
   // Art. 110 LFT es limitativo: sólo admite las deducciones que enumera. La LFT no
   // impone al trabajador obligación de preaviso ni autoriza descuento por omitirlo;
   // el preaviso se conserva como buena práctica, sin consecuencia económica.
   _h(state, n++, 'Causas de Rescision y Aviso de Renuncia');
-  _p(state, `Son causas de rescision sin responsabilidad para EL PATRON las del Art. 47 LFT; y sin responsabilidad para EL TRABAJADOR las del Art. 51 LFT. En caso de separacion voluntaria, se solicita a EL TRABAJADOR dar aviso con quince dias naturales de anticipacion, a efecto de permitir la debida entrega-recepcion de sus funciones.`);
+  _p(state, CLAUSULAS.rescisionAviso);
 
   _h(state, n++, 'Beneficiarios (Art. 25 fracc. X LFT)');
-  _p(state, `EL TRABAJADOR designa como beneficiarios para recibir salarios e indemnizaciones en caso de fallecimiento:`);
+  _p(state, CLAUSULAS.beneficiariosIntro);
   const bRows = [];
   if (data.beneficiario1Nombre) bRows.push([np(data.beneficiario1Nombre), np(data.beneficiario1Parentesco), np(data.beneficiario1Telefono)]);
   else bRows.push(['[NOMBRE BENEFICIARIO 1]','[PARENTESCO]','[TELEFONO]']);
@@ -739,23 +727,25 @@ function _clausulasComunes(state, data, start) {
   // y sólo el pago hecho en cumplimiento de su resolución libera al patrón
   // (Art. 503 fr. VII). Pagar "al beneficiario designado" sin resolución deja al
   // patrón expuesto a volver a pagar a quien el Tribunal reconozca después.
-  _p(state, `Esta designacion no faculta a EL PATRON para cubrir directamente las prestaciones e indemnizaciones pendientes al fallecimiento de EL TRABAJADOR. Conforme a los articulos 115 y 503 de la Ley Federal del Trabajo, los beneficiarios deberan acudir ante el Tribunal competente, que determinara mediante el procedimiento especial correspondiente quienes tienen derecho a percibirlas; solo el pago hecho en cumplimiento de dicha resolucion libera a EL PATRON de responsabilidad.`);
+  _p(state, CLAUSULAS.beneficiariosAdvertencia);
 
   _h(state, n++, 'Reconocimiento de Antiguedad');
-  _p(state, `Para efectos del computo de la antiguedad y prestaciones derivadas, se toma como fecha de inicio de la relacion laboral el dia ${npDate((data.fechaIngresoReconocida || data.fechaIngreso) + 'T00:00:00')}, de conformidad con el Art. 158 LFT.`);
+  _p(state, _sustituir(CLAUSULAS.antiguedad, {
+    FECHA_ANTIGUEDAD: npDate((data.fechaIngresoReconocida || data.fechaIngreso) + 'T00:00:00'),
+  }));
 
   _h(state, n++, 'Trabajadores Menores de Edad (Arts. 22-23 LFT)');
-  _p(state, `En caso de que EL TRABAJADOR sea menor de 18 anos, las partes declaran que se cumplen las disposiciones de los Arts. 22-23 LFT: autorizacion de padres o tutores, prohibicion de trabajo nocturno industrial y jornada maxima de 6 horas diarias.`);
+  _p(state, CLAUSULAS.menoresEdad);
 
   // Art. 700 fr. II LFT — la competencia territorial la elige el trabajador entre el
   // lugar de celebración, el domicilio del demandado y el lugar de prestación del
   // servicio. Es improrrogable: una sumisión expresa con renuncia de fuero es nula
   // (art. 5 fr. XIII LFT) y proyecta mala fe procesal.
   _h(state, n++, 'Ley Aplicable y Autoridad Competente');
-  _p(state, `Para la interpretacion y cumplimiento del presente contrato, las partes estaran a lo dispuesto por la Ley Federal del Trabajo y se someteran a la autoridad laboral competente en terminos del articulo 700 de dicho ordenamiento.`);
+  _p(state, CLAUSULAS.jurisdiccion);
 
   _h(state, n++, 'Supletoriedad');
-  _p(state, `En todo lo no previsto expresamente en el presente contrato se aplicara supletoriamente la Ley Federal del Trabajo vigente y demas disposiciones aplicables. Las condiciones mas favorables para EL TRABAJADOR prevalecen sobre lo aqui estipulado.`);
+  _p(state, CLAUSULAS.supletoriedad);
 }
 
 // ── Bloque de firmas ─────────────────────────────────────────────────────────
@@ -911,7 +901,7 @@ function generateContratoTemporada(data) {
   } else {
     _recuadro(state, '[DEFINIR LAS TEMPORADAS CON NOMBRE, FECHA INICIO Y FECHA FIN]', 'warn');
   }
-  _recuadro(state, 'SUSPENSION Y CONVOCATORIA: EL PATRON convocara a EL TRABAJADOR con minimo 30 dias de anticipacion al inicio de cada temporada. La inasistencia de EL TRABAJADOR al reinicio de labores no rescinde la relacion de pleno derecho: se rige por las reglas ordinarias de rescision (mas de tres faltas de asistencia en un periodo de treinta dias configuran la causal del Art. 47 fraccion X LFT), requiere su propio aviso de rescision, y esta sujeta al plazo de prescripcion de un mes del Art. 517 fraccion I LFT contado desde que EL PATRON tuvo conocimiento de la falta.', 'warn');
+  _recuadro(state, CLAUSULAS.temporadaSuspension, 'warn');
 
   _h(state, 2, 'Objeto — Servicio a Prestar');
   _p(state, `Durante cada temporada EL TRABAJADOR se desempenara como ${np(data.puesto)}${data.departamento ? ' en el area de '+np(data.departamento) : ''}. Funciones: ${np(data.funciones)}.`);
@@ -968,7 +958,7 @@ function generateContratoComision(data) {
   // avisos de modificación en meses determinados. Cotizar sobre un promedio
   // de 30 días produce un SBC distinto del legal y expone al patrón a
   // diferencias, actualizaciones y multas del IMSS.
-  _p(state, `Para efectos del Instituto Mexicano del Seguro Social, tratandose de salario variable el salario diario integrado se determinara conforme al articulo 30 fraccion II de la Ley del Seguro Social, con el promedio de las percepciones obtenidas en el bimestre inmediato anterior, presentando la modificacion salarial correspondiente dentro de los primeros cinco dias habiles de enero, marzo, mayo, julio, septiembre y noviembre. El salario no sera inferior al salario minimo general vigente (Art. 85 LFT). Salario mensual base de referencia: $${Number(data.salario).toFixed(2)} M.N.`);
+  _p(state, _sustituir(CLAUSULAS.comisionSDI, { SALARIO: Number(data.salario).toFixed(2) }));
 
   _h(state, 5, 'Jornada Autoadministrada y Presentacion en Oficina');
   _p(state, `Dada la naturaleza de la actividad, la jornada es autoadministrada dentro del horario de ${np(data.horaInicio)} a ${np(data.horaFin)} horas. EL TRABAJADOR se presentara en instalaciones de EL PATRON los dias ${(data.diasPresentacion||['[DIAS]']).map(np).join(', ')} en el horario ${np(data.horarioPresentacion || '[HORARIO DE PRESENTACION]')}.`);

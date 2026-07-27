@@ -55,13 +55,7 @@ mediante [FORMA_PAGO], los días [DIAS_PAGO]. El salario se cubre en su
 totalidad por la jornada ordinaria convenida, sin que en ningún caso sea
 inferior al salario mínimo general vigente en la zona de que se trate.
 
-QUINTA. LUGAR Y JORNADA. EL TRABAJADOR prestará sus servicios en [DOMICILIO_SUCURSAL].
-Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de
-trabajo dentro del mismo municipio o zona metropolitana, se lo notificará con al
-menos tres días naturales de anticipación y cubrirá los gastos de traslado que se
-originen; el cambio no implicará modificación del salario ni de las demás
-condiciones de trabajo (Art. 25 fracción IV LFT). Cualquier reubicación fuera de
-dicha zona requerirá el consentimiento expreso de EL TRABAJADOR.
+QUINTA. LUGAR Y JORNADA. ${CLAUSULAS.lugarTrabajo.replace('[DOMICILIO]', '[DOMICILIO_SUCURSAL]')}
 La jornada ordinaria de trabajo será de
 [HORA_INICIO] a [HORA_FIN] horas, con período de descanso para alimentos de
 [DESCANSO_INICIO] a [DESCANSO_FIN] horas, los días [DIAS_SEMANA]. La jornada
@@ -101,93 +95,34 @@ d) Pago de horas extraordinarias a [FACTOR_HORAS_EXTRA] veces el salario por hor
 e) Días de descanso adicionales con goce de sueldo: [FESTIVOS_EMPRESA].
 Estas prestaciones no podrán ser inferiores a los mínimos de la LFT.
 
-OCTAVA. INSTRUMENTOS DE TRABAJO. EL PATRON proporcionará a EL TRABAJADOR los
-equipos, herramientas e instrumentos necesarios para el desempeño de sus funciones,
-los cuales son de propiedad exclusiva de EL PATRON. EL TRABAJADOR se obliga a
-darles uso exclusivamente laboral y a devolverlos en buen estado al término de
-la relación, respondiendo por daños causados por dolo, negligencia o descuido.
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
 
-NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. Las partes convienen que EL TRABAJADOR
-participará en los programas de capacitación y adiestramiento que EL PATRON
-determine, conforme a los artículos 153-A al 153-X de la LFT, con la finalidad
-de actualizar sus conocimientos y elevar su productividad y nivel de vida.
+NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
 
-DÉCIMA. OBLIGACIONES DEL TRABAJADOR. EL TRABAJADOR se compromete a cumplir
-con las obligaciones establecidas en el artículo 134 de la LFT, entre ellas:
-ejecutar el trabajo con la intensidad y cuidado apropiados; observar las medidas
-de higiene y seguridad; guardar escrupulosamente los secretos técnicos y comerciales;
-observar buenas costumbres; y acatar las instrucciones del PATRON en lo relativo
-a la ejecución de su trabajo.
+DÉCIMA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
 
-DÉCIMA PRIMERA. DEDUCCIONES DE LEY. EL PATRON queda autorizado para efectuar
-a EL TRABAJADOR las deducciones señaladas en el artículo 110 de la LFT, incluyendo
-cuotas al IMSS, aportaciones al INFONAVIT, créditos del INFONAVIT o del FOVISSSTE,
-y demás descuentos autorizados por escrito por EL TRABAJADOR.
+DÉCIMA PRIMERA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
 
-DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES. EL TRABAJADOR guardará
-los secretos técnicos, comerciales y de fabricación de los que tenga conocimiento
-con motivo de su trabajo, en términos del artículo 134 fracción III de la Ley
-Federal del Trabajo. Por virtud de esta cláusula queda prevenido de la
-confidencialidad de dicha información para los efectos del artículo 166 de la Ley
-Federal de Protección a la Propiedad Industrial. Tratándose de secretos industriales
-que reúnan los requisitos del artículo 163 fracción I de esa misma Ley, esta
-obligación subsiste mientras la información conserve ese carácter. Respecto de la demás información
-reservada de la empresa (datos, procesos, metodologías, listados de clientes,
-estrategias comerciales y software), la obligación subsistirá durante la relación
-de trabajo y por los DOS AÑOS siguientes a su terminación.
-Esta obligación no comprende la información que sea o llegue a ser de dominio
-público sin intervención de EL TRABAJADOR, la que ya poseía lícitamente antes de
-la relación, ni la que deba revelar por mandato de autoridad competente. Tampoco
-restringe el ejercicio de sus derechos laborales ni la denuncia de hechos
-posiblemente ilícitos ante la autoridad. La revelación indebida puede generar
-responsabilidad civil, penal y administrativa, incluidos los delitos de revelación
-de secretos previstos en los artículos 210 y 211 del Código Penal Federal.
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
 
-DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES. Las obras y desarrollos
-que EL TRABAJADOR realice por encargo de EL PATRON, en ejercicio de las funciones
-descritas en este contrato y con recursos de la empresa, se consideran obra por
-encargo y corresponden a EL PATRON en términos del artículo 83 de la Ley Federal
-del Derecho de Autor, quedando a salvo los derechos morales de EL TRABAJADOR, que
-son inalienables e irrenunciables.
-Tratándose de invenciones se estará al artículo 163 de la Ley Federal del Trabajo:
-EL TRABAJADOR tendrá derecho a que su nombre figure como autor de la invención;
-cuando se dedique a trabajos de investigación o de perfeccionamiento de los
-procedimientos utilizados en la empresa por cuenta de ésta, la propiedad de la
-invención y el derecho a explotar la patente corresponderán a EL PATRON, e
-independientemente del salario percibido EL TRABAJADOR tendrá derecho a una
-compensación complementaria cuando la importancia de la invención y los beneficios
-que reporte a EL PATRON no guarden proporción con dicho salario. En cualquier otro
-caso la propiedad de la invención corresponderá a quien la realizó.
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
 
-DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. Son causas de rescisión sin responsabilidad
-para EL PATRON las establecidas en el artículo 47 de la LFT. Son causas sin
-responsabilidad para EL TRABAJADOR las del artículo 51 LFT. En caso de separación
-voluntaria, se solicita a EL TRABAJADOR dar aviso con quince días naturales de
-anticipación, a efecto de permitir la debida entrega-recepción de sus funciones.
+DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
 
-DÉCIMA CUARTA. BENEFICIARIOS. EL TRABAJADOR designa como beneficiarios para
-recibir el pago de salarios e indemnizaciones en caso de fallecimiento o
-desaparición, conforme al artículo 25 fracción X de la LFT, a:
+DÉCIMA CUARTA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
 Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
 Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
-Esta designación no faculta a EL PATRON para cubrir directamente dichas
-prestaciones. Conforme a los artículos 115 y 503 de la Ley Federal del Trabajo,
-los beneficiarios deberán acudir ante el Tribunal competente, que determinará
-mediante el procedimiento especial correspondiente quiénes tienen derecho a
-percibirlas; sólo el pago hecho en cumplimiento de dicha resolución libera a
-EL PATRON de responsabilidad.
+${CLAUSULAS.beneficiariosAdvertencia}
 
-DÉCIMA QUINTA. RECONOCIMIENTO DE ANTIGÜEDAD. Para el cómputo de la antigüedad
-y las prestaciones derivadas, se toma como fecha de inicio el [FECHA_ANTIGUEDAD],
-conforme al artículo 158 de la LFT.
+DÉCIMA QUINTA. RECONOCIMIENTO DE ANTIGÜEDAD. ${CLAUSULAS.antiguedad}
 
-DÉCIMA SEXTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. Para la interpretación y
-cumplimiento del presente contrato, las partes estarán a lo dispuesto por la Ley
-Federal del Trabajo y se someterán a la autoridad laboral competente en términos
-del artículo 700 de dicho ordenamiento.
+DÉCIMA QUINTA BIS. TRABAJADORES MENORES DE EDAD. ${CLAUSULAS.menoresEdad}
 
-DÉCIMA SÉPTIMA. SUPLETORIEDAD. En todo lo no previsto en este contrato se
-aplicará la Ley Federal del Trabajo vigente y demás disposiciones aplicables.
+DÉCIMA SEXTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
+
+DÉCIMA SÉPTIMA. SUPLETORIEDAD. ${CLAUSULAS.supletoriedad}
 
 Se firma en dos tantos originales en la ciudad de [CIUDAD], el día [FECHA].
 
@@ -231,8 +166,35 @@ a [HORA_FIN] hrs., descanso [DESCANSO_INICIO]-[DESCANSO_FIN], días [DIAS_SEMANA
 
 QUINTA. DESCANSO. Un día de descanso semanal, preferentemente el [DIA_DESCANSO].
 
-[CLÁUSULAS COMUNES: Prestaciones, Herramientas, Capacitación, Obligaciones,
-Deducciones, Confidencialidad, Rescisión, Beneficiarios, Antigüedad, Jurisdicción]
+SEXTA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162), calculadas proporcionalmente al tiempo laborado dado el carácter
+determinado de este contrato.
+
+SÉPTIMA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+OCTAVA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
+
+NOVENA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA PRIMERA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+DÉCIMA PRIMERA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+
+DÉCIMA SEGUNDA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA TERCERA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA CUARTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el día [FECHA].
 `,
@@ -260,14 +222,7 @@ CUARTA. REMUNERACIÓN POR COMISIÓN. La remuneración se integrará por comision
 conforme a la siguiente tabla:
 [TABLA_COMISIONES]
 
-Para efectos del Instituto Mexicano del Seguro Social, tratándose de salario
-variable el salario diario integrado se determinará conforme al artículo 30
-fracción II de la Ley del Seguro Social, con el promedio de las percepciones
-obtenidas en el bimestre inmediato anterior, presentando la modificación salarial
-correspondiente dentro de los primeros cinco días hábiles de enero, marzo, mayo,
-julio, septiembre y noviembre. El salario no será inferior al salario mínimo
-general vigente (Art. 85 LFT). El salario mensual base de referencia es
-$[SALARIO].00 M.N.
+${CLAUSULAS.comisionSDI}
 
 QUINTA. JORNADA. La jornada es autoadministrada dentro del horario de
 [HORA_INICIO] a [HORA_FIN] hrs. EL TRABAJADOR se presentará en instalaciones
@@ -278,8 +233,34 @@ SEXTA. DESCANSO. Un día semanal de descanso, preferentemente el [DIA_DESCANSO].
 ANEXO A — FICHA DE DATOS PERSONALES Y DEL PUESTO
 [DATOS_TRABAJADOR_COMPLETOS]
 
-[CLÁUSULAS COMUNES: Prestaciones, Herramientas, Capacitación, Obligaciones,
-Deducciones, Confidencialidad reforzada, Rescisión, Beneficiarios, Jurisdicción]
+SÉPTIMA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162).
+
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
+
+DÉCIMA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA PRIMERA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA CUARTA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA QUINTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el [FECHA], en dos tantos originales.
 `,
@@ -316,9 +297,34 @@ QUINTA. JORNADA. Jornada de [HORA_INICIO] a [HORA_FIN] hrs., días [DIAS_SEMANA]
 
 SEXTA. DESCANSO. Un día semanal de descanso, el [DIA_DESCANSO].
 
-[CLÁUSULAS COMUNES: Prestaciones proporcionales, Herramientas, Capacitación,
-Obligaciones, Deducciones, Confidencialidad especial por proyecto, Rescisión,
-Beneficiarios, Jurisdicción]
+SÉPTIMA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162), proporcionales al tiempo efectivamente laborado en la obra o proyecto.
+
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
+
+DÉCIMA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA PRIMERA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA CUARTA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA QUINTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el [FECHA], en dos tantos originales.
 `,
@@ -343,14 +349,7 @@ La naturaleza de temporada se justifica por: [NATURALEZA_TEMPORADA].
 Las temporadas pactadas son:
 [TABLA_TEMPORADAS]
 
-SUSPENSIÓN Y CONVOCATORIA: EL PATRON convocará a EL TRABAJADOR con mínimo
-30 días de anticipación al inicio de cada temporada. La inasistencia de EL
-TRABAJADOR al reinicio de labores no rescinde la relación de pleno derecho: se
-rige por las reglas ordinarias de rescisión (más de tres faltas de asistencia en
-un período de treinta días configuran la causal del artículo 47 fracción X LFT),
-requiere su propio aviso de rescisión, y está sujeta al plazo de prescripción de
-un mes del artículo 517 fracción I LFT contado desde que EL PATRON tuvo
-conocimiento de la falta.
+${CLAUSULAS.temporadaSuspension}
 
 SEGUNDA. OBJETO. Durante cada temporada EL TRABAJADOR desempeñará el cargo de
 [PUESTO] en el área de [DEPARTAMENTO], con las siguientes funciones: [FUNCIONES].
@@ -368,8 +367,35 @@ QUINTA. JORNADA. Durante temporada activa: [HORA_INICIO] a [HORA_FIN] hrs., día
 SEXTA. DESCANSO Y PRESTACIONES PROPORCIONALES. Un día semanal, el [DIA_DESCANSO].
 Todas las prestaciones se calculan proporcional al tiempo laborado en cada año.
 
-[CLÁUSULAS COMUNES: Prestaciones, Herramientas, Obligaciones, Deducciones,
-Confidencialidad, Rescisión, Beneficiarios, Antigüedad acumulada, Jurisdicción]
+SÉPTIMA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162), todas calculadas proporcionalmente al tiempo efectivamente laborado en
+cada ejercicio anual.
+
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+NOVENA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA PRIMERA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+
+DÉCIMA PRIMERA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+DÉCIMA SEGUNDA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA TERCERA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA CUARTA. RECONOCIMIENTO DE ANTIGÜEDAD. ${CLAUSULAS.antiguedad}
+
+DÉCIMA QUINTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el [FECHA], en dos tantos originales.
 `,
