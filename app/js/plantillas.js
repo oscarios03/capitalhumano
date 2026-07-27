@@ -55,8 +55,14 @@ mediante [FORMA_PAGO], los días [DIAS_PAGO]. El salario se cubre en su
 totalidad por la jornada ordinaria convenida, sin que en ningún caso sea
 inferior al salario mínimo general vigente en la zona de que se trate.
 
-QUINTA. LUGAR Y JORNADA. EL TRABAJADOR prestará sus servicios en [DOMICILIO_SUCURSAL]
-o en el lugar que EL PATRON designe. La jornada ordinaria de trabajo será de
+QUINTA. LUGAR Y JORNADA. EL TRABAJADOR prestará sus servicios en [DOMICILIO_SUCURSAL].
+Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de
+trabajo dentro del mismo municipio o zona metropolitana, se lo notificará con al
+menos ocho días naturales de anticipación y cubrirá los gastos de traslado que se
+originen; el cambio no implicará modificación del salario ni de las demás
+condiciones de trabajo (Art. 25 fracción IV LFT). Cualquier reubicación fuera de
+dicha zona requerirá el consentimiento expreso de EL TRABAJADOR.
+La jornada ordinaria de trabajo será de
 [HORA_INICIO] a [HORA_FIN] horas, con período de descanso para alimentos de
 [DESCANSO_INICIO] a [DESCANSO_FIN] horas, los días [DIAS_SEMANA]. La jornada
 semanal pactada es de [HORAS_SEMANALES] horas, sin exceder el máximo legal de
@@ -118,16 +124,38 @@ a EL TRABAJADOR las deducciones señaladas en el artículo 110 de la LFT, incluy
 cuotas al IMSS, aportaciones al INFONAVIT, créditos del INFONAVIT o del FOVISSSTE,
 y demás descuentos autorizados por escrito por EL TRABAJADOR.
 
-DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y PROPIEDAD INTELECTUAL. EL TRABAJADOR se
-obliga a guardar absoluta confidencialidad sobre toda la información, procesos,
-metodologías, listados de clientes y secretos industriales o comerciales de EL
-PATRON, durante la vigencia de este contrato y con posterioridad a su terminación.
-La violación a esta cláusula podrá configurar los delitos de revelación de
-secretos previstos en los artículos 210-211 del Código Penal Federal y los
-artículos 82-86 y 213 de la Ley Federal de Protección a la Propiedad Industrial.
-Todas las creaciones y desarrollos realizados con recursos del PATRON son de
-titularidad exclusiva de éste, cediéndose en este acto los derechos patrimoniales
-de autor que pudieran corresponder a EL TRABAJADOR.
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES. EL TRABAJADOR guardará
+los secretos técnicos, comerciales y de fabricación de los que tenga conocimiento
+con motivo de su trabajo, en términos del artículo 134 fracción III de la Ley
+Federal del Trabajo. Tratándose de secretos industriales que reúnan los requisitos
+de la Ley Federal de Protección a la Propiedad Industrial, esta obligación subsiste
+mientras la información conserve ese carácter. Respecto de la demás información
+reservada de la empresa (datos, procesos, metodologías, listados de clientes,
+estrategias comerciales y software), la obligación subsistirá durante la relación
+de trabajo y por los DOS AÑOS siguientes a su terminación.
+Esta obligación no comprende la información que sea o llegue a ser de dominio
+público sin intervención de EL TRABAJADOR, la que ya poseía lícitamente antes de
+la relación, ni la que deba revelar por mandato de autoridad competente. Tampoco
+restringe el ejercicio de sus derechos laborales ni la denuncia de hechos
+posiblemente ilícitos ante la autoridad. La revelación indebida puede generar
+responsabilidad civil, penal y administrativa, incluidos los delitos de revelación
+de secretos previstos en los artículos 210 y 211 del Código Penal Federal.
+
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES. Las obras y desarrollos
+que EL TRABAJADOR realice por encargo de EL PATRON, en ejercicio de las funciones
+descritas en este contrato y con recursos de la empresa, se consideran obra por
+encargo y corresponden a EL PATRON en términos del artículo 83 de la Ley Federal
+del Derecho de Autor, quedando a salvo los derechos morales de EL TRABAJADOR, que
+son inalienables e irrenunciables.
+Tratándose de invenciones se estará al artículo 163 de la Ley Federal del Trabajo:
+EL TRABAJADOR tendrá derecho a que su nombre figure como autor de la invención;
+cuando se dedique a trabajos de investigación o de perfeccionamiento de los
+procedimientos utilizados en la empresa por cuenta de ésta, la propiedad de la
+invención y el derecho a explotar la patente corresponderán a EL PATRON, e
+independientemente del salario percibido EL TRABAJADOR tendrá derecho a una
+compensación complementaria cuando la importancia de la invención y los beneficios
+que reporte a EL PATRON no guarden proporción con dicho salario. En cualquier otro
+caso la propiedad de la invención corresponderá a quien la realizó.
 
 DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. Son causas de rescisión sin responsabilidad
 para EL PATRON las establecidas en el artículo 47 de la LFT. Son causas sin
@@ -140,6 +168,12 @@ recibir el pago de salarios e indemnizaciones en caso de fallecimiento o
 desaparición, conforme al artículo 25 fracción X de la LFT, a:
 Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
 Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+Esta designación no faculta a EL PATRON para cubrir directamente dichas
+prestaciones. Conforme a los artículos 115 y 503 de la Ley Federal del Trabajo,
+los beneficiarios deberán acudir ante el Tribunal competente, que determinará
+mediante el procedimiento especial correspondiente quiénes tienen derecho a
+percibirlas; sólo el pago hecho en cumplimiento de dicha resolución libera a
+EL PATRON de responsabilidad.
 
 DÉCIMA QUINTA. RECONOCIMIENTO DE ANTIGÜEDAD. Para el cómputo de la antigüedad
 y las prestaciones derivadas, se toma como fecha de inicio el [FECHA_ANTIGUEDAD],
@@ -224,10 +258,14 @@ CUARTA. REMUNERACIÓN POR COMISIÓN. La remuneración se integrará por comision
 conforme a la siguiente tabla:
 [TABLA_COMISIONES]
 
-Para efectos del IMSS e INFONAVIT, el SDI se calculará conforme al promedio
-de comisiones percibidas en los últimos 30 días, con un mínimo equivalente al
-salario mínimo general vigente (Art. 289 LFT). El salario mensual base de
-referencia es $[SALARIO].00 M.N.
+Para efectos del Instituto Mexicano del Seguro Social, tratándose de salario
+variable el salario diario integrado se determinará conforme al artículo 30
+fracción II de la Ley del Seguro Social, con el promedio de las percepciones
+obtenidas en el bimestre inmediato anterior, presentando la modificación salarial
+correspondiente dentro de los primeros cinco días hábiles de enero, marzo, mayo,
+julio, septiembre y noviembre. El salario no será inferior al salario mínimo
+general vigente (Art. 85 LFT). El salario mensual base de referencia es
+$[SALARIO].00 M.N.
 
 QUINTA. JORNADA. La jornada es autoadministrada dentro del horario de
 [HORA_INICIO] a [HORA_FIN] hrs. EL TRABAJADOR se presentará en instalaciones
@@ -289,12 +327,14 @@ CONTRATO INDIVIDUAL DE TRABAJO POR TEMPORADA
 
 En [CIUDAD], siendo el [FECHA], celebran [RAZÓN SOCIAL] (EL PATRON) y
 el C. [NOMBRE_TRABAJADOR] (EL TRABAJADOR), el presente contrato conforme
-al artículo 42 Bis de la Ley Federal del Trabajo.
+a los artículos 35, 42 fracción VIII y 43 fracción V de la Ley Federal del Trabajo.
 
 PRIMERA. DURACIÓN Y CARÁCTER DISCONTINUO. El presente contrato es por TIEMPO
 INDETERMINADO con prestación de servicios DISCONTINUA, en términos del artículo
-42 Bis LFT. EL TRABAJADOR prestará servicios únicamente durante los períodos
-de temporada. Fuera de ellos la relación queda SUSPENDIDA, no rescindida.
+35 de la Ley Federal del Trabajo. Concluida cada temporada, la relación queda
+SUSPENDIDA —no rescindida— conforme a los artículos 42 fracción VIII y 43
+fracción V de la misma Ley, desde la fecha de conclusión de la temporada hasta
+el inicio de la siguiente.
 
 La naturaleza de temporada se justifica por: [NATURALEZA_TEMPORADA].
 
@@ -302,9 +342,13 @@ Las temporadas pactadas son:
 [TABLA_TEMPORADAS]
 
 SUSPENSIÓN Y CONVOCATORIA: EL PATRON convocará a EL TRABAJADOR con mínimo
-30 días de anticipación al inicio de cada temporada. Si EL TRABAJADOR no se
-presenta en los 15 días siguientes sin causa justificada, se entenderá rescindida
-la relación sin responsabilidad para EL PATRON.
+30 días de anticipación al inicio de cada temporada. La inasistencia de EL
+TRABAJADOR al reinicio de labores no rescinde la relación de pleno derecho: se
+rige por las reglas ordinarias de rescisión (más de tres faltas de asistencia en
+un período de treinta días configuran la causal del artículo 47 fracción X LFT),
+requiere su propio aviso de rescisión, y está sujeta al plazo de prescripción de
+un mes del artículo 517 fracción I LFT contado desde que EL PATRON tuvo
+conocimiento de la falta.
 
 SEGUNDA. OBJETO. Durante cada temporada EL TRABAJADOR desempeñará el cargo de
 [PUESTO] en el área de [DEPARTAMENTO], con las siguientes funciones: [FUNCIONES].
@@ -313,7 +357,9 @@ TERCERA. SALARIO. Salario [PERIODO] de $[SALARIO].00 M.N. durante temporada acti
 Las prestaciones se calculan proporcionalmente al tiempo efectivamente laborado.
 [CONDICIONES_INACTIVIDAD]
 
-CUARTA. LUGAR. Servicios en [DOMICILIO] o el lugar que EL PATRON determine por temporada.
+CUARTA. LUGAR. Servicios en [DOMICILIO]. Si una temporada específica requiere
+prestar el servicio en una ubicación distinta, EL PATRON lo notificará al convocar
+dicha temporada (Art. 25 fracción IV LFT) y cubrirá los gastos de traslado.
 
 QUINTA. JORNADA. Durante temporada activa: [HORA_INICIO] a [HORA_FIN] hrs., días [DIAS_SEMANA].
 

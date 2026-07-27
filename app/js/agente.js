@@ -43,7 +43,7 @@ const TIPOS_DOCUMENTO = {
   contrato_indeterminado: { label:'Contrato Tiempo Indeterminado', plantilla:'contrato_indeterminado', icono:'', categoria:'contrato',   desc:'Art. 35 LFT — Relación de planta sin fecha de término' },
   contrato_determinado:   { label:'Contrato Tiempo Determinado',   plantilla:'contrato_determinado',   icono:'', categoria:'contrato',   desc:'Art. 37 LFT — Período a prueba (30 o 90 días)' },
   contrato_obra:          { label:'Contrato por Obra o Proyecto',  plantilla:'contrato_obra',          icono:'', categoria:'contrato',   desc:'Art. 36 LFT — Para proyectos con fin determinado' },
-  contrato_temporada:     { label:'Contrato por Temporada',        plantilla:'contrato_temporada',     icono:'', categoria:'contrato',   desc:'Art. 42 Bis LFT — Prestación discontinua' },
+  contrato_temporada:     { label:'Contrato por Temporada',        plantilla:'contrato_temporada',     icono:'', categoria:'contrato',   desc:'Arts. 35 y 42 fr. VIII LFT — Prestación discontinua' },
   contrato_comision:      { label:'Contrato por Comisión',         plantilla:'contrato_comision',      icono:'', categoria:'contrato',   desc:'Arts. 285-289 LFT — Trabajador comisionista' },
   acta_amonestacion:      { label:'Acta de Amonestación',         plantilla:'acta_amonestacion',      icono:'', categoria:'acta',       desc:'Primer aviso disciplinario, sin consecuencia inmediata' },
   acta_formal:            { label:'Acta Administrativa Formal',    plantilla:'acta_formal',            icono:'', categoria:'acta',       desc:'Apercibimiento formal con riesgo de rescisión' },

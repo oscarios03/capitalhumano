@@ -421,7 +421,7 @@ function _exigirCiudad(ciudad) {
 
 /**
  * Falla de forma visible si la jornada no viene de datos realmente capturados
- * (puesto asignado o alta del trabajador). El Art. 25 fr. III LFT exige que el
+ * (puesto asignado o alta del trabajador). El Art. 25 fr. V LFT exige que el
  * contrato señale la duración de la jornada; un horario genérico impreso por
  * omisión no es la jornada pactada, es una invención que además el propio
  * patrón podría no estar cumpliendo.
@@ -435,11 +435,27 @@ function _exigirJornadaCapturada(data) {
   if (!faltantes.length) return;
   throw new Error(
     `Falta capturar ${faltantes.join(', ')} de la jornada de este trabajador. ` +
-    `El contrato debe imprimir el horario realmente pactado (Art. 25 fr. III LFT), ` +
+    `El contrato debe imprimir el horario realmente pactado (Art. 25 fr. V LFT), ` +
     `no un horario genérico. Captúralo en la pestaña Jornada del trabajador, o ` +
     `asígnale un puesto que ya tenga su jornada estándar configurada, antes de ` +
     `generar el contrato.`
   );
+}
+
+/**
+ * Redacción del lugar de trabajo. El Art. 25 fracc. IV LFT exige señalar "el
+ * lugar o los lugares donde deba prestarse el trabajo": una cláusula que deja
+ * el lugar a la designación futura y unilateral del patrón, sin límite
+ * geográfico, sin aviso previo y sin compensación de gastos, no lo señala
+ * realmente — lo deja indeterminado, que es justo lo que el artículo exige
+ * evitar. Se acota a reubicaciones dentro del mismo municipio o zona
+ * metropolitana, con aviso previo y gastos de traslado a cargo del patrón;
+ * cualquier cambio fuera de esa zona requiere el consentimiento expreso del
+ * trabajador (una reubicación más amplia sin consentimiento sería, en los
+ * hechos, una rescisión disfrazada de traslado).
+ */
+function _textoLugarTrabajo(domicilioBase) {
+  return `EL TRABAJADOR prestara sus servicios en ${np(domicilioBase)}. Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de trabajo dentro del mismo municipio o zona metropolitana, se lo notificara con al menos ocho dias naturales de anticipacion y cubrira los gastos de traslado que se originen; el cambio no implicara modificacion del salario ni de las demas condiciones de trabajo (Art. 25 fracc. IV LFT). Cualquier reubicacion fuera de dicha zona requerira el consentimiento expreso de EL TRABAJADOR.`;
 }
 
 /**
@@ -675,10 +691,29 @@ function _clausulasComunes(state, data, start) {
   _h(state, n++, 'Deducciones de Ley (Art. 110 LFT)');
   _p(state, `EL PATRON queda autorizado para realizar las deducciones al salario conforme al Art. 110 LFT: I) Deudas por anticipos o articulos del patron; II) Cuotas IMSS e INFONAVIT; III) Pagos de creditos INFONAVIT; IV) Descuentos autorizados por convenio escrito.`);
 
-  _h(state, n++, 'Confidencialidad, Secrecy y Propiedad Industrial');
-  _p(state, `EL TRABAJADOR se obliga a guardar absoluta confidencialidad sobre informacion, datos, procesos, listados de clientes, estrategias comerciales, software y cualquier secreto industrial o comercial, durante y despues de la relacion laboral.`);
-  _p(state, `La violacion puede configurar delitos del Art. 210-211 del Codigo Penal Federal (revelacion de secretos), Art. 229 del Codigo Penal de Guanajuato, y Arts. 82-86 y 213 de la Ley Federal de Proteccion a la Propiedad Industrial.`);
-  _p(state, `Todos los trabajos, creaciones y desarrollos realizados en ejercicio de las funciones o con recursos del PATRON son de titularidad exclusiva de este; EL TRABAJADOR cede en este acto todos los derechos patrimoniales de autor que pudieran corresponderle.`);
+  // Confidencialidad: el deber de guardar los secretos técnicos y comerciales
+  // ya lo impone el Art. 134 fracc. III LFT. Lo que no puede hacer el contrato
+  // es imponer un deber de silencio perpetuo sobre CUALQUIER información: sólo
+  // el secreto industrial —el que reúne los requisitos de la LFPPI— justifica
+  // protección indefinida; el resto se acota temporalmente. Una obligación
+  // perpetua y omnicomprensiva es, en los hechos, inejecutable, y arrastra
+  // consigo la validez de la parte que sí lo era.
+  _h(state, n++, 'Confidencialidad y Secretos Industriales');
+  _p(state, `EL TRABAJADOR guardara los secretos tecnicos, comerciales y de fabricacion de los que tenga conocimiento con motivo de su trabajo, en terminos del articulo 134 fraccion III de la Ley Federal del Trabajo. Tratandose de secretos industriales que reunan los requisitos de la Ley Federal de Proteccion a la Propiedad Industrial, esta obligacion subsiste mientras la informacion conserve ese caracter. Respecto de la demas informacion reservada de la empresa (datos, procesos, listados de clientes, estrategias comerciales y software), la obligacion de confidencialidad subsistira durante la relacion de trabajo y por los DOS ANOS siguientes a su terminacion.`);
+  _p(state, `Esta obligacion no comprende la informacion que sea o llegue a ser de dominio publico sin intervencion de EL TRABAJADOR, la que este ya poseia licitamente antes de la relacion, ni la que deba revelar por mandato de autoridad competente. Tampoco restringe el ejercicio de los derechos laborales de EL TRABAJADOR ni la denuncia de hechos posiblemente ilicitos ante la autoridad.`);
+  _p(state, `La revelacion indebida de dicha informacion puede generar responsabilidad civil, penal y administrativa en terminos de la legislacion aplicable, incluida la Ley Federal de Proteccion a la Propiedad Industrial.`);
+
+  // Propiedad intelectual: la versión anterior hacía que el trabajador
+  // "cediera en este acto todos los derechos patrimoniales de autor". Una
+  // cesión global y anticipada de obra futura e indeterminada no es exigible;
+  // además el Art. 163 LFT (invenciones) reserva al trabajador el derecho a
+  // que su nombre figure como autor y a una compensación complementaria
+  // cuando la importancia del invento no guarde proporción con su salario —
+  // derecho irrenunciable que la cláusula anterior pretendía borrar.
+  _h(state, n++, 'Propiedad Intelectual e Invenciones (Art. 163 LFT)');
+  _p(state, `Las obras y desarrollos que EL TRABAJADOR realice por encargo de EL PATRON, en el ejercicio de las funciones descritas en este contrato y con recursos de la empresa, se consideran obra por encargo y corresponden a EL PATRON en terminos del articulo 83 de la Ley Federal del Derecho de Autor, quedando a salvo los derechos morales de EL TRABAJADOR, que son inalienables e irrenunciables.`);
+  _p(state, `Tratandose de invenciones, se estara a lo dispuesto por el articulo 163 de la Ley Federal del Trabajo: EL TRABAJADOR tendra derecho a que su nombre figure como autor de la invencion; cuando se dedique a trabajos de investigacion o de perfeccionamiento de los procedimientos utilizados en la empresa por cuenta de esta, la propiedad de la invencion y el derecho a explotar la patente corresponderan a EL PATRON, e independientemente del salario percibido EL TRABAJADOR tendra derecho a una compensacion complementaria cuando la importancia de la invencion y los beneficios que reporte a EL PATRON no guarden proporcion con dicho salario. En cualquier otro caso la propiedad de la invencion correspondera a quien la realizo.`);
+  _p(state, `Las partes podran celebrar un convenio anexo de propiedad intelectual para detallar el alcance de lo previsto en esta clausula respecto de proyectos especificos, sin que dicho convenio pueda reducir los derechos que la ley reconoce a EL TRABAJADOR.`);
 
   // Art. 110 LFT es limitativo: sólo admite las deducciones que enumera. La LFT no
   // impone al trabajador obligación de preaviso ni autoriza descuento por omitirlo;
@@ -694,6 +729,12 @@ function _clausulasComunes(state, data, start) {
   if (data.beneficiario2Nombre) bRows.push([np(data.beneficiario2Nombre), np(data.beneficiario2Parentesco), np(data.beneficiario2Telefono)]);
   else bRows.push(['[NOMBRE BENEFICIARIO 2 — OPCIONAL]','','']);
   _table(state, [['Nombre Completo','Parentesco','Telefono']], bRows);
+  // La designación del Art. 25 fr. X no autoriza al patrón a pagar directamente:
+  // el Art. 503 LFT somete el pago a un procedimiento especial ante el Tribunal,
+  // y sólo el pago hecho en cumplimiento de su resolución libera al patrón
+  // (Art. 503 fr. VII). Pagar "al beneficiario designado" sin resolución deja al
+  // patrón expuesto a volver a pagar a quien el Tribunal reconozca después.
+  _p(state, `Esta designacion no faculta a EL PATRON para cubrir directamente las prestaciones e indemnizaciones pendientes al fallecimiento de EL TRABAJADOR. Conforme a los articulos 115 y 503 de la Ley Federal del Trabajo, los beneficiarios deberan acudir ante el Tribunal competente, que determinara mediante el procedimiento especial correspondiente quienes tienen derecho a percibirlas; solo el pago hecho en cumplimiento de dicha resolucion libera a EL PATRON de responsabilidad.`);
 
   _h(state, n++, 'Reconocimiento de Antiguedad');
   _p(state, `Para efectos del computo de la antiguedad y prestaciones derivadas, se toma como fecha de inicio de la relacion laboral el dia ${npDate((data.fechaIngresoReconocida || data.fechaIngreso) + 'T00:00:00')}, de conformidad con el Art. 158 LFT.`);
@@ -763,7 +804,7 @@ function generateContratoIndeterminado(data) {
   _p(state, `EL PATRON pagara a EL TRABAJADOR un salario ${np(data.periodoSalario)} de $${Number(data.salario).toFixed(2)} M.N. (${np(numToWords(data.salario))} PESOS 00/100 M.N.) mediante ${np(data.formaPago)}${data.diasPago ? ', los dias '+np(data.diasPago) : ''}. El salario cubre la jornada ordinaria y no sera inferior al salario minimo vigente.`);
 
   _h(state, 5, 'Lugar y Jornada de Trabajo');
-  _p(state, `EL TRABAJADOR prestara sus servicios en ${np(data.domicilioSucursal || data.domicilioFiscal)} o en el lugar que EL PATRON designe. La jornada ordinaria sera de ${np(data.horaInicio)} a ${np(data.horaFin)} horas, con descanso de ${np(data.horaDescansoInicio)} a ${np(data.horaDescansoFin)} horas, los dias ${data.diasSemana.map(np).join(', ')}. ${_textoJornada(data)}`);
+  _p(state, `${_textoLugarTrabajo(data.domicilioSucursal || data.domicilioFiscal)} La jornada ordinaria sera de ${np(data.horaInicio)} a ${np(data.horaFin)} horas, con descanso de ${np(data.horaDescansoInicio)} a ${np(data.horaDescansoFin)} horas, los dias ${data.diasSemana.map(np).join(', ')}. ${_textoJornada(data)}`);
 
   _h(state, 6, 'Descanso Semanal (Art. 69 LFT)');
   _p(state, `EL TRABAJADOR disfrutara de un dia de descanso por cada seis laborados, preferentemente el ${np(data.diaDescanso)}, con salario integro. Si labora en dia de descanso percibirá el doble del salario ademas del ordinario.`);
@@ -781,8 +822,14 @@ function generateContratoDeterminado(data) {
     'Articulo 37 — Ley Federal del Trabajo 2026', data);
 
   _h(state, 1, 'Duracion y Vigencia (Art. 37 LFT)');
-  _p(state, `El presente contrato se celebra por TIEMPO DETERMINADO entre ${np(data.razonSocial)} (EL PATRON) y el C. ${np(data.nombre)} (EL TRABAJADOR), con vigencia del ${npDate(data.fechaIngreso+'T00:00:00')} al ${data.fechaVencimiento ? npDate(data.fechaVencimiento+'T00:00:00') : '[FECHA DE VENCIMIENTO]'}, fecha en que concluye automaticamente sin responsabilidad para ninguna parte, salvo renovacion por escrito.`);
-  _recuadro(state, 'ADVERTENCIA LEGAL: El contrato por tiempo determinado solo es valido cuando lo exige la naturaleza del trabajo, cuando tiene por objeto sustituir temporalmente a otro trabajador, o cuando lo imponga una circunstancia objetiva determinada (Art. 37 LFT). Su uso indebido convierte la relacion en tiempo indeterminado (Art. 39 LFT).', 'warn');
+  _p(state, `El presente contrato se celebra por TIEMPO DETERMINADO entre ${np(data.razonSocial)} (EL PATRON) y el C. ${np(data.nombre)} (EL TRABAJADOR), con vigencia del ${npDate(data.fechaIngreso+'T00:00:00')} al ${data.fechaVencimiento ? npDate(data.fechaVencimiento+'T00:00:00') : '[FECHA DE VENCIMIENTO]'}.`);
+  // Art. 39 LFT: si vencido el término subsiste la materia del trabajo, la
+  // relación queda prorrogada por todo el tiempo que perdure esa circunstancia.
+  // Decir sólo que "concluye automáticamente" omite esa regla y crea la falsa
+  // expectativa de que basta con dejar pasar la fecha: si el trabajador sigue
+  // laborando, la relación continúa por ministerio de ley, no por acuerdo.
+  _p(state, `Al vencimiento del termino, si subsiste la materia del trabajo la relacion quedara PRORROGADA por todo el tiempo que perdure dicha circunstancia, en terminos del articulo 39 de la Ley Federal del Trabajo. La conclusion de la relacion al vencimiento requiere que la materia del trabajo se haya agotado; en caso contrario, la continuacion de los servicios prorroga la relacion por disposicion de la ley, con independencia de lo pactado en esta clausula.`);
+  _recuadro(state, 'ADVERTENCIA LEGAL: El contrato por tiempo determinado solo es valido cuando lo exige la naturaleza del trabajo, cuando tiene por objeto sustituir temporalmente a otro trabajador, o cuando lo imponga una circunstancia objetiva determinada (Art. 37 LFT). Su uso indebido convierte la relacion en tiempo indeterminado (Art. 39 LFT). Renovar sucesivamente un contrato determinado sin una causa objetiva que subsista en cada renovacion es uno de los supuestos que con mayor frecuencia se declaran relacion por tiempo indeterminado.', 'warn');
 
   _h(state, 2, 'Objeto — Servicio a Prestar');
   _p(state, `EL TRABAJADOR se obliga a prestar sus servicios como ${np(data.puesto)}${data.departamento ? ' en el area de '+np(data.departamento) : ''}, durante la vigencia del contrato. Funciones: ${np(data.funciones)}.`);
@@ -834,13 +881,23 @@ function generateContratoObra(data) {
 }
 
 // ── Generador 4: Por Temporada ───────────────────────────────────────────────
+// El Art. 42 Bis LFT NO regula el trabajo por temporada: es la suspensión por
+// contingencia sanitaria declarada por autoridad (verificado contra el texto
+// oficial DOF 14-05-2026). La conclusión de cada temporada es causal de
+// SUSPENSIÓN — no de rescisión — prevista en el Art. 42 fracc. VIII LFT, y su
+// duración (hasta el inicio de la siguiente temporada) la fija el Art. 43
+// fracc. V LFT. La cláusula anterior también inventaba una rescisión
+// automática a los 15 días de inasistencia sin causa: esa hipótesis no existe;
+// la inasistencia prolongada se rige por las reglas ordinarias de rescisión
+// (Art. 47 fracc. X LFT — más de tres faltas en 30 días —, con su propio aviso
+// y sujeta al plazo de prescripción del Art. 517 fracc. I LFT).
 function generateContratoTemporada(data) {
   const state = _initContratoDoc(
     'CONTRATO INDIVIDUAL DE TRABAJO POR TEMPORADA',
-    'Articulo 42 Bis — Ley Federal del Trabajo 2026', data);
+    'Articulos 35, 42 fraccion VIII y 43 fraccion V — Ley Federal del Trabajo 2026', data);
 
-  _h(state, 1, 'Duracion y Caracter Discontinuo (Art. 42 Bis LFT)');
-  _p(state, `El presente contrato es por TIEMPO INDETERMINADO con prestacion de servicios DISCONTINUA. EL TRABAJADOR presta sus servicios unicamente durante los periodos de temporada; fuera de ellos la relacion queda suspendida (no rescindida). Temporadas pactadas:`);
+  _h(state, 1, 'Duracion y Caracter Discontinuo (Art. 35, 42 fracc. VIII y 43 fracc. V LFT)');
+  _p(state, `El presente contrato es por TIEMPO INDETERMINADO con prestacion de servicios DISCONTINUA, en terminos del articulo 35 de la Ley Federal del Trabajo. Concluida cada temporada, la relacion de trabajo queda SUSPENDIDA —no rescindida— en terminos del articulo 42, fraccion VIII, y 43, fraccion V, de la Ley Federal del Trabajo, desde la fecha de conclusion de la temporada hasta el inicio de la siguiente. Temporadas pactadas:`);
   if (data.temporadas?.length) {
     _table(state,
       [['Temporada','Fecha Inicio','Fecha Fin']],
@@ -849,7 +906,7 @@ function generateContratoTemporada(data) {
   } else {
     _recuadro(state, '[DEFINIR LAS TEMPORADAS CON NOMBRE, FECHA INICIO Y FECHA FIN]', 'warn');
   }
-  _recuadro(state, 'SUSPENSION Y CONVOCATORIA: EL PATRON convocara a EL TRABAJADOR con minimo 30 dias de anticipacion al inicio de cada temporada. Si EL TRABAJADOR no se presenta dentro de los 15 dias siguientes sin causa justificada, se entendera rescindida la relacion sin responsabilidad para EL PATRON (Art. 42 Bis LFT).', 'warn');
+  _recuadro(state, 'SUSPENSION Y CONVOCATORIA: EL PATRON convocara a EL TRABAJADOR con minimo 30 dias de anticipacion al inicio de cada temporada. La inasistencia de EL TRABAJADOR al reinicio de labores no rescinde la relacion de pleno derecho: se rige por las reglas ordinarias de rescision (mas de tres faltas de asistencia en un periodo de treinta dias configuran la causal del Art. 47 fraccion X LFT), requiere su propio aviso de rescision, y esta sujeta al plazo de prescripcion de un mes del Art. 517 fraccion I LFT contado desde que EL PATRON tuvo conocimiento de la falta.', 'warn');
 
   _h(state, 2, 'Objeto — Servicio a Prestar');
   _p(state, `Durante cada temporada EL TRABAJADOR se desempenara como ${np(data.puesto)}${data.departamento ? ' en el area de '+np(data.departamento) : ''}. Funciones: ${np(data.funciones)}.`);
@@ -857,8 +914,8 @@ function generateContratoTemporada(data) {
   _h(state, 3, 'Salario');
   _p(state, `Salario ${np(data.periodoSalario)} de $${Number(data.salario).toFixed(2)} M.N. (${np(numToWords(data.salario))} PESOS 00/100 M.N.) mediante ${np(data.formaPago)}, pagadero unicamente durante temporada activa. Las prestaciones se calculan proporcionalmente al tiempo efectivamente laborado en cada ejercicio anual.`);
 
-  _h(state, 4, 'Lugar de Prestacion de Servicios');
-  _p(state, `EL TRABAJADOR prestara servicios en ${np(data.domicilioSucursal || data.domicilioFiscal)} o el lugar que EL PATRON determine para cada temporada.`);
+  _h(state, 4, 'Lugar de Prestacion de Servicios (Art. 25 fracc. IV LFT)');
+  _p(state, `EL TRABAJADOR prestara servicios en ${np(data.domicilioSucursal || data.domicilioFiscal)}. Si una temporada especifica requiere prestar el servicio en una ubicacion distinta, EL PATRON lo notificara al convocar dicha temporada (Art. 25 fracc. IV LFT) y cubrira los gastos de traslado que se originen.`);
 
   _h(state, 5, 'Jornada de Trabajo');
   _p(state, `Durante la temporada activa, jornada de ${np(data.horaInicio)} a ${np(data.horaFin)} horas, descanso de ${np(data.horaDescansoInicio)} a ${np(data.horaDescansoFin)}, dias ${data.diasSemana.map(np).join(', ')}.`);
@@ -901,7 +958,12 @@ function generateContratoComision(data) {
   } else {
     _recuadro(state, '[DEFINIR RANGOS Y COMISIONES APLICABLES]', 'warn');
   }
-  _p(state, `Para efectos del IMSS e INFONAVIT, el SDI se calculara conforme al promedio de comisiones percibidas en los ultimos 30 dias, con minimo equivalente al salario minimo general vigente (Art. 289 LFT). Salario mensual base de referencia: $${Number(data.salario).toFixed(2)} M.N.`);
+  // El "promedio de los últimos 30 días" no es la regla del salario variable:
+  // la Ley del Seguro Social la fija en el bimestre inmediato anterior, con
+  // avisos de modificación en meses determinados. Cotizar sobre un promedio
+  // de 30 días produce un SBC distinto del legal y expone al patrón a
+  // diferencias, actualizaciones y multas del IMSS.
+  _p(state, `Para efectos del Instituto Mexicano del Seguro Social, tratandose de salario variable el salario diario integrado se determinara conforme al articulo 30 fraccion II de la Ley del Seguro Social, con el promedio de las percepciones obtenidas en el bimestre inmediato anterior, presentando la modificacion salarial correspondiente dentro de los primeros cinco dias habiles de enero, marzo, mayo, julio, septiembre y noviembre. El salario no sera inferior al salario minimo general vigente (Art. 85 LFT). Salario mensual base de referencia: $${Number(data.salario).toFixed(2)} M.N.`);
 
   _h(state, 5, 'Jornada Autoadministrada y Presentacion en Oficina');
   _p(state, `Dada la naturaleza de la actividad, la jornada es autoadministrada dentro del horario de ${np(data.horaInicio)} a ${np(data.horaFin)} horas. EL TRABAJADOR se presentara en instalaciones de EL PATRON los dias ${(data.diasPresentacion||['[DIAS]']).map(np).join(', ')} en el horario ${np(data.horarioPresentacion || '[HORARIO DE PRESENTACION]')}.`);
@@ -991,7 +1053,7 @@ function generateContratoPDF(empresa, trab, sucursal = null, opts = {}) {
   const _maxLeg  = jornadaMaximaVigente(_anioC);
   parrafo('TERCERA. — JORNADA DE TRABAJO:', `${_hrsLeg !== null ? `La jornada ordinaria pactada es de ${_hrsLeg} horas semanales, sin exceder` : 'La jornada ordinaria de trabajo no excedera'} el maximo legal de ${_maxLeg} horas semanales aplicable en ${_anioC}, conforme al articulo 59 de la Ley Federal del Trabajo y al regimen de transicion previsto en la reforma publicada en el Diario Oficial de la Federacion el 1 de mayo de 2026. El PATRON podra autorizar tiempo extraordinario, que se abonara con un cien por ciento mas de lo fijado para las horas ordinarias (Art. 66 LFT), sin exceder de ${horasExtraMaxVigente(_anioC)} horas a la semana en ${_anioC}.`);
 
-  parrafo('CUARTA. — LUGAR DE TRABAJO:', `EL TRABAJADOR prestara sus servicios en el domicilio ${np(empresa.domicilio || empresa.ciudad)}, o en cualquier lugar que EL PATRON designe por necesidades del servicio, con previo aviso.`);
+  parrafo('CUARTA. — LUGAR DE TRABAJO:', _textoLugarTrabajo(empresa.domicilio || empresa.ciudad));
 
   const _perSal   = trab.periodo_salario || 'mensual';
   const _perAdj   = _perSal === 'quincenal' ? 'quincenal' : _perSal === 'semanal' ? 'semanal' : 'mensual';
