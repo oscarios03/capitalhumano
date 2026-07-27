@@ -120,7 +120,7 @@ const CLAUSULAS = {
 
 /**
  * Sustituye placeholders `[CLAVE]` por su valor. Usado por `pdfs.js` para
- * resolver los pocos textos de `CLAUSULAS` que llevan un dato variable
+ * resolver los pocos textos de `CLÁUSULAS` que llevan un dato variable
  * (fecha de antigüedad, domicilio, salario). `plantillas.js` no la usa: sus
  * corchetes los resuelve el propio Agente IA con los datos del caso.
  */

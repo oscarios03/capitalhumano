@@ -440,7 +440,7 @@ TESTIGOS:
 [TESTIGO1_NOMBRE] — [TESTIGO1_PUESTO]
 [TESTIGO2_NOMBRE] — [TESTIGO2_PUESTO]
 
-Firman al calce en señal de conocimiento y [ACEPTACION]:
+Firman al calce en señal de conocimiento y [ACEPTACIÓN]:
 
 EL PATRON                    EL TRABAJADOR
 ________________             ________________

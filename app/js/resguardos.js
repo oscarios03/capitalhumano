@@ -1,7 +1,7 @@
 /**
  * Capital Humano MX — Resguardos de herramientas, uniformes y equipo
  * Depende de: db.js pattern, expediente.js (subirDocumento, bucket 'expedientes'),
- * pdfs.js (pdfHeader, pdfLine, np, npDate, fmt)
+ * pdfs.js (pdfHeader, pdfLine, npDate, fmt)
  */
 
 async function _listarResguardos(trabajadorId) {
@@ -68,7 +68,7 @@ async function renderTabResguardos(trabajadorId) {
       ${devueltos.map(filaDevuelto).join('')}</tbody>
     </table></div>
     <div id="form-entrega-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
-    <div id="form-devolucion-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
+    <div id="form-devolución-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
     <div id="form-carta-resguardo" style="display:none;margin-top:18px;padding:16px;border:1.5px solid var(--border);border-radius:var(--radius-md);"></div>
   `;
 }
@@ -228,31 +228,32 @@ async function _subirCartaFirmada(trabajadorId, resguardoIds) {
 function generarCartaResponsivaPDF(empresa, trab, items, opts = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  _registrarFuenteRoboto(doc);
   const ml = 25, mr = 25;
   const pw = doc.internal.pageSize.getWidth();
   const tw = pw - ml - mr;
   let y = pdfHeader(doc, 'CARTA RESPONSIVA DE RESGUARDO', 'Entrega de herramienta, equipo y/o uniforme', ml, mr);
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(60,60,60);
-  doc.text(`${np(empresa.ciudad || '')}, a ${npDate(new Date())}`, pw - mr, y, { align:'right' }); y += 10;
+  doc.setFont('Roboto','normal'); doc.setFontSize(10); doc.setTextColor(60,60,60);
+  doc.text(`${empresa.ciudad || ''}, a ${npDate(new Date())}`, pw - mr, y, { align:'right' }); y += 10;
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
-  doc.text(np((empresa.nombre||'').toUpperCase()), ml, y); y += 6;
-  if (empresa.representante) { doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(`Representante: ${np(empresa.representante)}`, ml, y); y += 6; }
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
-  doc.text(`Trabajador: ${np(trab.nombre)}${trab.puesto ? ' — ' + np(trab.puesto) : ''}`, ml, y); y += 10;
+  doc.setFont('Roboto','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text((empresa.nombre||'').toUpperCase(), ml, y); y += 6;
+  if (empresa.representante) { doc.setFont('Roboto','normal'); doc.setFontSize(9); doc.text(`Representante: ${empresa.representante}`, ml, y); y += 6; }
+  doc.setFont('Roboto','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  doc.text(`Trabajador: ${trab.nombre}${trab.puesto ? ' — ' + trab.puesto : ''}`, ml, y); y += 10;
 
   doc.autoTable({
     startY: y, margin:{ left:ml, right:mr },
     head:[['Artículo','Núm. serie','Cant.','Valor est.','Estado de entrega']],
-    body: items.map(r => [np(r.articulo), np(r.numero_serie || '—'), String(r.cantidad), r.valor_estimado ? fmt(r.valor_estimado) : '—', {nuevo:'Nuevo',buen_estado:'Buen estado',usado:'Usado'}[r.estado_entrega] || '—']),
+    body: items.map(r => [r.articulo, r.numero_serie || '—', String(r.cantidad), r.valor_estimado ? fmt(r.valor_estimado) : '—', {nuevo:'Nuevo',buen_estado:'Buen estado',usado:'Usado'}[r.estado_entrega] || '—']),
     styles:{ fontSize:9, cellPadding:3 },
     headStyles:{ fillColor:[39,50,80], textColor:[255,255,255], fontStyle:'bold' },
     theme:'grid',
   });
   y = doc.lastAutoTable.finalY + 10;
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(40,40,40);
+  doc.setFont('Roboto','normal'); doc.setFontSize(9.5); doc.setTextColor(40,40,40);
   const clausulas = [
     'El trabajador recibe de conformidad el/los artículo(s) descritos en la tabla anterior y se compromete a su conservación y uso adecuado durante la relación laboral, en cumplimiento de la obligación de cuidar los materiales y útiles que se le den para el trabajo (Art. 134 fracc. VI LFT).',
     'El trabajador se obliga a restituir el/los artículo(s) a la empresa al término de la relación laboral, por cualquier causa, en el estado en que razonablemente corresponda a su uso normal.',
@@ -268,13 +269,13 @@ function generarCartaResponsivaPDF(empresa, trab, items, opts = {}) {
   doc.line(ml, y, ml + 75, y);
   doc.line(pw - mr - 75, y, pw - mr, y);
   y += 5;
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+  doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
   doc.text('Firma del trabajador', ml, y);
   doc.text('Firma del representante', pw - mr - 75, y);
   y += 5;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
-  doc.text(np(trab.nombre), ml, y);
-  doc.text(np(empresa.representante || empresa.nombre || ''), pw - mr - 75, y);
+  doc.setFont('Roboto','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+  doc.text(trab.nombre, ml, y);
+  doc.text(empresa.representante || empresa.nombre || '', pw - mr - 75, y);
 
   const ph = doc.internal.pageSize.getHeight();
   doc.setFontSize(7); doc.setTextColor(160,160,160);
@@ -289,7 +290,7 @@ function generarCartaResponsivaPDF(empresa, trab, items, opts = {}) {
 //  DEVOLUCIÓN
 // ═══════════════════════════════════════════════════════════════════════════
 function _mostrarFormDevolucion(resguardoId, trabajadorId) {
-  const form = eid('form-devolucion-resguardo');
+  const form = eid('form-devolución-resguardo');
   if (!form) return;
   form.style.display = '';
   form.innerHTML = `
@@ -313,7 +314,7 @@ function _mostrarFormDevolucion(resguardoId, trabajadorId) {
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
-      <button class="btn-secondary btn-sm" onclick="eid('form-devolucion-resguardo').style.display='none'">Cancelar</button>
+      <button class="btn-secondary btn-sm" onclick="eid('form-devolución-resguardo').style.display='none'">Cancelar</button>
       <button class="btn-primary btn-sm" onclick="_guardarDevolucion('${resguardoId}','${trabajadorId}')">Guardar</button>
     </div>
   `;
@@ -342,22 +343,23 @@ async function _guardarDevolucion(resguardoId, trabajadorId) {
 function generarConstanciaDevolucionPDF(empresa, trab, resguardos) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  _registrarFuenteRoboto(doc);
   const ml = 25, mr = 25;
   const pw = doc.internal.pageSize.getWidth();
   const tw = pw - ml - mr;
   let y = pdfHeader(doc, 'CONSTANCIA DE DEVOLUCIÓN DE EQUIPO', 'Anexo al finiquito/liquidación', ml, mr);
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
-  doc.text(`Trabajador: ${np(trab.nombre)} — Fecha de baja: ${npDate(trab.fecha_baja || new Date())}`, ml, y); y += 10;
+  doc.setFont('Roboto','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
+  doc.text(`Trabajador: ${trab.nombre} — Fecha de baja: ${npDate(trab.fecha_baja || new Date())}`, ml, y); y += 10;
 
   const ESTADO_LABEL = { completo:'Completo', danado:'Dañado', no_devuelto:'No devuelto' };
   doc.autoTable({
     startY: y, margin:{ left:ml, right:mr },
     head:[['Artículo','Núm. serie','Entregado','Estado de devolución','Notas']],
     body: resguardos.map(r => [
-      np(r.articulo), np(r.numero_serie || '—'), npDate(r.fecha_entrega),
+      r.articulo, r.numero_serie || '—', npDate(r.fecha_entrega),
       r.estado_devolucion ? (ESTADO_LABEL[r.estado_devolucion] || r.estado_devolucion) : 'Pendiente',
-      np(r.notas_devolucion || '—'),
+      r.notas_devolucion || '—',
     ]),
     styles:{ fontSize:9, cellPadding:3 },
     headStyles:{ fillColor:[39,50,80], textColor:[255,255,255], fontStyle:'bold' },
@@ -367,7 +369,7 @@ function generarConstanciaDevolucionPDF(empresa, trab, resguardos) {
 
   const noDevueltos = resguardos.filter(r => !r.estado_devolucion || r.estado_devolucion !== 'completo');
   if (noDevueltos.length) {
-    doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(80,80,80);
+    doc.setFont('Roboto','italic'); doc.setFontSize(9); doc.setTextColor(80,80,80);
     const nota = `Los artículos no devueltos o dañados quedan documentados para su seguimiento; no se aplica descuento automático en el finiquito por este concepto (la retención unilateral requiere responsabilidad comprobada y consentimiento, Art. 110 fracc. I LFT).`;
     const l = doc.splitTextToSize(nota, tw);
     doc.text(l, ml, y); y += l.length * 5 + 6;
@@ -377,7 +379,7 @@ function generarConstanciaDevolucionPDF(empresa, trab, resguardos) {
   doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text('Documento generado por Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
 
-  doc.save(`constancia-devolucion-${(trab.nombre||'trabajador').replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  doc.save(`constancia-devolución-${(trab.nombre||'trabajador').replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 /** Resguardos activos (no devueltos) de un trabajador — usado por bajas.js. */

@@ -430,6 +430,7 @@ async function _repGenConstancia() {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    _registrarFuenteRoboto(doc);
     const emp = CTX.empresa;
 
     doc.setFillColor(30,30,40);

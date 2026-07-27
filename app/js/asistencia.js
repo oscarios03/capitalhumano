@@ -384,7 +384,7 @@ async function _tabMatriz() {
             <thead>
               <tr>
                 <th class="mtz-nombre-h">Trabajador</th>
-                ${dias.map(d => `<th class="mtz-dia-h" style="${d.festivo?'color:var(--gold-primary);':d.finde?'opacity:.5;':''}"
+                ${dias.map(d => `<th class="mtz-día-h" style="${d.festivo?'color:var(--gold-primary);':d.finde?'opacity:.5;':''}"
                      title="${d.festivo ? 'Día festivo' : ''}">${d.d}<div style="font-size:.6rem;font-weight:400;opacity:.7;">${DOW[d.dow]}</div></th>`).join('')}
                 <th title="Faltas injustificadas del mes">F</th>
                 <th title="Retardos del mes">R</th>
@@ -426,7 +426,7 @@ function _injectMatrizCSS() {
   s.textContent = `
   .mtz-tabla { border-collapse:separate; border-spacing:0; }
   .mtz-tabla th, .mtz-tabla td { padding:3px 2px !important; text-align:center; font-size:.78rem; }
-  .mtz-dia-h { min-width:22px; font-size:.68rem !important; }
+  .mtz-día-h { min-width:22px; font-size:.68rem !important; }
   .mtz-nombre, .mtz-nombre-h {
     position:sticky; left:0; z-index:2; background:var(--bg-card, #1c2634);
     text-align:left !important; min-width:150px; max-width:180px;
@@ -954,7 +954,7 @@ function showModalActaPreloaded() {
   showModalActa(pre.trabajadorId, pre.tipo, pre.tipoFalta);
   // Pre-llenar descripción
   setTimeout(() => {
-    const desc = document.getElementById('ac-descripcion');
+    const desc = document.getElementById('ac-descripción');
     if (desc && pre.descripcion) desc.value = pre.descripcion;
     window._actaPreload = null;
   }, 150);
@@ -1120,15 +1120,16 @@ async function _exportarPDFHistorial() {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'letter' });
+  _registrarFuenteRoboto(doc);
   const pw  = doc.internal.pageSize.getWidth();
   const ph  = doc.internal.pageSize.getHeight();
   const ml  = 15, mr = 15;
 
   // Header
   doc.setFillColor(15,20,40); doc.rect(0,0,pw,24,'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
-  doc.text(np(CTX.empresa.nombre), pw/2, 10, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(180,185,200);
+  doc.setFont('Roboto','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
+  doc.text(CTX.empresa.nombre, pw/2, 10, {align:'center'});
+  doc.setFont('Roboto','normal'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text(`Reporte de Asistencia — ${npDate(ini+'T00:00:00')} al ${npDate(fin+'T00:00:00')}`, pw/2, 18, {align:'center'});
 
   // Tabla
@@ -1137,13 +1138,13 @@ async function _exportarPDFHistorial() {
     head:[['Fecha','Trabajador','Puesto','Tipo','Hora entrada','Min. retardo','Hrs extra','Observaciones']],
     body: registros.map(r => [
       formatDateShort(r.fecha),
-      np(r.trabajadores?.nombre||''),
-      np(r.trabajadores?.puesto||''),
+      r.trabajadores?.nombre||'',
+      r.trabajadores?.puesto||'',
       `${TIPO_ASIST[r.tipo]?.icono||''} ${TIPO_ASIST[r.tipo]?.label||r.tipo}`,
       r.hora_entrada||'—',
       r.minutos_retardo||'—',
       parseFloat(r.horas_extra||0) > 0 ? String(r.horas_extra) : '—',
-      np(r.observaciones||'—'),
+      r.observaciones||'—',
     ]),
     styles:{ fontSize:7.5, cellPadding:2.5 },
     headStyles:{ fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:7.5 },

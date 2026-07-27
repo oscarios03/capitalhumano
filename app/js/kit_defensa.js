@@ -345,7 +345,7 @@ async function _generarKitDefensa() {
       try {
         const [{ data: vac }, { data: rec }] = await Promise.all([
           sb.from('vacaciones')
-            .select('tipo, fecha_inicio, fecha_fin, dias, estado, prima_vacacional, notas')
+            .select('tipo, fecha_inicio, fecha_fin, días, estado, prima_vacacional, notas')
             .eq('trabajador_id', _KIT.trabajadorId).order('fecha_inicio'),
           sb.from('recibos_nomina')
             .select('folio, fecha_pago, aguinaldo_prop, prima_vacacional, periodos_nomina(nombre, fecha_fin)')
@@ -403,7 +403,7 @@ async function _generarKitDefensa() {
         const { data: cursos } = await sb.from('capacitaciones').select('*')
           .eq('trabajador_id', _KIT.trabajadorId).order('fecha_inicio');
         if (cursos?.length) {
-          _kitExcel(zip, '10-capacitacion/cursos.xlsx', 'Capacitación', cursos.map(c => ({
+          _kitExcel(zip, '10-capacitación/cursos.xlsx', 'Capacitación', cursos.map(c => ({
             'Curso': c.nombre_curso || '', 'Tipo': c.tipo || '', 'Área temática': c.area_tematica || '',
             'Horas': c.horas ?? '', 'Inicio': c.fecha_inicio || '', 'Fin': c.fecha_fin || '',
             'Instructor': c.instructor_nombre || '', 'Registro STPS': c.instructor_registro_stps || '',
@@ -412,11 +412,11 @@ async function _generarKitDefensa() {
           for (const c of cursos.filter(x => x.aprobado)) {
             try {
               const nom = (c.nombre_curso || c.id).replace(/[^\w\s-]/g,'').replace(/\s+/g,'-').toLowerCase().slice(0, 60);
-              zip.file(`10-capacitacion/constancia-${nom}.pdf`,
+              zip.file(`10-capacitación/constancia-${nom}.pdf`,
                 generateConstanciaDC3(empresa, t, c, sucursal, { asBlob: true }));
             } catch(e) { errores.push(`Constancia "${c.nombre_curso}": ${e.message}`); }
           }
-          indice.push(['Constancias de capacitación (Art. 153-V LFT)', '10-capacitacion/', `${cursos.length} curso(s)`]);
+          indice.push(['Constancias de capacitación (Art. 153-V LFT)', '10-capacitación/', `${cursos.length} curso(s)`]);
           hallado.capacitacion = cursos.length;
         }
       } catch(e) { errores.push('Capacitación: ' + e.message); }
@@ -427,7 +427,7 @@ async function _generarKitDefensa() {
       paso('Reuniendo los acuses de políticas…');
       try {
         const { data: ac } = await sb.from('acuses_documentos')
-          .select('documento, version, fecha_entrega, medio, observaciones')
+          .select('documento, versión, fecha_entrega, medio, observaciones')
           .eq('trabajador_id', _KIT.trabajadorId).order('fecha_entrega');
         if (ac?.length) {
           _kitExcel(zip, '11-politicas-y-acuses/acuses.xlsx', 'Acuses', ac.map(a => ({
@@ -571,6 +571,7 @@ function _diagnostico804(hallado) {
 function _generarIndiceKit(trab, filas, errores, hallado = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  _registrarFuenteRoboto(doc);
   const ml = 25, mr = 25;
   let y = 25;
 
@@ -618,9 +619,9 @@ function _generarIndiceKit(trab, filas, errores, hallado = {}) {
   const huecos = diag.filter(d => !d.cubierto);
 
   salto(40);
-  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 34, 48);
+  doc.setFontSize(11); doc.setFont('Roboto', 'bold'); doc.setTextColor(26, 34, 48);
   doc.text('Diagnóstico del Art. 804 LFT', ml, y); y += 7;
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90);
+  doc.setFont('Roboto', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90);
   const intro = doc.splitTextToSize(
     'El Art. 804 obliga al patrón a conservar y exhibir en juicio los documentos que se listan. El Art. 805 ' +
     'establece que su incumplimiento presume ciertos los hechos que el trabajador exprese en su demanda en ' +
@@ -650,9 +651,9 @@ function _generarIndiceKit(trab, filas, errores, hallado = {}) {
 
   salto(30);
   if (huecos.length) {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(180, 60, 40);
+    doc.setFont('Roboto', 'bold'); doc.setFontSize(10); doc.setTextColor(180, 60, 40);
     doc.text(`Faltan ${huecos.length} de ${diag.length} documentos exigidos`, ml, y); y += 6;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90);
+    doc.setFont('Roboto', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90);
     const adv = doc.splitTextToSize(
       'Sobre cada uno de los documentos faltantes opera la presunción del Art. 805: se tendrán por ciertos los ' +
       'hechos que el trabajador afirme respecto de ellos, salvo que se acrediten por otro medio. Reunirlos ahora ' +
@@ -660,9 +661,9 @@ function _generarIndiceKit(trab, filas, errores, hallado = {}) {
     doc.text(adv, ml, y); y += adv.length * 4.3 + 6;
     doc.setTextColor(0);
   } else {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(21, 128, 61);
+    doc.setFont('Roboto', 'bold'); doc.setFontSize(10); doc.setTextColor(21, 128, 61);
     doc.text('El expediente cubre los documentos del Art. 804.', ml, y); y += 8;
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+    doc.setFont('Roboto', 'normal'); doc.setTextColor(0);
   }
 
   if (errores.length) {
