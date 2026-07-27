@@ -242,7 +242,9 @@ async function renderTabCumplimiento(trabajadorId) {
           </table>
         </div>` : `
         <div style="font-size:.82rem;color:var(--text-muted);">Sin cursos registrados.</div>`}
-      </div>`;
+      </div>
+
+      ${typeof _cardDocumentosOperativos === 'function' ? _cardDocumentosOperativos(trabajadorId) : ''}`;
   } catch (e) {
     cont.innerHTML = `<div class="card"><div class="error-msg">${escapeHtml(friendlyError(e))}</div></div>`;
   }

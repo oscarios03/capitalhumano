@@ -132,7 +132,13 @@ async function renderTrabajadoresLista() {
     main.innerHTML = `
       <div class="view-header animate-in">
         <div><div class="view-title">Trabajadores</div></div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <!-- Documentos previos al ingreso: no cuelgan de ningún trabajador
+               porque todavía no lo hay. -->
+          <button class="btn-secondary" onclick="showModalSolicitudEmpleo()"
+                  title="Base del expediente y declaración de veracidad (Art. 47 fr. I LFT)">Solicitud de empleo</button>
+          <button class="btn-secondary" onclick="showModalCartaOferta()"
+                  title="Documenta las condiciones antes del ingreso. No sustituye al contrato">Carta oferta</button>
           <button class="btn-secondary" onclick="showModalImportacion()"><svg class="ic"><use href="#i-download"></use></svg> Importación masiva</button>
           <button class="btn-primary" onclick="showModalAltaEmpleado()"><svg class="ic"><use href="#i-plus"></use></svg> Alta de Trabajador</button>
         </div>
