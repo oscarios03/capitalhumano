@@ -3,7 +3,8 @@
  * Depende de: app.js (CTX, eid, navigate, showModal, closeModal, db, helpers,
  * calcLiquidacion, calcFiniquito, generateRecibo, generateCartaRenuncia,
  * generateAvisoRescisionArt47, generateActaNegativaRecibirAviso,
- * generateAvisoTribunalArt47), calculo.js (FALTAS_CATALOG)
+ * generateAvisoTribunalArt47, generateConvenioTerminacion,
+ * generateAnexoInstructivoRatificacion), calculo.js (FALTAS_CATALOG)
  */
 
 // ═══════════════════════════════════════════════════════
@@ -481,20 +482,43 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
   const main = eid('main-view');
 
   const d47 = datosArt47 || {};
+
+  // Datos del Convenio de Terminación por motivo — documento OPCIONAL pensado
+  // para ratificarse ante el Centro de Conciliación (Art. 33 LFT) y cerrar el
+  // asunto con efecto de cosa juzgada, algo que el recibo por sí solo no
+  // logra. En 'justificada' reutiliza la fracción y los testigos ya
+  // capturados para el aviso, para no pedirlos dos veces.
+  const datosConvenio = tipo === 'justificada'
+    ? {
+        motivo: 'justificada',
+        fraccion_art47: d47.fraccion_art47,
+        fecha_aviso: d47.fecha_efectos,
+        fecha_efectos: d47.fecha_efectos,
+        testigo1_nombre: d47.testigo1_nombre, testigo1_ine: d47.testigo1_ine, testigo1_domicilio: d47.testigo1_domicilio,
+        testigo2_nombre: d47.testigo2_nombre, testigo2_ine: d47.testigo2_ine, testigo2_domicilio: d47.testigo2_domicilio,
+      }
+    : { motivo: tipo };
+
   const docsConfig = {
     // Sin causa que invocar no hay aviso del Art. 47 que emitir. El aviso que se
     // generaba antes citaba los arts. 49 y 50 y anunciaba una indemnización:
     // era una confesión escrita de despido injustificado.
     injustificada: [
       { icon:'', titulo:'Recibo de Liquidación', desc:'Desglose completo de la liquidación',              fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Convenio de Terminación (opcional)', desc:'Para ratificar ante el Centro de Conciliación y cerrar el asunto con efecto de cosa juzgada (Art. 33 LFT)', fn: () => generateConvenioTerminacion(empresa, trabajadorPdf, result, datosConvenio, sucursal) },
+      { icon:'', titulo:'Anexo — Instructivo de Ratificación', desc:'Explica el trámite; no se firma',     fn: () => generateAnexoInstructivoRatificacion(empresa, trabajadorPdf, sucursal) },
     ],
     renuncia: [
       { icon:'', titulo:'Carta de Renuncia',    desc:'Renuncia voluntaria e irrevocable (Art. 51 LFT)',   fn: () => generateCartaRenuncia(empresa, trabajadorPdf, sucursal) },
       { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Convenio de Terminación (opcional)', desc:'Para ratificar ante el Centro de Conciliación y cerrar el asunto con efecto de cosa juzgada (Art. 33 LFT)', fn: () => generateConvenioTerminacion(empresa, trabajadorPdf, result, datosConvenio, sucursal) },
+      { icon:'', titulo:'Anexo — Instructivo de Ratificación', desc:'Explica el trámite; no se firma',     fn: () => generateAnexoInstructivoRatificacion(empresa, trabajadorPdf, sucursal) },
     ],
     justificada: [
       { icon:'', titulo:'Aviso de Rescisión (Art. 47)', desc:'Aviso con la fracción invocada y los hechos. Entrégalo en persona y recaba el acuse.', fn: () => generateAvisoRescisionArt47(empresa, trabajadorPdf, d47, sucursal) },
       { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
+      { icon:'', titulo:'Convenio de Terminación (opcional)', desc:'Para ratificar ante el Centro de Conciliación; no sustituye ni modifica el aviso de rescisión ya notificado (Art. 33 LFT)', fn: () => generateConvenioTerminacion(empresa, trabajadorPdf, result, datosConvenio, sucursal) },
+      { icon:'', titulo:'Anexo — Instructivo de Ratificación', desc:'Explica el trámite; no se firma',     fn: () => generateAnexoInstructivoRatificacion(empresa, trabajadorPdf, sucursal) },
     ],
   };
   // Si el trabajador se negó a recibir, el aviso al Tribunal tiene plazo fatal

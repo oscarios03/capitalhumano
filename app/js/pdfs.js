@@ -542,6 +542,27 @@ function _h(state, num, titulo) {
   state.y += 11;
 }
 
+/** Encabezado de cláusula con ordinal en palabras (PRIMERA, SEGUNDA…), para
+ * convenios donde así lo exige el uso — a diferencia de _h(), que numera. */
+function _hOrdinal(state, ordinal, titulo) {
+  _checkY(state, 18);
+  const { doc, ml } = state;
+  doc.setFillColor(21,128,61);
+  doc.rect(ml, state.y, 2.5, 7, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+  doc.text(np(`CLAUSULA ${ordinal} — ${titulo.toUpperCase()}`), ml + 5, state.y + 5);
+  state.y += 11;
+}
+
+/** Subtítulo simple para hojas informativas (anexos), sin la barra verde de cláusula. */
+function _hSeccion(state, titulo) {
+  _checkY(state, 14);
+  const { doc, ml } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(30,30,30);
+  doc.text(np(titulo), ml, state.y);
+  state.y += 8;
+}
+
 function _p(state, texto, opts = {}) {
   if (!texto) return;
   const { bold = false, indent = 0, fontSize = 9.5, color = [50,50,50] } = opts;
@@ -1832,6 +1853,186 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   }
 
   doc.save(`recibo-${isLiq ? 'liquidacion' : 'finiquito'}-${np(trab.nombre||'').replace(/\s+/g,'-').toLowerCase()}.pdf`);
+}
+
+// ─── CONVENIO DE TERMINACIÓN — ART. 33 LFT ───────────────────────────────────
+/**
+ * El recibo de finiquito/liquidación (generateRecibo) acredita el PAGO; no
+ * cierra el asunto con efecto de cosa juzgada porque un documento firmado
+ * sólo por las partes puede ser impugnado en cuanto contenga renuncia de
+ * derechos (Art. 33, párrafo tercero, LFT). Este convenio es el instrumento
+ * que sí lo hace: contiene la "relación circunstanciada de los hechos que lo
+ * motiven y de los derechos comprendidos en él" que exige el Art. 33, párrafo
+ * segundo, LFT, para poder ser RATIFICADO ante el Centro de Conciliación —
+ * momento en el que adquiere el efecto de cosa juzgada que el recibo, por sí
+ * solo, no tiene.
+ *
+ * @param {Object} datos
+ * @param {'injustificada'|'renuncia'|'justificada'} datos.motivo
+ * @param {string} [datos.fraccion_art47]        Obligatoria si motivo === 'justificada'
+ * @param {string} [datos.fecha_aviso]            Fecha del aviso de rescisión ya emitido
+ * @param {string} [datos.fecha_efectos]          Default: trab.fecha_baja
+ * @param {string} [datos.forma_pago]
+ * @param {string} [datos.fecha_pago]             Default: fecha_efectos
+ * @param {string} [datos.representante_documento] Poder con el que se ostenta el representante
+ * @param {string} [datos.trabajador_identificacion]
+ * @param {string} [datos.testigo1_nombre|_ine|_domicilio]
+ * @param {string} [datos.testigo2_nombre|_ine|_domicilio]
+ */
+function generateConvenioTerminacion(empresa, trab, result, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  const motivo = String(datos.motivo || '').trim();
+  if (!['injustificada','renuncia','justificada'].includes(motivo)) {
+    throw new Error(
+      'Falta indicar el motivo de la terminación (injustificada, renuncia o ' +
+      'justificada) para redactar la cláusula PRIMERA del convenio: el fundamento ' +
+      'legal de la terminación cambia según el motivo y no puede aproximarse.'
+    );
+  }
+  if (motivo === 'justificada' && !String(datos.fraccion_art47 || '').trim()) {
+    throw new Error(
+      'Falta la fracción del artículo 47 LFT invocada en el aviso de rescisión. ' +
+      'El convenio debe referirse a la misma causa ya notificada al trabajador.'
+    );
+  }
+
+  const fechaEfectos = datos.fecha_efectos || trab.fecha_baja;
+  const fechaPago     = datos.fecha_pago || fechaEfectos;
+
+  const state = _initDocLegal(
+    'Convenio de Terminación de la Relación de Trabajo',
+    'Para ratificación ante el Centro de Conciliación — Artículo 33 de la Ley Federal del Trabajo',
+    empresa, 'CVT');
+
+  _ciudadFecha(state, empresa.ciudad, fechaEfectos);
+
+  // ── COMPARECIENTES ──────────────────────────────────────────────────────
+  const { doc, ml, tw } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+  doc.text('COMPARECIENTES', ml, state.y); state.y += 7;
+  _p(state, `EL PATRÓN: ${np(empresa.nombre)}, representada en este acto por ${np(empresa.representante || '_______________________________')}.`, { indent: 3 });
+  _p(state, `EL TRABAJADOR: ${np(trab.nombre)}${trab.rfc ? `, RFC ${np(trab.rfc)}` : ''}${trab.curp ? `, CURP ${np(trab.curp)}` : ''}.`, { indent: 3 });
+  _gap(state, 2);
+
+  // ── DECLARACIONES — relación circunstanciada que exige el Art. 33 LFT ──
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+  doc.text('DECLARACIONES', ml, state.y); state.y += 7;
+
+  _p(state, 'I. DECLARA "EL PATRÓN":', { bold: true, fontSize: 9 });
+  _p(state, `Que es la parte patronal de la relación de trabajo que por este medio se da por terminada, con Registro Federal de Contribuyentes ${np(empresa.rfc || 'N/A')} y domicilio en ${np(empresa.domicilio || '[DOMICILIO]')}, y que para efectos de este acto se encuentra representada por ${np(empresa.representante || '_______________________________')}, según consta en ${np(datos.representante_documento || '_______________________________')}.`, { indent: 3 });
+
+  const periodoMap = { mensual:'mensual', quincenal:'quincenal', semanal:'semanal' };
+  const periodoLbl = periodoMap[result?.periodoSalario] || 'mensual';
+  const centroTrabajo = sucursal?.nombre ? `${sucursal.nombre} (${np(empresa.ciudad)})` : `Matriz (${np(empresa.ciudad)})`;
+  const jornadaTexto = (trab.hora_inicio && trab.hora_fin && Array.isArray(trab.dias_semana) && trab.dias_semana.length)
+    ? `de ${trab.hora_inicio} a ${trab.hora_fin} horas, los días ${trab.dias_semana.join(', ')}${trab.dia_descanso ? `, con descanso semanal el ${trab.dia_descanso}` : ''}`
+    : 'la pactada en su contrato individual de trabajo';
+
+  _p(state, 'II. DECLARA "EL TRABAJADOR":', { bold: true, fontSize: 9 });
+  _p(state, `Que prestó sus servicios personales subordinados a favor de EL PATRÓN desde el ${npDate(trab.fecha_ingreso)} hasta el ${npDate(fechaEfectos)}, desempeñando el puesto de ${np(trab.puesto || '_______________')}, con un salario ${periodoLbl} de ${fmt(result?.salario || 0)}${result?.sdi ? ` y un Salario Diario Integrado de ${fmt(result.sdi)}` : ''}, dentro de una jornada ${np(jornadaTexto)}, en el centro de trabajo ubicado en ${np(centroTrabajo)}. Que se identifica con ${np(datos.trabajador_identificacion || '_______________________________')}.`, { indent: 3 });
+
+  _p(state, 'III. DECLARAN AMBAS PARTES:', { bold: true, fontSize: 9 });
+  _p(state, 'Que es su voluntad dar por terminada la relación de trabajo en los términos precisados en la cláusula PRIMERA siguiente, sujetarse a las demás cláusulas de este convenio, y solicitar su ratificación ante el Centro de Conciliación competente, en términos del artículo 33 de la Ley Federal del Trabajo.', { indent: 3 });
+  _gap(state, 3);
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+  _checkY(state, 12);
+  doc.text('CLAUSULAS', ml, state.y); state.y += 8;
+
+  // ── PRIMERA — motivo y fecha, redactado según lo que realmente ocurrió ──
+  const textosMotivo = {
+    injustificada: `Las partes convienen en dar por terminada la relación de trabajo que las vinculó, por decisión unilateral de EL PATRÓN y sin que medie causa imputable a EL TRABAJADOR, en los términos del artículo 50 de la Ley Federal del Trabajo, con efectos a partir del ${npDate(fechaEfectos)}.`,
+    renuncia: `Las partes convienen en dar por terminada la relación de trabajo que las vinculó por mutuo consentimiento, en términos del artículo 53, fracción I, de la Ley Federal del Trabajo, en virtud de que EL TRABAJADOR manifestó su voluntad de separarse del empleo y EL PATRÓN la acepta, con efectos a partir del ${npDate(fechaEfectos)}.`,
+    justificada: `Las partes reconocen que la relación de trabajo concluyó por rescisión sin responsabilidad para EL PATRÓN, con fundamento en el artículo 47, fracción ${np(String(datos.fraccion_art47))}, de la Ley Federal del Trabajo${datos.fecha_aviso ? `, conforme al aviso de rescisión de fecha ${npDate(datos.fecha_aviso)}` : ''}, con efectos a partir del ${npDate(fechaEfectos)}. El presente convenio no modifica ni sustituye la causa de la rescisión ya notificada; tiene por único objeto dejar constancia de los montos que se cubren a EL TRABAJADOR y solicitar la ratificación de este instrumento.`,
+  };
+  _hOrdinal(state, 'PRIMERA', 'Terminación de la relación de trabajo');
+  _p(state, textosMotivo[motivo]);
+
+  // ── SEGUNDA — tabla de conceptos, con $0 incluidos para dejar constancia ──
+  _hOrdinal(state, 'SEGUNDA', 'Monto y conceptos');
+  _p(state, 'Como consecuencia de la terminación de la relación de trabajo, EL PATRÓN cubre a EL TRABAJADOR las prestaciones que se detallan a continuación, incluyendo aquellos conceptos que no generaron importe, a efecto de dejar constancia de que fueron revisados:');
+  const items = Array.isArray(result?.items) ? result.items : [];
+  _table(state,
+    [['Concepto', 'Fundamento', 'Periodo', 'Importe']],
+    items.map(it => [np(it.name), np(it.fundamento || ''), np(it.periodo || ''), fmt(it.amount)]),
+    {
+      foot: [['', '', 'TOTAL', fmt(result?.total || 0)]],
+      footStyles: { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:9.5 },
+      columnStyles: { 0:{cellWidth:48,fontStyle:'bold'}, 1:{cellWidth:34,fontSize:7.3}, 2:{cellWidth:44,fontSize:7.3}, 3:{cellWidth:26,halign:'right',fontStyle:'bold'} },
+    }
+  );
+
+  // ── TERCERA — forma y fecha de pago ─────────────────────────────────────
+  _hOrdinal(state, 'TERCERA', 'Forma y fecha de pago');
+  _p(state, `El pago de la cantidad señalada en la cláusula anterior se realiza mediante ${np(datos.forma_pago || '_______________________________')}, con fecha ${npDate(fechaPago)}.`);
+
+  // ── CUARTA — voluntariedad y alcance de la renuncia (limitado, Art. 33) ──
+  _hOrdinal(state, 'CUARTA', 'Voluntariedad y alcance');
+  _p(state, 'Ambas partes manifiestan que el contenido del presente convenio les fue leído y explicado en su totalidad, que lo celebran libres de dolo, mala fe, violencia o cualquier otro vicio del consentimiento, y que comprenden su alcance. El presente convenio comprende única y exclusivamente los conceptos y montos detallados en la cláusula SEGUNDA; no implica renuncia de EL TRABAJADOR a derechos, prestaciones o acciones distintas de las aquí expresamente comprendidas, en términos del artículo 33 de la Ley Federal del Trabajo.');
+
+  // ── QUINTA — solicitud de ratificación ──────────────────────────────────
+  _hOrdinal(state, 'QUINTA', 'Ratificación ante el Centro de Conciliación');
+  _p(state, 'Las partes solicitan expresamente que el presente convenio sea ratificado ante el Centro de Conciliación competente, a elección de EL TRABAJADOR entre el correspondiente al lugar de celebración del contrato, al domicilio de cualquiera de las partes o al lugar de prestación de los servicios, en términos del artículo 700, fracción II, de la Ley Federal del Trabajo, a efecto de que este convenio surta los efectos de cosa juzgada previstos en el artículo 33, párrafo segundo, de la misma Ley.');
+
+  // ── Espacio reservado para el Centro de Conciliación ────────────────────
+  _recuadro(state, 'PARA USO EXCLUSIVO DEL CENTRO DE CONCILIACIÓN O TRIBUNAL — Sello, número de expediente, fecha de ratificación y firma del funcionario que ratifica:');
+  _gap(state, 14);
+
+  // ── FIRMAS ───────────────────────────────────────────────────────────────
+  _checkY(state, 40);
+  const sigW = tw / 2 - 8;
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y + 16, ml + sigW, state.y + 16);
+  doc.line(ml + sigW + 16, state.y + 16, ml + sigW + 16 + sigW, state.y + 16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text('EL PATRON / REPRESENTANTE LEGAL', ml, state.y + 20.5);
+  doc.text('EL TRABAJADOR', ml + sigW + 16, state.y + 20.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(empresa.representante || empresa.nombre), ml, state.y + 25);
+  doc.text(np(trab.nombre), ml + sigW + 16, state.y + 25);
+  state.y += 34;
+
+  _bloqueTestigos(state, datos);
+
+  return _salidaDoc(state, empresa, _nombreArchivo('convenio-terminacion', trab), opts);
+}
+
+// ─── ANEXO — INSTRUCTIVO DE RATIFICACIÓN ─────────────────────────────────────
+/**
+ * Hoja separada del convenio (no forma parte del cuerpo que se firma): explica
+ * el trámite de ratificación y qué pasa si no se hace. Va aparte para que el
+ * convenio en sí no se cargue de contenido informativo ajeno a lo que las
+ * partes están declarando y firmando.
+ */
+function generateAnexoInstructivoRatificacion(empresa, trab, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  const state = _initDocLegal(
+    'Anexo — Instructivo de Ratificación del Convenio',
+    'Información para las partes — no forma parte del convenio que se firma',
+    empresa, 'ANX');
+
+  _p(state, `Este instructivo acompaña al Convenio de Terminación de la Relación de Trabajo celebrado entre ${np(empresa.nombre)} y ${np(trab.nombre)}. No es parte del convenio ni requiere firma: su único objeto es explicar el trámite de ratificación.`);
+
+  _hSeccion(state, '1. ¿Qué es ratificar el convenio?');
+  _p(state, 'El artículo 33, párrafo segundo, de la Ley Federal del Trabajo establece que todo convenio, para ser válido, debe hacerse por escrito y contener una relación circunstanciada de los hechos que lo motiven y de los derechos comprendidos en él, y que será ratificado ante los Centros de Conciliación o ante el Tribunal según corresponda, que lo aprobará siempre que no contenga renuncia de los derechos del trabajador.');
+
+  _hSeccion(state, '2. Qué llevar a la comparecencia');
+  _p(state, '- Identificación oficial vigente de EL TRABAJADOR (INE, pasaporte o cédula profesional).', { indent: 3 });
+  _p(state, '- Identificación oficial vigente de quien comparezca por EL PATRÓN, y el documento con el que acredite su representación (poder notarial o el instrumento correspondiente).', { indent: 3 });
+  _p(state, '- El convenio firmado, por triplicado.', { indent: 3 });
+  _p(state, '- Comprobante del pago realizado, si ya se efectuó.', { indent: 3 });
+
+  _hSeccion(state, '3. Qué pasa si NO se ratifica');
+  _p(state, 'El artículo 33, párrafo tercero, de la Ley Federal del Trabajo dispone que cuando el convenio se celebra sin la intervención de las autoridades, puede reclamarse su nulidad ante el Tribunal únicamente respecto de aquello que contenga renuncia de derechos del trabajador, conservando su validez el resto de las cláusulas convenidas. En otras palabras: sin ratificar, el convenio sigue obligando a las partes, pero no tiene el efecto de cosa juzgada que impide a EL TRABAJADOR reclamar después algo que considere una renuncia de derechos no comprendida válidamente en él.');
+
+  _hSeccion(state, '4. Dónde ratificarlo');
+  _p(state, 'Ante el Centro de Conciliación competente, a elección de EL TRABAJADOR entre el del lugar de celebración del contrato, el del domicilio de cualquiera de las partes, o el del lugar de prestación de los servicios (artículo 700, fracción II, LFT).');
+
+  return _salidaDoc(state, empresa, _nombreArchivo('anexo-instructivo-ratificacion', trab), opts);
 }
 
 // ─── ACTA ADMINISTRATIVA ──────────────────────────────────────────────────────
