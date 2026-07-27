@@ -36,6 +36,12 @@ const DOCS_CUMPLIMIENTO = [
   { clave:'protocolo_violencia', label:'Protocolo de violencia laboral', fundamento:'Art. 132 fr. XXXI LFT',
     porQue:'Prerrequisito para rescindir por acoso (art. 47 fr. VIII).',
     accion:'generarAcuseProtocolo' },
+  // Sólo aplica a quien presta más del 40% del tiempo fuera del centro de
+  // trabajo (art. 330-A): ofrecérselo a todos confundiría el régimen.
+  { clave:'anexo_teletrabajo', label:'Anexo de teletrabajo', fundamento:'Arts. 330-A y 330-B LFT',
+    porQue:'Equipo, pago de servicios, supervisión y derecho a la desconexión.',
+    accion:'showModalAnexoTeletrabajo',
+    aplicaSi: (t) => !!t?.es_teletrabajo || Number(t?.pct_tiempo_remoto || 0) > 40 },
 ];
 
 /**
@@ -156,7 +162,8 @@ async function renderTabCumplimiento(trabajadorId) {
     <div class="spinner" style="margin:0 auto 10px;"></div>Revisando los acuses…</div></div>`;
 
   try {
-    const [{ data: acuses, error }, { data: cursos, error: errCursos }] = await Promise.all([
+    const [trab, { data: acuses, error }, { data: cursos, error: errCursos }] = await Promise.all([
+      db.getTrabajador(trabajadorId),
       window.supabase
         .from('acuses_documentos')
         .select('documento, version, fecha_entrega')
@@ -187,7 +194,7 @@ async function renderTabCumplimiento(trabajadorId) {
           <table class="data-table">
             <thead><tr><th>Documento</th><th>Fundamento</th><th>Acuse</th><th>Acciones</th></tr></thead>
             <tbody>
-              ${DOCS_CUMPLIMIENTO.map(d => {
+              ${DOCS_CUMPLIMIENTO.filter(d => !d.aplicaSi || d.aplicaSi(trab)).map(d => {
                 const a = ultimo[d.clave];
                 return `<tr>
                   <td><strong>${escapeHtml(d.label)}</strong>
@@ -1009,6 +1016,188 @@ async function handleGuardarCapacitacion(trabajadorId) {
 
     closeModal();
     showToast('Constancia generada y curso registrado.', 'success');
+    renderTabCumplimiento(trabajadorId);
+  } catch (e) {
+    if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }
+    else showToast(e.message, 'error', 8000);
+  } finally { btnRestaurar(btn); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ANEXO DE TELETRABAJO (Cap. XII Bis LFT)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Fila del inventario de equipo. Se numeran para poder leerlas al guardar. */
+function _filaEquipoTeletrabajo(i) {
+  return `
+    <tr id="eq-fila-${i}">
+      <td><input id="eq-desc-${i}"   type="text" class="form-input" placeholder="Laptop" /></td>
+      <td><input id="eq-marca-${i}"  type="text" class="form-input" placeholder="Dell Latitude 5440" /></td>
+      <td><input id="eq-serie-${i}"  type="text" class="form-input" placeholder="ABC123" /></td>
+      <td><input id="eq-estado-${i}" type="text" class="form-input" placeholder="Nueva" /></td>
+      <td><button class="btn-secondary btn-sm" onclick="document.getElementById('eq-fila-${i}').remove()">Quitar</button></td>
+    </tr>`;
+}
+
+let _EQ_TELETRABAJO = 0;
+
+function agregarEquipoTeletrabajo() {
+  const tb = eid('eq-cuerpo');
+  if (!tb) return;
+  tb.insertAdjacentHTML('beforeend', _filaEquipoTeletrabajo(_EQ_TELETRABAJO++));
+}
+
+async function showModalAnexoTeletrabajo(trabajadorId) {
+  const trab = await db.getTrabajador(trabajadorId);
+  const hoy = new Date().toISOString().split('T')[0];
+  _EQ_TELETRABAJO = 0;
+
+  showModal(`
+    <div class="modal animate-in" style="max-width:820px;display:flex;flex-direction:column;max-height:92vh;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Anexo de teletrabajo</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">Capítulo XII Bis de la Ley Federal del Trabajo</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;overflow-y:auto;">
+        <div class="alert alert-info" style="margin-bottom:16px;">
+          <svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
+          <span style="font-size:.82rem;">El artículo 330-B exige que consten por escrito el <strong>equipo entregado</strong>,
+          el <strong>monto</strong> que la empresa pagará por los servicios en el domicilio y los
+          <strong>mecanismos de contacto y supervisión</strong>. Sin ellos el anexo deja fuera justo lo que el
+          capítulo vino a regular.</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="tel-fecha">Fecha del anexo</label>
+            <input id="tel-fecha" type="date" class="form-input" value="${hoy}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="tel-pct">Porcentaje de tiempo remoto</label>
+            <input id="tel-pct" type="number" class="form-input" min="0" max="100"
+              value="${trab.pct_tiempo_remoto ?? ''}" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="tel-domicilio">Domicilio donde se presta el teletrabajo</label>
+            <input id="tel-domicilio" type="text" class="form-input" value="${escapeHtml(trab.domicilio) || ''}" />
+          </div>
+        </div>
+
+        <div style="margin:18px 0 8px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label class="form-label" style="margin:0;">Equipo e insumos entregados <span class="req">*</span></label>
+            <button class="btn-secondary btn-sm" onclick="agregarEquipoTeletrabajo()">+ Agregar</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Descripción</th><th>Marca y modelo</th><th>Serie</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="eq-cuerpo"></tbody>
+            </table>
+          </div>
+          <div class="helper-text">Art. 330-E fr. IV: el patrón debe llevar registro de los insumos entregados. Es lo primero que comprueba el inspector.</div>
+        </div>
+
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="form-group">
+            <label class="form-label" for="tel-monto">Monto por servicios en el domicilio <span class="req">*</span></label>
+            <input id="tel-monto" type="number" class="form-input" min="0" step="0.01" placeholder="800" />
+            <div class="helper-text">Captura 0 si la empresa contrata y paga los servicios directamente.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="tel-periodicidad">Periodicidad</label>
+            <input id="tel-periodicidad" type="text" class="form-input" placeholder="por mes" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="tel-desglose">Desglose de los servicios cubiertos</label>
+            <input id="tel-desglose" type="text" class="form-input"
+              placeholder="internet y parte proporcional de electricidad" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="tel-contacto">Mecanismos de contacto y supervisión <span class="req">*</span></label>
+            <textarea id="tel-contacto" class="form-textarea" rows="3"
+              placeholder="Ej. contacto por correo institucional y videollamada diaria a las 9:00; el avance se reporta en el tablero de proyectos."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="tel-jornada">Distribución de la jornada</label>
+            <input id="tel-jornada" type="text" class="form-input" placeholder="el horario pactado en el contrato individual" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="tel-reversibilidad">Aviso para la reversibilidad</label>
+            <input id="tel-reversibilidad" type="text" class="form-input" placeholder="quince días naturales" />
+          </div>
+        </div>
+
+        <div id="tel-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="tel-btn" onclick="handleGenerarAnexoTeletrabajo('${trabajadorId}')">Generar anexo</button>
+      </div>
+    </div>
+  `);
+
+  agregarEquipoTeletrabajo();
+}
+
+async function handleGenerarAnexoTeletrabajo(trabajadorId) {
+  const btn = eid('tel-btn'), box = eid('tel-msg');
+  if (box) box.style.display = 'none';
+  btnCargando(btn, 'Generando…');
+  try {
+    const equipos = [];
+    for (let i = 0; i < _EQ_TELETRABAJO; i++) {
+      if (!eid('eq-fila-' + i)) continue;
+      equipos.push({
+        descripcion: eid('eq-desc-' + i)?.value.trim(),
+        marca:       eid('eq-marca-' + i)?.value.trim(),
+        serie:       eid('eq-serie-' + i)?.value.trim(),
+        estado:      eid('eq-estado-' + i)?.value.trim(),
+      });
+    }
+    const montoTxt = eid('tel-monto')?.value;
+    const datos = {
+      fecha:                 eid('tel-fecha')?.value,
+      pct_tiempo_remoto:     eid('tel-pct')?.value === '' ? null : parseFloat(eid('tel-pct').value),
+      domicilio_teletrabajo: eid('tel-domicilio')?.value.trim(),
+      equipos,
+      // Cadena vacía = sin capturar; "0" = pago directo al proveedor. Son
+      // cosas distintas y el generador las distingue.
+      monto_servicios:       montoTxt === '' || montoTxt == null ? null : parseFloat(montoTxt),
+      periodicidad_servicios:eid('tel-periodicidad')?.value.trim(),
+      desglose_servicios:    eid('tel-desglose')?.value.trim(),
+      mecanismos_contacto:   eid('tel-contacto')?.value.trim(),
+      distribucion_jornada:  eid('tel-jornada')?.value.trim(),
+      aviso_reversibilidad:  eid('tel-reversibilidad')?.value.trim(),
+    };
+
+    const trab = await db.getTrabajador(trabajadorId);
+    const sucursal = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
+    generateAnexoTeletrabajo(CTX.empresa, trab, datos, sucursal);
+
+    closeModal();
+    const ok = await showConfirmacion(
+      'Se descargó el anexo. Imprímelo por duplicado y recábale la firma: el art. 330-B pide que cada parte ' +
+      'conserve un ejemplar.<br><br>¿Registro la entrega en el expediente?',
+      { titulo: 'Registrar el acuse', textoOk: 'Ya está firmado, registrar', textoCancelar: 'Todavía no' }
+    );
+    if (!ok) return;
+
+    const { data: { user } } = await window.supabase.auth.getUser();
+    const { error } = await window.supabase.from('acuses_documentos').insert({
+      empresa_id: CTX.empresa.id,
+      trabajador_id: trabajadorId,
+      documento: 'anexo_teletrabajo',
+      fecha_entrega: datos.fecha || new Date().toISOString().split('T')[0],
+      medio: 'impreso',
+      observaciones: `${equipos.length} equipo(s); servicios: ${datos.monto_servicios} ${datos.periodicidad_servicios || ''}`.trim(),
+      creado_por: user?.id || null,
+    });
+    if (error) throw error;
+    if (typeof _invalidarCache === 'function') _invalidarCache();
+    showToast('Anexo registrado.', 'success');
     renderTabCumplimiento(trabajadorId);
   } catch (e) {
     if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }

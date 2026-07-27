@@ -461,6 +461,21 @@ async function showModalTrabajador(id = null) {
             <input id="n-capacitacion" type="number" class="form-input" min="0" value="${v('capacitacion_inicial_dias')||''}" placeholder="Ej. 90" />
             <div class="helper-text" id="n-capacitacion-hint">Máximo 90 días (180 en puestos de dirección/técnicos especializados).</div>
           </div>
+          <div class="form-group span-2">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem;"
+              title="El Cap. XII Bis LFT aplica cuando se presta más del 40% del tiempo en el domicilio de la persona trabajadora (Art. 330-A).">
+              <input type="checkbox" id="n-teletrabajo" ${v('es_teletrabajo')?'checked':''} onchange="_toggleTeletrabajo()"
+                style="width:16px;height:16px;accent-color:var(--gold-primary);" />
+              Modalidad de teletrabajo (Cap. XII Bis LFT)
+            </label>
+            <div class="helper-text">Obliga a proporcionar el equipo, pagar internet y la parte proporcional de electricidad, y respetar el derecho a la desconexión.</div>
+          </div>
+          <div class="form-group" id="grupo-teletrabajo" style="display:none;">
+            <label class="form-label" for="n-pct-remoto">Porcentaje del tiempo fuera del centro de trabajo</label>
+            <input id="n-pct-remoto" type="number" class="form-input" min="0" max="100" step="1"
+              value="${v('pct_tiempo_remoto')||''}" placeholder="Ej. 80" onchange="_avisarUmbralTeletrabajo()" />
+            <div class="helper-text" id="n-pct-remoto-hint">Por encima del 40% aplica el Cap. XII Bis (Art. 330-A). Por debajo, la ley lo considera trabajo ocasional.</div>
+          </div>
           <div class="form-group">
             <label class="form-label" for="n-forma-pago">Forma de Pago</label>
             <select id="n-forma-pago" class="form-select">
@@ -765,6 +780,7 @@ async function showModalTrabajador(id = null) {
 
   onTipoContratoChange();
   _actualizarLimitesPrueba();
+  _toggleTeletrabajo();
   _actualizarPreviewSalario();
   if (trab?.temporadas?.length) trab.temporadas.forEach(t => agregarTemporada(t));
   if (trab?.tabla_comisiones?.length) trab.tabla_comisiones.forEach(c => agregarComision(c));
@@ -818,6 +834,40 @@ function _actualizarLimitesPrueba() {
     hintCap.textContent = esDireccion
       ? 'Máximo 180 días para puestos de dirección/técnicos especializados (Art. 39-B LFT).'
       : 'Máximo 90 días (180 en puestos de dirección/técnicos especializados) (Art. 39-B LFT).';
+  }
+}
+
+/** Muestra el porcentaje de tiempo remoto sólo cuando hay teletrabajo. */
+function _toggleTeletrabajo() {
+  const on = eid('n-teletrabajo')?.checked || false;
+  const grupo = eid('grupo-teletrabajo');
+  if (grupo) grupo.style.display = on ? '' : 'none';
+  if (on) _avisarUmbralTeletrabajo();
+}
+
+/**
+ * Avisa cuando el porcentaje capturado deja la relación fuera del Cap. XII Bis.
+ *
+ * El art. 330-A fija el umbral en MÁS del 40% y aclara que no es teletrabajo
+ * el que se realiza de forma ocasional o esporádica. Marcar la modalidad con
+ * un 20% no es un detalle: activa obligaciones que la ley no impone y confunde
+ * el régimen que sí aplica.
+ */
+function _avisarUmbralTeletrabajo() {
+  const hint = eid('n-pct-remoto-hint');
+  if (!hint) return;
+  const pct = parseFloat(eid('n-pct-remoto')?.value);
+  if (isNaN(pct)) {
+    hint.textContent = 'Por encima del 40% aplica el Cap. XII Bis (Art. 330-A). Por debajo, la ley lo considera trabajo ocasional.';
+    hint.style.color = '';
+    return;
+  }
+  if (pct > 40) {
+    hint.textContent = `Con ${pct}% aplica el Capítulo XII Bis: hay que firmar el anexo de teletrabajo (Art. 330-B) antes de que empiece.`;
+    hint.style.color = 'var(--gold-primary)';
+  } else {
+    hint.textContent = `Con ${pct}% no se rebasa el 40% del Art. 330-A: la ley lo trata como trabajo ocasional o esporádico, no como teletrabajo.`;
+    hint.style.color = 'var(--amber-warn)';
   }
 }
 
@@ -1245,6 +1295,13 @@ async function handleGuardarTrabajador(id = '') {
     enfermedades_cronicas:  eid('n-enfermedades')?.value.trim() || null,
     fecha_ingreso_reconocida: nv('n-antig'),
     es_puesto_direccion:    esPuestoDireccion,
+    es_teletrabajo:         !!eid('n-teletrabajo')?.checked,
+    // Se guarda sólo si la modalidad está marcada: un porcentaje suelto, sin
+    // teletrabajo declarado, no significa nada y dispararía la alerta del
+    // art. 330-B sin razón.
+    pct_tiempo_remoto:      eid('n-teletrabajo')?.checked
+                              ? (parseFloat(nv('n-pct-remoto')) || null)
+                              : null,
     periodo_prueba_dias:    parseInt(nv('n-prueba')) || 30,
     capacitacion_inicial_dias: parseInt(nv('n-capacitacion')) || null,
     funciones:              eid('n-funciones')?.value.trim() || null,

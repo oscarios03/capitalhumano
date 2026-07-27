@@ -1072,3 +1072,130 @@ function generateConstanciaDC3(empresa, trab, curso = {}, sucursal = null, opts 
 
   return _salidaDoc(state, u, _nombreArchivo('constancia-capacitacion', trab), opts);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  3.7 — ANEXO DE TELETRABAJO (Capítulo XII Bis LFT, arts. 330-A a 330-K)
+//
+//  Art. 330-A: se rigen por el capítulo las relaciones que se desarrollan
+//  MÁS DEL CUARENTA POR CIENTO del tiempo en el domicilio de la persona
+//  trabajadora o en el que ésta elija. No es teletrabajo el ocasional o
+//  esporádico.
+//
+//  Art. 330-B: las condiciones se hacen constar POR ESCRITO y cada parte
+//  conserva un ejemplar. Además de lo del art. 25, el contrato debe contener
+//  el equipo e insumos entregados (fr. IV), la descripción y MONTO que el
+//  patrón pagará por los servicios en el domicilio (fr. V) y los mecanismos
+//  de contacto y supervisión (fr. VI).
+//
+//  Por eso el generador exige inventario, monto y mecanismos: un anexo sin
+//  ellos deja fuera justamente lo que el capítulo vino a regular.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function generateAnexoTeletrabajo(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+
+  const equipos = (d.equipos || []).filter(e => e && (e.descripcion || e.marca || e.serie));
+  if (!equipos.length) {
+    throw new Error(
+      'Captura el inventario de equipo e insumos entregados. El art. 330-B fr. IV LFT exige que el ' +
+      'contrato lo contenga, y el art. 330-E fr. IV obliga al patrón a llevar ese registro: es lo ' +
+      'primero que comprueba el inspector (art. 330-K fr. I) y lo que evita discutir después quién ' +
+      'se quedó con qué.'
+    );
+  }
+  if (d.monto_servicios == null || d.monto_servicios === '') {
+    throw new Error(
+      'Indica el monto que la empresa pagará por los servicios en el domicilio. El art. 330-B fr. V ' +
+      'LFT exige "la descripción y monto", y el art. 330-E fr. III obliga a asumir el pago de las ' +
+      'telecomunicaciones y la parte proporcional de electricidad. Un anexo que lo deja abierto no ' +
+      'documenta la obligación que la ley impone.'
+    );
+  }
+  if (!d.mecanismos_contacto) {
+    throw new Error(
+      'Describe los mecanismos de contacto y supervisión. El art. 330-B fr. VI LFT los exige, y sin ' +
+      'ellos tampoco se puede delimitar el derecho a la desconexión del art. 330-E fr. VI.'
+    );
+  }
+
+  const fecha = d.fecha || new Date().toISOString().split('T')[0];
+  const pct = d.pct_tiempo_remoto != null ? Number(d.pct_tiempo_remoto) : null;
+
+  const state = _initDocLegal(
+    'Anexo de Teletrabajo al Contrato Individual de Trabajo',
+    'Capitulo XII Bis de la Ley Federal del Trabajo, articulos 330-A a 330-K',
+    u, 'ANXTEL'
+  );
+  _ciudadFecha(state, np(u.ciudad || ''), fecha);
+
+  _p(state, `Anexo que forma parte integrante del contrato individual de trabajo celebrado entre ${np(u.nombre)}${u.rfc ? `, R.F.C. ${np(u.rfc)}` : ''}, en adelante EL PATRON, y ${np(trab.nombre)}${trab.curp ? `, CURP ${np(trab.curp)}` : ''}, en adelante LA PERSONA TRABAJADORA, con el puesto de ${np(trab.puesto || '____________')}.`);
+
+  // El capítulo se activa por encima del 40%. Decirlo cuando NO se rebasa es
+  // tan importante como decirlo cuando sí: firmar un anexo de teletrabajo por
+  // trabajo ocasional confunde el régimen aplicable.
+  if (pct != null && pct <= 40) {
+    _recuadro(state,
+      `Se declara que LA PERSONA TRABAJADORA presta el ${pct}% de su tiempo fuera del centro de trabajo. El articulo 330-A de la Ley Federal del Trabajo sujeta al Capitulo XII Bis a las relaciones que se desarrollan MAS DEL CUARENTA POR CIENTO del tiempo en el domicilio de la persona trabajadora, y expresamente NO considera teletrabajo el que se realiza de forma ocasional o esporadica. Este anexo se suscribe como acuerdo entre las partes; las obligaciones especiales del capitulo son exigibles cuando se rebase ese porcentaje.`,
+      'warn');
+  }
+
+  _hOrdinal(state, 'PRIMERA', 'Modalidad y porcentaje de tiempo');
+  _p(state, `LA PERSONA TRABAJADORA prestara sus servicios bajo la modalidad de teletrabajo${pct != null ? `, durante aproximadamente el ${pct}% de su tiempo` : ''}, en ${np(d.domicilio_teletrabajo || 'su domicilio')}${d.domicilio_teletrabajo ? '' : ', o en el lugar que ella elija'}. Las funciones, el puesto, el salario y la jornada son los pactados en el contrato individual y no se modifican por este anexo.`);
+  _p(state, `La jornada se distribuye conforme a ${np(d.distribucion_jornada || 'el horario pactado en el contrato individual')}, sin exceder los maximos legales (articulo 330-B fraccion VI de la Ley Federal del Trabajo).`);
+
+  _hOrdinal(state, 'SEGUNDA', 'Equipo e insumos entregados');
+  _p(state, `EL PATRON proporciona, instala y se encarga del mantenimiento de los equipos necesarios para el teletrabajo (articulo 330-E fraccion I). Se entregan los siguientes bienes, que son propiedad de EL PATRON y deben devolverse al concluir la modalidad o la relacion de trabajo:`);
+  _table(state,
+    [['Descripcion', 'Marca y modelo', 'Numero de serie', 'Estado']],
+    equipos.map(e => [np(e.descripcion || ''), np(e.marca || ''), np(e.serie || ''), np(e.estado || 'Bueno')]));
+  _p(state, `LA PERSONA TRABAJADORA se obliga a tener el mayor cuidado en la guarda y conservacion de los equipos, materiales y utiles que reciba (articulo 330-F fraccion I). El deterioro por el uso normal no le es imputable.`);
+
+  _hOrdinal(state, 'TERCERA', 'Pago de los servicios en el domicilio');
+  _p(state, `EL PATRON asume los costos derivados del teletrabajo, incluido el pago de los servicios de telecomunicacion y la parte proporcional de electricidad (articulo 330-E fraccion III). Para tal efecto cubrira a LA PERSONA TRABAJADORA la cantidad de ${fmt(Number(d.monto_servicios))} ${np(d.periodicidad_servicios || 'por mes')}${d.desglose_servicios ? `, correspondiente a ${np(d.desglose_servicios)}` : ''}.`);
+  _p(state, `Este pago tiene naturaleza de reembolso de gastos derivados del trabajo y no forma parte del salario. Cuando el costo real exceda de manera significativa el monto pactado, las partes lo revisaran. LA PERSONA TRABAJADORA se obliga a informar con oportunidad sobre los costos pactados para el uso de los servicios de telecomunicaciones y del consumo de electricidad (articulo 330-F fraccion II).`);
+
+  _hOrdinal(state, 'CUARTA', 'Mecanismos de contacto y supervision');
+  _p(state, np(d.mecanismos_contacto));
+  _p(state, `Los mecanismos, sistemas operativos y cualquier tecnologia utilizada para supervisar el teletrabajo seran PROPORCIONALES A SU OBJETIVO, garantizaran el derecho a la intimidad de LA PERSONA TRABAJADORA y respetaran el marco juridico de proteccion de datos personales. Solo podran utilizarse camaras de video y microfonos de manera extraordinaria, o cuando la naturaleza de las funciones lo requiera (articulo 330-I de la Ley Federal del Trabajo).`);
+
+  _hOrdinal(state, 'QUINTA', 'Derecho a la desconexion');
+  _p(state, `EL PATRON respeta el DERECHO A LA DESCONEXION de LA PERSONA TRABAJADORA al termino de la jornada laboral (articulo 330-E fraccion VI). Fuera del horario pactado, en dias de descanso, vacaciones e incapacidades, no esta obligada a responder llamadas, mensajes ni correos, y su falta de respuesta no puede considerarse falta ni ser motivo de sancion alguna.`, { bold: true });
+  _p(state, `El trabajo efectivamente prestado fuera de la jornada, cuando sea autorizado previamente por EL PATRON, se paga como tiempo extraordinario en los terminos de los articulos 66 a 68 de la Ley Federal del Trabajo.`);
+
+  _hOrdinal(state, 'SEXTA', 'Seguridad y salud en el trabajo');
+  _p(state, `Las condiciones especiales de seguridad y salud del teletrabajo se rigen por la Norma Oficial Mexicana que expida la Secretaria del Trabajo y Prevision Social, que considera los factores ergonomicos, psicosociales y demas riesgos aplicables (articulo 330-J de la Ley Federal del Trabajo). LA PERSONA TRABAJADORA se obliga a obedecer y conducirse con apego a las disposiciones que en la materia establezca EL PATRON (articulo 330-F fraccion III), y EL PATRON a proporcionarle la informacion y los medios necesarios para cumplirlas.`);
+  _p(state, `Los accidentes que ocurran con motivo del teletrabajo, en el lugar y durante el horario convenidos, se consideran riesgos de trabajo y deben reportarse de inmediato para dar el aviso correspondiente al Instituto Mexicano del Seguro Social. EL PATRON mantiene inscrita a LA PERSONA TRABAJADORA en el regimen obligatorio de la seguridad social (articulo 330-E fraccion VII).`);
+
+  _hOrdinal(state, 'SEPTIMA', 'Seguridad de la informacion y datos personales');
+  _p(state, `EL PATRON implementa los mecanismos que preserven la seguridad de la informacion y de los datos utilizados en la modalidad de teletrabajo (articulo 330-E fraccion V). LA PERSONA TRABAJADORA se obliga a atender las politicas y mecanismos de proteccion de datos, asi como las restricciones sobre su uso y almacenamiento (articulo 330-F fraccion V), y a no instalar programas ajenos al trabajo en el equipo proporcionado.`);
+
+  _hOrdinal(state, 'OCTAVA', 'Voluntariedad y reversibilidad');
+  _p(state, `El cambio de la modalidad presencial a teletrabajo es VOLUNTARIO y consta por escrito en este anexo, salvo casos de fuerza mayor debidamente acreditada. Ambas partes tienen DERECHO DE REVERSIBILIDAD a la modalidad presencial (articulo 330-G de la Ley Federal del Trabajo).`, { bold: true });
+  _p(state, `Para ejercerlo, la parte interesada lo notificara por escrito a la otra con al menos ${np(d.aviso_reversibilidad || 'quince dias naturales')} de anticipacion. Durante ese plazo se acordaran la devolucion del equipo y la reincorporacion al centro de trabajo. El ejercicio de la reversibilidad no constituye modificacion de las demas condiciones de trabajo ni causa de rescision.`);
+
+  _hOrdinal(state, 'NOVENA', 'Igualdad de trato y capacitacion');
+  _p(state, `LA PERSONA TRABAJADORA goza de los mismos derechos que el personal presencial en cuanto a remuneracion, capacitacion, formacion, seguridad social, acceso a mejores oportunidades laborales y demas condiciones que ampara el articulo 2o. de la Ley (articulo 330-H). EL PATRON establecera los mecanismos de capacitacion y asesoria necesarios para garantizar la adaptacion y el uso adecuado de las tecnologias de la informacion, con especial enfasis en el cambio de modalidad presencial a teletrabajo (articulo 330-E fraccion VIII).`);
+  _p(state, `EL PATRON facilitara los mecanismos de comunicacion y difusion a distancia con que cuente el centro de trabajo, a fin de garantizar que LA PERSONA TRABAJADORA tenga conocimiento de los procedimientos de libertad sindical y negociacion colectiva (articulo 330-C, ultimo parrafo).`);
+
+  _recuadro(state,
+    'Si la empresa no cuenta con contrato colectivo de trabajo, debe ademas incluir el teletrabajo en su Reglamento Interior de Trabajo y establecer mecanismos que garanticen la vinculacion y el contacto del personal que labora bajo esta modalidad (articulo 330-D de la Ley Federal del Trabajo).',
+    'info');
+
+  _p(state, `Leido que fue por ambas partes y enteradas de su contenido y alcance, lo firman por duplicado, conservando cada una un ejemplar (articulo 330-B, primer parrafo).`);
+
+  _gap(state, 8);
+  const { ml, tw } = state;
+  const colW = tw / 2 - 8;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'EL PATRON', d.firma_patron || u.representante,
+    d.firma_patron_ine, u.domicilio, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'LA PERSONA TRABAJADORA', trab.nombre,
+    trab.num_identificacion, d.domicilio_teletrabajo || trab.domicilio, ml + colW + 16, colW);
+  state.y = Math.max(y1, y2) + 8;
+
+  if (d.testigo1_nombre || d.testigo2_nombre) _bloqueTestigos(state, d);
+
+  return _salidaDoc(state, u, _nombreArchivo('anexo-teletrabajo', trab), opts);
+}
