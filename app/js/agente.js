@@ -297,7 +297,7 @@ function generarPDFDesdeAgente(documento) {
   let y = 46;
 
   const checkY = (needed = 22) => {
-    if (y + needed > ph - 16) { doc.addPage(); y = 22; }
+    if (y + needed > ph - 20) { doc.addPage(); y = 22; }
   };
 
   // ── Advertencia legal ────────────────────────────────────────────────────
@@ -369,15 +369,7 @@ function generarPDFDesdeAgente(documento) {
     doc.text(nl, ml, y); y += nl.length * 4.5;
   }
 
-  // ── Footer en todas las páginas ──────────────────────────────────────────
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph - 11, pw - mr, ph - 11);
-    doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`${documento.folio}  |  Página ${i} de ${total}  |  Capital Humano MX  |  Generado con IA  |  No sustituye asesoría jurídica`, pw/2, ph - 7, { align:'center' });
-  }
+  _footerFolio(doc, ml, mr, documento.folio, empresa.nombre, 'Generado con IA');
 
   doc.save(`${(documento.folio || 'documento-ia').replace(/\s+/g,'-')}.pdf`);
 }

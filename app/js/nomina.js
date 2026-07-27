@@ -2596,7 +2596,7 @@ async function _generarReciboNominaBlob(reciboId) {
   const folio = recibo.folio || `NOM-${reciboId.slice(-6)}`;
   const daily = calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual');
   let y = 0;
-  const ck = (n = 20) => { if (y + n > ph - 16) { doc.addPage(); y = 22; } };
+  const ck = (n = 20) => { if (y + n > ph - 20) { doc.addPage(); y = 22; } };
 
   // 1. ENCABEZADO
   doc.setFillColor(15, 20, 40); doc.rect(0, 0, pw, 36, 'F');
@@ -2748,14 +2748,7 @@ async function _generarReciboNominaBlob(reciboId) {
   doc.text(t.nombre || '',       c2f+colW/2, y+28, {align:'center'});
 
   // 10. PIE DE PÁGINA
-  const totalPags = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPags; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph-11, pw-mr, ph-11);
-    doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`${folio}  |  Página ${i} de ${totalPags}  |  Capital Humano MX  |  Arts. 82, 88, 132 LFT`, pw/2, ph-7, {align:'center'});
-  }
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   return doc.output('blob');
 }

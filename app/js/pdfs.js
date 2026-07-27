@@ -39,7 +39,7 @@ async function generarReciboNominaBlob(reciboId) {
 
   const folio = recibo.folio || `NOM-${reciboId.slice(-6)}`;
   let y = 0;
-  const ck = (n=20) => { if (y + n > ph - 16) { doc.addPage(); y = 22; } };
+  const ck = (n=20) => { if (y + n > ph - 20) { doc.addPage(); y = 22; } };
 
   // ── 1. ENCABEZADO ────────────────────────────────────────────────────────
   doc.setFillColor(15,20,40); doc.rect(0,0,pw,36,'F');
@@ -224,15 +224,7 @@ async function generarReciboNominaBlob(reciboId) {
   if (empresa.representante) doc.text(empresa.representante, cf1+colW/2, y+32, {align:'center'});
   doc.text(t.nombre||'', cf2+colW/2, y+28, {align:'center'});
 
-  // ── PIE DE PÁGINA ────────────────────────────────────────────────────────
-  const total = doc.getNumberOfPages();
-  for (let i=1; i<=total; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph-11, pw-mr, ph-11);
-    doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`${folio}  |  Página ${i} de ${total}  |  Capital Humano MX  |  Conforme Arts. 82, 88, 132 LFT`, pw/2, ph-7, {align:'center'});
-  }
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   return doc.output('blob');
 }
@@ -524,17 +516,34 @@ function _cHeader(state, titulo, subtitulo, data) {
  * social de la empresa — sin la nota de "carácter referencial". Esa
  * advertencia sigue viva antes de firmar (modal de descarga, ToS), pero no
  * pertenece al documento que el trabajador firma y que puede acabar ante una
- * Junta: ahí sólo debe leerse lo que las partes están reconociendo. */
-function _footerFolio(doc, ml, mr, folio, razonSocial) {
+ * Junta: ahí sólo debe leerse lo que las partes están reconociendo.
+ *
+ * En documentos de más de una página, cada página que NO es la última lleva
+ * además una rúbrica marginal (línea en blanco para PATRON y TRABAJADOR):
+ * una hoja intermedia sin rúbrica es la más fácil de impugnar como
+ * sustituida después de firmado el documento. La última página no la repite
+ * porque ahí ya va el bloque de firma completo.
+ * `notaExtra` es para una nota puntual que no cabe en razonSocial (p. ej.
+ * "Generado con IA" en los documentos del agente). */
+function _footerFolio(doc, ml, mr, folio, razonSocial, notaExtra) {
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
+    if (i < total) {
+      const mid = ml + (pw - ml - mr) / 2;
+      doc.setDrawColor(190,190,190); doc.setLineWidth(0.25);
+      doc.line(ml, ph - 17, ml + 36, ph - 17);
+      doc.line(mid + 6, ph - 17, mid + 42, ph - 17);
+      doc.setFontSize(6); doc.setFont('Roboto','normal'); doc.setTextColor(150,150,150);
+      doc.text('Rúbrica PATRON', ml, ph - 14.5);
+      doc.text('Rúbrica TRABAJADOR', mid + 6, ph - 14.5);
+    }
     doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
     doc.line(ml, ph - 11, pw - mr, ph - 11);
     doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`Folio ${folio}  |  Página ${i} de ${total}  |  ${razonSocial || ''}`, pw/2, ph - 7, { align:'center' });
+    doc.text(`Folio ${folio}  |  Página ${i} de ${total}  |  ${razonSocial || ''}${notaExtra ? '  |  ' + notaExtra : ''}`, pw/2, ph - 7, { align:'center' });
   }
 }
 
@@ -547,8 +556,11 @@ function _newPage(state) {
   state.y = 22;
 }
 
+// Reserva 20mm de margen inferior (no 16) para que quepa, sin encimarse con
+// el cuerpo, la rúbrica marginal que _footerFolio() dibuja en cada página
+// que no es la última — ver esa función para el porqué.
 function _checkY(state, needed = 22) {
-  if (state.y + needed > state.ph - 16) _newPage(state);
+  if (state.y + needed > state.ph - 20) _newPage(state);
 }
 
 /** Convierte 1..30 al ordinal femenino que exige "CLÁUSULA" (PRIMERA, SEGUNDA…
@@ -1715,7 +1727,7 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   let y        = 0;
 
   // ── helper: salto de página si no cabe ──────────────────────────────────
-  const ck = (n = 20) => { if (y + n > ph - 16) { doc.addPage(); y = 22; } };
+  const ck = (n = 20) => { if (y + n > ph - 20) { doc.addPage(); y = 22; } };
 
   // ══════════════════════════════════════════════════════════════════════
   // 1. ENCABEZADO
@@ -1953,17 +1965,7 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   // ══════════════════════════════════════════════════════════════════════
   // 8. PIE DE PÁGINA EN TODAS LAS HOJAS
   // ══════════════════════════════════════════════════════════════════════
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph - 11, pw - mr, ph - 11);
-    doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(
-      `Folio ${folio}  |  Página ${i} de ${total}  |  Capital Humano MX  |  No sustituye asesoria jurídica`,
-      pw/2, ph - 7, { align:'center' }
-    );
-  }
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   doc.save(`recibo-${isLiq ? 'liquidacion' : 'finiquito'}-${trab.nombre||''.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
