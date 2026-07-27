@@ -24,7 +24,127 @@ const DOCS_CUMPLIMIENTO = [
   { clave:'rit', label:'Reglamento Interior de Trabajo', fundamento:'Art. 425 LFT',
     porQue:'Sin acuse no se puede sancionar por incumplirlo.',
     accion:'generarEntregaRIT' },
+  { clave:'aviso_privacidad', label:'Aviso de privacidad', fundamento:'Art. 16 LFPDPPP',
+    porQue:'Debe ponerse a disposición al momento de recabar los datos.',
+    accion:'generarAvisoPrivacidad' },
+  { clave:'consentimiento_sensibles', label:'Consentimiento de datos sensibles', fundamento:'Art. 8 LFPDPPP',
+    porQue:'Incapacidades y biométricos exigen consentimiento expreso y por escrito.',
+    accion:'generarConsentimientoSensibles' },
+  { clave:'consentimiento_monitoreo', label:'Consentimiento de monitoreo', fundamento:'Arts. 3 fr. IV y 7 LFPDPPP',
+    porQue:'Correo, GPS, videovigilancia y uso de imagen.',
+    accion:'generarConsentimientoMonitoreoUI' },
 ];
+
+/**
+ * Genera el PDF y, si el patrón confirma que ya lo tiene firmado, registra el
+ * acuse.
+ *
+ * El registro se pide en un segundo paso a propósito: lo que acredita la
+ * entrega es la firma, no la descarga. Registrar al descargar produciría un
+ * expediente que dice tener acuses que nadie firmó — peor que no tener nada,
+ * porque da falsa tranquilidad.
+ */
+async function _generarYRegistrarAcuse(trabajadorId, clave, generar, opciones = {}) {
+  try {
+    const trab = await db.getTrabajador(trabajadorId);
+    const sucursal = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
+    const hoy = new Date().toISOString().split('T')[0];
+
+    generar(trab, sucursal, hoy);
+
+    const ok = await showConfirmacion(
+      'Se descargó el documento. Imprímelo y recábale la firma.<br><br>' +
+      '¿Registro la entrega en el expediente? Hazlo sólo cuando lo tengas firmado: el registro es lo que ' +
+      'apaga la alerta y lo que el Kit de defensa reporta como acreditado.',
+      { titulo: 'Registrar el acuse', textoOk: 'Ya está firmado, registrar', textoCancelar: 'Todavía no' }
+    );
+    if (!ok) return;
+
+    const { data: { user } } = await window.supabase.auth.getUser();
+    const { error } = await window.supabase.from('acuses_documentos').insert({
+      empresa_id: CTX.empresa.id,
+      trabajador_id: trabajadorId,
+      documento: clave,
+      version: opciones.version || null,
+      fecha_entrega: hoy,
+      medio: 'impreso',
+      observaciones: opciones.observaciones || null,
+      creado_por: user?.id || null,
+    });
+    if (error) throw error;
+    if (typeof _invalidarCache === 'function') _invalidarCache();
+    showToast('Acuse registrado.', 'success');
+    renderTabCumplimiento(trabajadorId);
+  } catch (e) {
+    showToast(e.message, 'error', 8000);
+  }
+}
+
+function generarAvisoPrivacidad(trabajadorId) {
+  const version = new Date().toISOString().split('T')[0];
+  return _generarYRegistrarAcuse(trabajadorId, 'aviso_privacidad',
+    (trab, sucursal) => generateAvisoPrivacidadTrabajador(CTX.empresa, { version }, sucursal),
+    { version });
+}
+
+function generarConsentimientoSensibles(trabajadorId) {
+  return _generarYRegistrarAcuse(trabajadorId, 'consentimiento_sensibles',
+    (trab, sucursal, hoy) => generateConsentimientoDatosSensibles(CTX.empresa, trab, { fecha: hoy }, sucursal));
+}
+
+/** El consentimiento de monitoreo necesita saber QUÉ se monitorea (art. 3 fr. IV). */
+function generarConsentimientoMonitoreoUI(trabajadorId) {
+  showModal(`
+    <div class="modal animate-in" style="max-width:520px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Consentimiento de monitoreo</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">Marca sólo lo que realmente se usa</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;">
+        <div class="alert alert-info" style="margin-bottom:14px;">
+          <svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
+          <span style="font-size:.82rem;">El consentimiento debe ser <strong>específico e informado</strong>
+          (artículo 3 fracción IV de la LFPDPPP). Marcar medios que no se usan no protege de nada y resta
+          credibilidad al documento.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${[['correo','Correo electrónico y equipos corporativos'],
+             ['gps','Geolocalización de vehículos o dispositivos'],
+             ['video','Videovigilancia en el centro de trabajo'],
+             ['imagen','Uso de imagen en materiales de la empresa']].map(([v, l]) => `
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.86rem;">
+              <input type="checkbox" id="mon-${v}" style="width:15px;height:15px;accent-color:var(--gold-primary);" />
+              <span>${l}</span>
+            </label>`).join('')}
+        </div>
+        <div id="mon-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="_generarConsentimientoMonitoreo('${trabajadorId}')">Generar</button>
+      </div>
+    </div>
+  `);
+}
+
+async function _generarConsentimientoMonitoreo(trabajadorId) {
+  const medios = ['correo', 'gps', 'video', 'imagen'].filter(v => eid('mon-' + v)?.checked);
+  if (!medios.length) {
+    const box = eid('mon-msg');
+    if (box) {
+      box.textContent = 'Marca al menos un medio: un consentimiento genérico de monitoreo no legitima ninguno en particular.';
+      box.className = 'error-msg'; box.style.display = '';
+    }
+    return;
+  }
+  closeModal();
+  await _generarYRegistrarAcuse(trabajadorId, 'consentimiento_monitoreo',
+    (trab, sucursal, hoy) => generateConsentimientoMonitoreo(CTX.empresa, trab, { fecha: hoy, medios }, sucursal),
+    { observaciones: 'Medios: ' + medios.join(', ') });
+}
 
 async function renderTabCumplimiento(trabajadorId) {
   const cont = eid('tab-cumplimiento');
@@ -310,39 +430,12 @@ async function handleGuardarDepositoRIT() {
  * quién le falta el acuse y advertirlo antes de levantar un acta que invoque
  * el reglamento (art. 425 LFT).
  */
-async function generarEntregaRIT(trabajadorId) {
-  try {
-    const trab = await db.getTrabajador(trabajadorId);
-    const sucursal = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
-    const hoy = new Date().toISOString().split('T')[0];
-
-    generateConstanciaEntregaRIT(CTX.empresa, trab, {
-      fecha_entrega: hoy,
-      version: CTX.empresa.rit_fecha_deposito || null,
-    }, sucursal);
-
-    const ok = await showConfirmacion(
-      'Se descargó la constancia. Imprímela y recábale la firma.<br><br>' +
-      '¿Registro la entrega en el expediente? El registro es lo que permite avisarte de los acuses que faltan; ' +
-      'hazlo sólo cuando tengas la constancia firmada.',
-      { titulo: 'Registrar el acuse', textoOk: 'Ya está firmada, registrar', textoCancelar: 'Todavía no' }
-    );
-    if (!ok) return;
-
-    const { data: { user } } = await window.supabase.auth.getUser();
-    const { error } = await window.supabase.from('acuses_documentos').insert({
-      empresa_id: CTX.empresa.id,
-      trabajador_id: trabajadorId,
-      documento: 'rit',
-      version: CTX.empresa.rit_fecha_deposito || null,
-      fecha_entrega: hoy,
-      medio: 'impreso',
-      creado_por: user?.id || null,
-    });
-    if (error) throw error;
-    if (typeof _invalidarCache === 'function') _invalidarCache();
-    showToast('Acuse registrado.', 'success');
-  } catch (e) {
-    showToast(e.message, 'error', 8000);
-  }
+function generarEntregaRIT(trabajadorId) {
+  // La versión del acuse es la fecha de depósito: un acuse del reglamento
+  // anterior no acredita la entrega del que se depositó después.
+  const version = CTX.empresa?.rit_fecha_deposito || null;
+  return _generarYRegistrarAcuse(trabajadorId, 'rit',
+    (trab, sucursal, hoy) => generateConstanciaEntregaRIT(
+      CTX.empresa, trab, { fecha_entrega: hoy, version }, sucursal),
+    { version });
 }

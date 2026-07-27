@@ -280,6 +280,28 @@ function generateConstanciaEntregaRIT(empresa, trab, datos = {}, sucursal = null
   return _salidaDoc(state, u, _nombreArchivo('acuse-rit', trab), opts);
 }
 
+/**
+ * Casilla de aceptación individual, para marcar a mano.
+ *
+ * El art. 8 de la LFPDPPP exige consentimiento expreso y por escrito para los
+ * datos sensibles. Una sola firma al pie de una lista no acredita la voluntad
+ * respecto de CADA tratamiento: por eso cada finalidad lleva su propia casilla.
+ */
+function _pdfcCasilla(state, texto) {
+  const { doc, ml, tw } = state;
+  const lineas = doc.splitTextToSize(np(texto), tw - 26);
+  _checkY(state, lineas.length * 5 + 8);
+  doc.setDrawColor(90, 90, 90); doc.setLineWidth(0.4);
+  doc.rect(ml + 2, state.y - 3.2, 4.2, 4.2);
+  doc.rect(ml + 12, state.y - 3.2, 4.2, 4.2);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6);  doc.setTextColor(110, 110, 110);
+  doc.text('SI', ml + 2.6, state.y + 4.6);
+  doc.text('NO', ml + 12.2, state.y + 4.6);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(50, 50, 50);
+  doc.text(lineas, ml + 22, state.y, { lineHeightFactor: 1.4 });
+  state.y += Math.max(lineas.length * 5.2, 9) + 4;
+}
+
 /** Dos columnas de firmas: patrón a la izquierda, trabajadores a la derecha. */
 function _pdfcFirmasMixtas(state, repsP, repsT) {
   const { doc, ml, tw } = state;
@@ -299,4 +321,234 @@ function _pdfcFirmasMixtas(state, repsP, repsT) {
     if (repsT[i]) doc.text(np('POR LAS PERSONAS TRABAJADORAS'), ml + colW + 16 + colW / 2, y0 + 8.5, { align: 'center' });
     state.y = y0 + 16;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  3.2 — PROTECCIÓN DE DATOS PERSONALES (LFPDPPP, DOF 14-11-2025)
+//
+//  La aplicación trata incapacidades —datos de salud, sensibles conforme al
+//  art. 3 fr. VI— y, si hay checador, huella o rostro. El art. 8 exige para
+//  los sensibles consentimiento EXPRESO Y POR ESCRITO, mediante firma
+//  autógrafa, firma electrónica o cualquier mecanismo de autenticación.
+//
+//  Ojo con la autoridad: desde la reforma DOF 14-11-2025 el art. 3 fr. XV
+//  define a la "Secretaría" como la Secretaría Anticorrupción y Buen
+//  Gobierno. Ya no es el INAI, y un aviso que siga nombrando al INAI se
+//  delata como copiado de una plantilla vieja.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Aviso de privacidad integral para el personal (art. 15 LFPDPPP).
+ *
+ * Exige el domicilio del responsable y el medio de contacto para los derechos
+ * ARCO porque son dos de las seis fracciones del art. 15: un aviso sin ellas
+ * no cumple, y ponerle una línea en blanco sería fingir que sí.
+ */
+function generateAvisoPrivacidadTrabajador(empresa, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+
+  if (!u.domicilio) {
+    throw new Error(
+      'El aviso de privacidad debe contener el domicilio del responsable (art. 15 fr. I LFPDPPP). ' +
+      'Captura el domicilio de la empresa antes de generarlo.'
+    );
+  }
+  const contactoArco = d.contacto_arco || u.notif_email_destino;
+  if (!contactoArco) {
+    throw new Error(
+      'Falta el medio de contacto para ejercer los derechos ARCO (art. 15 fr. V LFPDPPP). ' +
+      'El art. 29 obliga además a designar a una persona o departamento que dé trámite a las ' +
+      'solicitudes: captura el correo o el domicilio donde se recibirán.'
+    );
+  }
+
+  const version = d.version || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Aviso de Privacidad Integral para el Personal',
+    'Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares',
+    u, 'AVPRIV'
+  );
+
+  _hSeccion(state, 'I. IDENTIDAD Y DOMICILIO DEL RESPONSABLE');
+  _p(state, `${np(u.nombre)}${u.rfc ? `, R.F.C. ${np(u.rfc)}` : ''}, con domicilio en ${np(u.domicilio)}${u.ciudad ? `, ${np(u.ciudad)}` : ''}, es responsable del tratamiento de sus datos personales (articulo 15 fraccion I de la Ley).`);
+
+  _hSeccion(state, 'II. DATOS PERSONALES QUE SE TRATAN');
+  _p(state, `De identificacion y contacto: nombre, domicilio, telefono, correo electronico, fecha y lugar de nacimiento, sexo, estado civil, nacionalidad, firma y fotografia.`);
+  _p(state, `De identificacion oficial y fiscal: CURP, R.F.C., numero de seguridad social, credencial para votar u otra identificacion oficial.`);
+  _p(state, `Laborales: puesto, area, fecha de ingreso, jornada, asistencia, incidencias, evaluaciones, capacitacion, medidas disciplinarias, historial salarial y datos de la relacion de trabajo.`);
+  _p(state, `Patrimoniales o financieros: salario, prestaciones, cuenta bancaria y CLABE, creditos INFONAVIT o FONACOT, pensiones alimenticias y descuentos. El articulo 7 de la Ley requiere para estos datos su consentimiento expreso, salvo las excepciones de los articulos 9 y 36.`);
+  _p(state, `SENSIBLES: estado de salud presente o futuro, incapacidades expedidas por el Instituto Mexicano del Seguro Social, resultados de examenes medicos de ingreso y periodicos, tipo de sangre, enfermedades cronicas y, en su caso, condicion de embarazo. Son sensibles conforme al articulo 3 fraccion VI de la Ley.`, { bold: true });
+  _p(state, `BIOMETRICOS, unicamente si la empresa opera control de asistencia con huella o reconocimiento facial: la plantilla o el identificador derivado de su huella o de su rostro. La lista del articulo 3 fraccion VI es enunciativa, no limitativa; por prudencia estos datos reciben el mismo trato reforzado que los sensibles y se recaban con su consentimiento expreso y por escrito.`, { bold: true });
+
+  _hSeccion(state, 'III. FINALIDADES DEL TRATAMIENTO');
+  _p(state, `Finalidades primarias, necesarias para la relacion de trabajo y que no requieren consentimiento por derivar de una obligacion legal o del propio contrato (articulos 9 fraccion I y 36 fracciones I, IV y VII de la Ley):`);
+  _p(state, `1) Integrar y conservar su expediente laboral, incluidos los documentos que el articulo 804 de la Ley Federal del Trabajo obliga al patron a conservar y exhibir en juicio. 2) Calcular y pagar salario, prestaciones y finiquitos. 3) Cumplir obligaciones ante el Instituto Mexicano del Seguro Social, el INFONAVIT, el Servicio de Administracion Tributaria y las autoridades laborales. 4) Controlar asistencia, jornada e incidencias. 5) Administrar la seguridad y salud en el trabajo, incluidas incapacidades y examenes medicos. 6) Ejercer o defender derechos en procedimientos administrativos o judiciales.`, { indent: 6 });
+  _p(state, `Finalidades secundarias, que NO son necesarias para la relacion de trabajo y a las que usted puede oponerse sin que ello afecte su contratacion ni sus condiciones de trabajo: ${np(d.finalidades_secundarias || 'difusion interna de felicitaciones y aniversarios; uso de su imagen en materiales internos o de comunicacion institucional; encuestas de clima laboral identificadas')}.`);
+  _p(state, `Si la empresa pretende tratar sus datos para una finalidad distinta de las aqui previstas, debera obtener nuevamente su consentimiento (articulo 11 de la Ley).`);
+
+  _hSeccion(state, 'IV. LIMITAR EL USO O DIVULGACION DE SUS DATOS');
+  _p(state, `Puede solicitar en cualquier momento que se limite el uso o la divulgacion de sus datos, y oponerse a las finalidades secundarias, escribiendo a ${np(contactoArco)}. La negativa a las finalidades secundarias no tendra consecuencia alguna sobre su relacion de trabajo.`);
+
+  _hSeccion(state, 'V. TRANSFERENCIAS Y ENCARGADOS');
+  _p(state, `Sus datos se transfieren al Instituto Mexicano del Seguro Social, al INFONAVIT, al Servicio de Administracion Tributaria y a las autoridades laborales y judiciales que los requieran. Estas transferencias no requieren su consentimiento porque estan previstas en la Ley y son necesarias para el mantenimiento de la relacion juridica (articulo 36 fracciones I, V, VI y VII).`);
+  _p(state, `${np(d.encargados || 'El despacho contable, el proveedor de nomina y el proveedor del sistema de administracion de personal')} tratan sus datos POR CUENTA de la empresa: son personas encargadas en terminos del articulo 3 fraccion XII de la Ley, no terceros receptores, y estan obligadas a guardar confidencialidad conforme al articulo 20, obligacion que subsiste aun despues de terminada su relacion con la empresa.`);
+  _p(state, `Cualquier otra transferencia a un tercero distinto de las anteriores requerira su consentimiento, y al tercero se le comunicara este aviso y las finalidades a las que usted sujeto el tratamiento (articulo 35 de la Ley).`);
+
+  _hSeccion(state, 'VI. DERECHOS ARCO Y REVOCACION DEL CONSENTIMIENTO');
+  _p(state, `Usted puede Acceder a sus datos, solicitar su Rectificacion cuando sean inexactos o incompletos, su Cancelacion, u Oponerse a su tratamiento (articulos 21 a 26 de la Ley). La solicitud debe presentarse en ${np(contactoArco)} y contener su nombre y domicilio o medio para recibir notificaciones, los documentos que acrediten su identidad, la descripcion clara de los datos y del derecho que pretende ejercer (articulo 28).`);
+  _p(state, `La empresa comunicara su determinacion en un plazo maximo de VEINTE DIAS y, de resultar procedente, la hara efectiva dentro de los QUINCE DIAS siguientes; ambos plazos pueden ampliarse una sola vez por un periodo igual cuando las circunstancias lo justifiquen (articulo 31). El ejercicio de los derechos ARCO es gratuito: solo pueden cobrarse los costos de reproduccion, copias o envio (articulo 34).`);
+  _p(state, `Puede revocar su consentimiento en cualquier momento, sin efectos retroactivos, por el mismo medio (articulo 7). La revocacion no procede respecto de los datos cuyo tratamiento la empresa deba mantener por disposicion legal o para el cumplimiento de la propia relacion de trabajo (articulo 25 fracciones I y II).`);
+
+  _hSeccion(state, 'VII. CONSERVACION, BLOQUEO Y SUPRESION');
+  _p(state, `Sus datos se conservan mientras dure la relacion de trabajo y despues por los plazos que fija el articulo 804 de la Ley Federal del Trabajo: el contrato individual mientras dure la relacion y hasta un ano despues; las listas de raya, controles de asistencia y comprobantes de utilidades, vacaciones, aguinaldos, primas y cuotas de seguridad social, durante el ultimo ano y un ano despues de extinguida la relacion. Los plazos fiscales y de seguridad social pueden ser mayores.`);
+  _p(state, `Cumplida la finalidad y vencidos los plazos, los datos se bloquean y despues se suprimen (articulos 3 fraccion III y 10 de la Ley).`);
+
+  _hSeccion(state, 'VIII. MEDIDAS DE SEGURIDAD');
+  _p(state, `La empresa mantiene medidas de seguridad administrativas, tecnicas y fisicas para proteger sus datos contra dano, perdida, alteracion, destruccion o uso, acceso o tratamiento no autorizado (articulo 18). Si ocurre una vulneracion que afecte de forma significativa sus derechos patrimoniales o morales, se le informara de forma inmediata (articulo 19).`);
+
+  _hSeccion(state, 'IX. CAMBIOS AL AVISO Y AUTORIDAD');
+  _p(state, `Cualquier cambio a este aviso se le comunicara mediante ${np(d.medio_cambios || 'aviso fijado en los lugares de mayor afluencia del centro de trabajo y, en su caso, por correo electronico institucional')} (articulo 15 fraccion VI). Version vigente: ${np(version)}.`);
+  _p(state, `Si considera que su derecho a la proteccion de datos personales ha sido lesionado, puede acudir ante la Secretaria Anticorrupcion y Buen Gobierno, autoridad competente conforme al articulo 3 fraccion XV de la Ley.`);
+
+  _recuadro(state,
+    'Este aviso se pone a su disposicion en el momento en que se recaban sus datos, conforme al articulo 16 de la Ley. Para los datos sensibles y biometricos se recaba ademas un consentimiento expreso y por escrito, en documento separado (articulo 8).',
+    'info');
+
+  return _salidaDoc(state, u, 'aviso-de-privacidad-personal.pdf', opts);
+}
+
+/**
+ * Consentimiento expreso y por escrito para datos sensibles y biométricos.
+ *
+ * Va en documento separado a propósito: el art. 8 pide una manifestación de
+ * voluntad específica para estos datos, y una casilla escondida al pie del
+ * contrato no lo es. Cada finalidad lleva su propia casilla porque el
+ * consentimiento del art. 3 fr. IV debe ser "específico".
+ */
+function generateConsentimientoDatosSensibles(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+  const fecha = d.fecha || new Date().toISOString().split('T')[0];
+
+  const state = _initDocLegal(
+    'Consentimiento Expreso para el Tratamiento de Datos Sensibles',
+    'Articulo 8 de la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares',
+    u, 'CONSEN'
+  );
+  _ciudadFecha(state, np(u.ciudad || ''), fecha);
+
+  _p(state, `Yo, ${np(trab.nombre)}${trab.curp ? `, con CURP ${np(trab.curp)}` : ''}, manifiesto que recibi y lei el Aviso de Privacidad de ${np(u.nombre)}, que se me explico su contenido y que tuve oportunidad de preguntar lo que considere necesario.`);
+
+  _p(state, `Sabiendo que el articulo 8 de la Ley exige para los datos personales sensibles mi consentimiento EXPRESO Y POR ESCRITO, y que puedo otorgarlo o negarlo libremente respecto de cada finalidad, manifiesto lo siguiente marcando la casilla que corresponda:`);
+
+  _gap(state, 3);
+  _pdfcCasilla(state, 'Consiento el tratamiento de mis datos de SALUD (incapacidades expedidas por el IMSS, diagnosticos que consten en ellas y ausencias por enfermedad) para el pago de subsidios y prestaciones, el control de incidencias y el cumplimiento de las obligaciones del patron ante el IMSS.');
+  _pdfcCasilla(state, 'Consiento el tratamiento de los resultados de los EXAMENES MEDICOS de ingreso y periodicos, para determinar mi aptitud para el puesto y cumplir las obligaciones de seguridad y salud en el trabajo.');
+  _pdfcCasilla(state, 'Consiento el tratamiento de mi TIPO DE SANGRE, alergias, enfermedades cronicas y datos de contacto de emergencia, para poder auxiliarme en caso de accidente o urgencia medica.');
+  _pdfcCasilla(state, 'Consiento el tratamiento de mis DATOS BIOMETRICOS (huella dactilar o reconocimiento facial) con la unica finalidad de registrar mi asistencia. Se me informo que puedo negarlo y usar en su lugar el metodo alterno de registro que la empresa tenga habilitado, sin consecuencia alguna.');
+
+  if (Array.isArray(d.casillas_adicionales)) {
+    for (const c of d.casillas_adicionales.filter(Boolean)) _pdfcCasilla(state, c);
+  }
+
+  _gap(state, 2);
+  _p(state, `Se me informo que: a) el tratamiento se limitara al minimo indispensable y por el periodo minimo necesario (articulo 12 de la Ley); b) puedo revocar este consentimiento en cualquier momento, sin efectos retroactivos, por el medio senalado en el Aviso de Privacidad (articulo 7); c) la negativa a cualquiera de los tratamientos anteriores no puede ser causa de que se me niegue la contratacion, se modifiquen mis condiciones de trabajo o se me sancione; y d) aun revocado el consentimiento, la empresa conservara los datos que deba mantener por disposicion legal o para acreditar el cumplimiento de sus obligaciones (articulo 25 fracciones I y II).`);
+
+  _recuadro(state,
+    'Si marcas NO en la casilla de datos biometricos, la empresa debe habilitarte un metodo alterno de registro de asistencia. Condicionar el empleo a la entrega de la huella no es un consentimiento libre, y un consentimiento que no es libre no cumple el articulo 3 fraccion IV de la Ley.',
+    'warn');
+
+  _gap(state, 8);
+  const { ml, tw } = state;
+  const colW = tw / 2 - 8;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'LA PERSONA TRABAJADORA', trab.nombre,
+    trab.num_identificacion, trab.domicilio, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'POR EL RESPONSABLE',
+    d.recibe_nombre || u.representante, d.recibe_ine, u.domicilio, ml + colW + 16, colW);
+  state.y = Math.max(y1, y2) + 8;
+
+  return _salidaDoc(state, u, _nombreArchivo('consentimiento-datos-sensibles', trab), opts);
+}
+
+/**
+ * Consentimiento para monitoreo: correo corporativo, GPS, videovigilancia e
+ * imagen.
+ *
+ * Se niega a emitir un consentimiento en blanco: sin decir QUÉ se monitorea no
+ * hay consentimiento "específico e informado" (art. 3 fr. IV LFPDPPP), y un
+ * consentimiento genérico no legitima nada.
+ */
+function generateConsentimientoMonitoreo(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+  const medios = (d.medios || []).filter(Boolean);
+
+  if (!medios.length) {
+    throw new Error(
+      'Indica al menos un medio de monitoreo (correo corporativo, GPS, videovigilancia, uso de imagen). ' +
+      'El art. 3 fr. IV de la LFPDPPP define el consentimiento como una manifestación "específica e ' +
+      'informada": un consentimiento genérico de monitoreo no legitima ninguno en particular.'
+    );
+  }
+
+  const fecha = d.fecha || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Consentimiento Informado de Monitoreo y Uso de Imagen',
+    'Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares',
+    u, 'CONMON'
+  );
+  _ciudadFecha(state, np(u.ciudad || ''), fecha);
+
+  _p(state, `Yo, ${np(trab.nombre)}, en mi caracter de persona trabajadora de ${np(u.nombre)}, manifiesto que se me informo de forma previa y expresa lo siguiente respecto de los medios de supervision que la empresa utiliza:`);
+
+  const CATALOGO = {
+    correo: {
+      titulo: 'Correo electronico y equipos corporativos',
+      texto: 'La cuenta de correo, los equipos y los sistemas que la empresa me proporciona son herramientas de trabajo y su uso debe ser laboral. La empresa puede revisar la informacion contenida en ellos con fines de seguridad de la informacion, auditoria y cumplimiento normativo. Se me recomienda no almacenar informacion personal en ellos: si lo hago, debo identificarla como tal.',
+      casilla: 'Consiento la revision del correo y los equipos corporativos en los terminos descritos.',
+    },
+    gps: {
+      titulo: 'Geolocalizacion de vehiculos y dispositivos',
+      texto: 'Los vehiculos y dispositivos asignados cuentan con geolocalizacion, que opera unicamente durante la jornada de trabajo y con la finalidad de coordinar rutas, acreditar visitas y proteger los bienes de la empresa. No se utiliza para seguirme fuera de la jornada.',
+      casilla: 'Consiento la geolocalizacion del vehiculo o dispositivo asignado durante la jornada.',
+    },
+    video: {
+      titulo: 'Videovigilancia',
+      texto: 'El centro de trabajo cuenta con camaras en las areas comunes y operativas, senalizadas, con fines de seguridad de las personas y los bienes. No hay camaras en sanitarios, vestidores ni areas de descanso. Las grabaciones se conservan por el periodo minimo necesario y solo acceden a ellas las personas autorizadas.',
+      casilla: 'Me doy por enterado de la videovigilancia en las areas senalizadas del centro de trabajo.',
+    },
+    imagen: {
+      titulo: 'Uso de imagen',
+      texto: 'La empresa desea utilizar mi fotografia o video en materiales internos, institucionales o de difusion. Esta finalidad es SECUNDARIA: no es necesaria para la relacion de trabajo y puedo negarla o revocarla en cualquier momento sin consecuencia alguna.',
+      casilla: 'Consiento el uso de mi imagen en los materiales descritos.',
+    },
+  };
+
+  for (const m of medios) {
+    const c = CATALOGO[m];
+    if (!c) continue;
+    _hSeccion(state, c.titulo.toUpperCase());
+    _p(state, c.texto);
+    _pdfcCasilla(state, c.casilla);
+  }
+
+  _hSeccion(state, 'PROPORCIONALIDAD Y LIMITES');
+  _p(state, `La supervision se limita a lo necesario para su objetivo y no invade mi vida privada. Tratandose de teletrabajo, los mecanismos y tecnologias de supervision deben ser proporcionales a su objetivo, garantizar mi derecho a la intimidad y respetar la normativa de proteccion de datos; las camaras y microfonos solo pueden usarse de manera extraordinaria o cuando la naturaleza de mis funciones lo requiera (articulo 330-I de la Ley Federal del Trabajo).`);
+  _p(state, `Puedo revocar este consentimiento en cualquier momento, sin efectos retroactivos, por el medio senalado en el Aviso de Privacidad (articulo 7 de la Ley). La revocacion no alcanza a los tratamientos que la empresa deba mantener por disposicion legal o por seguridad de las personas.`);
+
+  _gap(state, 8);
+  const { ml, tw } = state;
+  const colW = tw / 2 - 8;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'LA PERSONA TRABAJADORA', trab.nombre,
+    trab.num_identificacion, trab.domicilio, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'POR EL RESPONSABLE',
+    d.recibe_nombre || u.representante, d.recibe_ine, u.domicilio, ml + colW + 16, colW);
+  state.y = Math.max(y1, y2) + 8;
+
+  return _salidaDoc(state, u, _nombreArchivo('consentimiento-monitoreo', trab), opts);
 }
