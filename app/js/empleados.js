@@ -1441,6 +1441,7 @@ async function renderPerfilEmpleado(id) {
         <button class="tab-btn" onclick="switchTab(this,'tab-descuentos');renderTabDescuentos('${id}')">Descuentos</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-prestaciones');renderTabPrestaciones('${id}')">Prestaciones</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-resguardos');renderTabResguardos('${id}')">Resguardos</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-cumplimiento');renderTabCumplimiento('${id}')">Cumplimiento</button>
       </div>
 
       <div id="tab-datos" class="animate-in">
@@ -1551,6 +1552,7 @@ async function renderPerfilEmpleado(id) {
       <div id="tab-descuentos" style="display:none;" class="animate-in"></div>
       <div id="tab-prestaciones" style="display:none;" class="animate-in"></div>
       <div id="tab-resguardos" style="display:none;" class="animate-in"></div>
+      <div id="tab-cumplimiento" style="display:none;" class="animate-in"></div>
     `;
 
     window._perfilActivoId = id;

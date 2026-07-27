@@ -322,6 +322,43 @@ async function renderEmpresa() {
       </div>
     </div>
 
+    <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
+      <div class="card-header"><span class="card-title">Reglamento Interior de Trabajo</span></div>
+      ${e.rit_depositado && e.rit_fecha_deposito
+        ? `<div class="alert alert-success" style="margin-bottom:16px;">
+             <svg class="ic" style="flex-shrink:0;"><use href="#i-check-circle"></use></svg>
+             <span style="font-size:.82rem;">Depositado el <strong>${formatDateShort(e.rit_fecha_deposito)}</strong>${e.rit_folio_deposito ? ` — folio ${escapeHtml(e.rit_folio_deposito)}` : ''}.
+             Desde esa fecha surte efectos y puede invocarse en las actas.</span>
+           </div>`
+        : `<div class="alert alert-warn" style="margin-bottom:16px;">
+             <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+             <span style="font-size:.82rem;">Sin registro de depósito. El artículo 425 de la LFT establece que el reglamento
+             <strong>surte efectos a partir de la fecha de su depósito</strong> ante el Centro Federal de Conciliación y
+             Registro Laboral. Mientras tanto, las actas que lo invoquen operan sin sustento normativo.</span>
+           </div>`}
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="rit-dep-firma">Fecha de firma</label>
+          <input id="rit-dep-firma" type="date" class="form-input" value="${e.rit_fecha_firma || ''}" />
+          <div class="helper-text">Art. 424 fr. II: 8 días para depositarlo.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="rit-dep-fecha">Fecha de depósito</label>
+          <input id="rit-dep-fecha" type="date" class="form-input" value="${e.rit_fecha_deposito || ''}" />
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label" for="rit-dep-folio">Folio o acuse del depósito</label>
+          <input id="rit-dep-folio" type="text" class="form-input" value="${escapeHtml(e.rit_folio_deposito) || ''}"
+            placeholder="Folio que asigne el Centro Federal de Conciliación y Registro Laboral" />
+        </div>
+      </div>
+      <div id="rit-dep-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="btn-secondary" onclick="showModalRIT()">Generar reglamento</button>
+        <button class="btn-primary" id="rit-dep-btn" onclick="handleGuardarDepositoRIT()">Guardar</button>
+      </div>
+    </div>
+
     <div class="view-header animate-in" style="margin-bottom:16px;">
       <div>
         <div class="view-title" style="font-size:1.2rem;">Centros de Trabajo</div>

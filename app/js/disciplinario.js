@@ -135,6 +135,7 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
         <div class="form-group span-2">
           <label class="form-label" for="ac-causal">Causal legal <span class="req">*</span></label>
           <input id="ac-causal" type="text" class="form-input" placeholder="Auto-completado al elegir tipo de falta" required aria-required="true" />
+          <div id="ac-aviso-rit" class="alert alert-warn" style="display:none;margin-top:8px;font-size:.8rem;"></div>
         </div>
         <div class="form-group span-2">
           <label class="form-label" for="ac-descripcion">Descripción de los hechos <span class="req">*</span></label>
@@ -269,6 +270,32 @@ function autoRellenarCausal() {
   if (!val || !input) return;
   const f = FALTAS_CATALOG.find(x => x.value === val);
   if (f) input.value = f.causal;
+  _avisarSustentoRIT();
+}
+
+/**
+ * Una causal que se apoya en el Reglamento Interior de Trabajo sólo se sostiene
+ * si el reglamento está depositado: el art. 425 LFT dice que "surtirá efectos a
+ * partir de la fecha de su depósito". Se avisa en el momento de elegir la
+ * falta, no al guardar, para que el patrón alcance a cambiar de causal.
+ */
+function _causalDependeDelRIT() {
+  return /reglamento interior/i.test(eid('ac-causal')?.value || '');
+}
+
+function _avisarSustentoRIT() {
+  const box = eid('ac-aviso-rit');
+  if (!box) return;
+  const sinRIT = !CTX.empresa?.rit_depositado || !CTX.empresa?.rit_fecha_deposito;
+  if (_causalDependeDelRIT() && sinRIT) {
+    box.innerHTML = 'Esta causal se apoya en el Reglamento Interior de Trabajo y la empresa no lo tiene registrado como ' +
+      'depositado. El artículo 425 de la LFT establece que el reglamento surte efectos a partir de la fecha de su depósito ' +
+      'ante el Centro Federal de Conciliación y Registro Laboral: sin él, el acta se sostiene únicamente en las ' +
+      'obligaciones que la propia Ley impone. Puedes generarlo y registrar el depósito en Configuración de la empresa.';
+    box.style.display = '';
+  } else {
+    box.style.display = 'none';
+  }
 }
 
 async function handleGuardarActa() {
@@ -304,6 +331,24 @@ async function handleGuardarActa() {
       );
       if (!seguir) return;
     }
+  }
+
+  // Misma lógica que la prescripción: no se bloquea, se hace decidir a
+  // sabiendas. Un acta que invoca un reglamento sin depositar no es nula, pero
+  // pierde su fundamento normativo (art. 425 LFT).
+  if (_causalDependeDelRIT() &&
+      (!CTX.empresa?.rit_depositado || !CTX.empresa?.rit_fecha_deposito) &&
+      typeof showConfirmacion === 'function') {
+    const seguir = await showConfirmacion(
+      'La causal invoca el Reglamento Interior de Trabajo y la empresa no lo tiene registrado como depositado ' +
+      'ante el Centro Federal de Conciliación y Registro Laboral.<br><br>' +
+      'El artículo 425 de la LFT establece que el reglamento surte efectos a partir de la fecha de su depósito. ' +
+      'Sin depósito, esta acta se sostiene sólo en las obligaciones que la propia Ley impone al trabajador.<br><br>' +
+      '¿Generar el acta de todas formas?',
+      { titulo: 'Reglamento sin depositar', textoOk: 'Generar de todas formas',
+        textoCancelar: 'Cancelar', peligro: true }
+    );
+    if (!seguir) return;
   }
 
   const datos = {
