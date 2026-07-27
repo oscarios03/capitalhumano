@@ -541,13 +541,26 @@ function _checkY(state, needed = 22) {
   if (state.y + needed > state.ph - 16) _newPage(state);
 }
 
+/** Convierte 1..30 al ordinal femenino que exige "CLÁUSULA" (PRIMERA, SEGUNDA…
+ * DÉCIMA, DÉCIMA PRIMERA… VIGÉSIMA…), como ya usan plantillas.js y los
+ * documentos que llaman a _hOrdinal() con el ordinal escrito a mano. */
+function _ordinalFemenino(n) {
+  const UNIDADES = ['', 'PRIMERA', 'SEGUNDA', 'TERCERA', 'CUARTA', 'QUINTA',
+    'SEXTA', 'SÉPTIMA', 'OCTAVA', 'NOVENA'];
+  const DECENAS = ['', 'DÉCIMA', 'VIGÉSIMA', 'TRIGÉSIMA'];
+  if (n < 1 || n > 39) return `${n}ª`;
+  if (n <= 9) return UNIDADES[n];
+  const d = Math.floor(n / 10), u = n % 10;
+  return u === 0 ? DECENAS[d] : `${DECENAS[d]} ${UNIDADES[u]}`;
+}
+
 function _h(state, num, titulo) {
   _checkY(state, 18);
   const { doc, ml } = state;
   doc.setFillColor(21,128,61);
   doc.rect(ml, state.y, 2.5, 7, 'F');
   doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
-  doc.text(`CLAUSULA ${num}a — ${titulo.toUpperCase()}`, ml + 5, state.y + 5);
+  doc.text(`CLÁUSULA ${_ordinalFemenino(num)} — ${titulo.toUpperCase()}`, ml + 5, state.y + 5);
   state.y += 11;
 }
 
@@ -559,7 +572,7 @@ function _hOrdinal(state, ordinal, titulo) {
   doc.setFillColor(21,128,61);
   doc.rect(ml, state.y, 2.5, 7, 'F');
   doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
-  doc.text(`CLAUSULA ${ordinal} — ${titulo.toUpperCase()}`, ml + 5, state.y + 5);
+  doc.text(`CLÁUSULA ${ordinal} — ${titulo.toUpperCase()}`, ml + 5, state.y + 5);
   state.y += 11;
 }
 
