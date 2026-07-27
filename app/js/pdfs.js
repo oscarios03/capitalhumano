@@ -694,12 +694,17 @@ function _clausulasComunes(state, data, start) {
   // Confidencialidad: el deber de guardar los secretos técnicos y comerciales
   // ya lo impone el Art. 134 fracc. III LFT. Lo que no puede hacer el contrato
   // es imponer un deber de silencio perpetuo sobre CUALQUIER información: sólo
-  // el secreto industrial —el que reúne los requisitos de la LFPPI— justifica
-  // protección indefinida; el resto se acota temporalmente. Una obligación
-  // perpetua y omnicomprensiva es, en los hechos, inejecutable, y arrastra
-  // consigo la validez de la parte que sí lo era.
+  // el secreto industrial —el que reúne los requisitos del art. 163 fr. I
+  // LFPPI— justifica protección indefinida; el resto se acota temporalmente.
+  // Una obligación perpetua y omnicomprensiva es, en los hechos, inejecutable,
+  // y arrastra consigo la validez de la parte que sí lo era.
+  //
+  // La cláusula cita el art. 166 LFPPI de forma deliberada: ese artículo sólo
+  // obliga a abstenerse de divulgar el secreto a quien "se le haya prevenido
+  // sobre su confidencialidad". Firmar esta cláusula ES la prevención, y sin
+  // ella el deber legal no llega a nacer.
   _h(state, n++, 'Confidencialidad y Secretos Industriales');
-  _p(state, `EL TRABAJADOR guardara los secretos tecnicos, comerciales y de fabricacion de los que tenga conocimiento con motivo de su trabajo, en terminos del articulo 134 fraccion III de la Ley Federal del Trabajo. Tratandose de secretos industriales que reunan los requisitos de la Ley Federal de Proteccion a la Propiedad Industrial, esta obligacion subsiste mientras la informacion conserve ese caracter. Respecto de la demas informacion reservada de la empresa (datos, procesos, listados de clientes, estrategias comerciales y software), la obligacion de confidencialidad subsistira durante la relacion de trabajo y por los DOS ANOS siguientes a su terminacion.`);
+  _p(state, `EL TRABAJADOR guardara los secretos tecnicos, comerciales y de fabricacion de los que tenga conocimiento con motivo de su trabajo, en terminos del articulo 134 fraccion III de la Ley Federal del Trabajo. Por virtud de esta clausula queda prevenido de la confidencialidad de dicha informacion para los efectos del articulo 166 de la Ley Federal de Proteccion a la Propiedad Industrial. Tratandose de secretos industriales que reunan los requisitos del articulo 163 fraccion I de esa misma Ley, la obligacion subsiste mientras la informacion conserve ese caracter. Respecto de la demas informacion reservada de la empresa (datos, procesos, listados de clientes, estrategias comerciales y software), la obligacion de confidencialidad subsistira durante la relacion de trabajo y por los DOS ANOS siguientes a su terminacion.`);
   _p(state, `Esta obligacion no comprende la informacion que sea o llegue a ser de dominio publico sin intervencion de EL TRABAJADOR, la que este ya poseia licitamente antes de la relacion, ni la que deba revelar por mandato de autoridad competente. Tampoco restringe el ejercicio de los derechos laborales de EL TRABAJADOR ni la denuncia de hechos posiblemente ilicitos ante la autoridad.`);
   _p(state, `La revelacion indebida de dicha informacion puede generar responsabilidad civil, penal y administrativa en terminos de la legislacion aplicable, incluida la Ley Federal de Proteccion a la Propiedad Industrial.`);
 

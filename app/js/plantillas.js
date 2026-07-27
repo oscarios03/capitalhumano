@@ -127,9 +127,11 @@ y demás descuentos autorizados por escrito por EL TRABAJADOR.
 DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES. EL TRABAJADOR guardará
 los secretos técnicos, comerciales y de fabricación de los que tenga conocimiento
 con motivo de su trabajo, en términos del artículo 134 fracción III de la Ley
-Federal del Trabajo. Tratándose de secretos industriales que reúnan los requisitos
-de la Ley Federal de Protección a la Propiedad Industrial, esta obligación subsiste
-mientras la información conserve ese carácter. Respecto de la demás información
+Federal del Trabajo. Por virtud de esta cláusula queda prevenido de la
+confidencialidad de dicha información para los efectos del artículo 166 de la Ley
+Federal de Protección a la Propiedad Industrial. Tratándose de secretos industriales
+que reúnan los requisitos del artículo 163 fracción I de esa misma Ley, esta
+obligación subsiste mientras la información conserve ese carácter. Respecto de la demás información
 reservada de la empresa (datos, procesos, metodologías, listados de clientes,
 estrategias comerciales y software), la obligación subsistirá durante la relación
 de trabajo y por los DOS AÑOS siguientes a su terminación.
