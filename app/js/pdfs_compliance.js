@@ -552,3 +552,232 @@ function generateConsentimientoMonitoreo(empresa, trab, datos = {}, sucursal = n
 
   return _salidaDoc(state, u, _nombreArchivo('consentimiento-monitoreo', trab), opts);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  3.3 — PROTOCOLO DE VIOLENCIA LABORAL Y HOSTIGAMIENTO
+//
+//  Art. 132 fr. XXXI LFT, texto vigente: "Implementar, en acuerdo con los
+//  trabajadores, un protocolo para prevenir la discriminación por razones de
+//  género y atención de casos de violencia y acoso u hostigamiento sexual,
+//  así como erradicar el trabajo forzoso e infantil".
+//
+//  Dos cosas que el prompt de remediación traía mal y aquí se corrigen:
+//
+//   1. El protocolo se implementa EN ACUERDO CON LOS TRABAJADORES. No es un
+//      documento que el patrón redacte solo, igual que el reglamento interior.
+//   2. La rescisión por acoso NO es el art. 47 fr. XI Bis —esa fracción no
+//      existe—. Los actos inmorales y el hostigamiento o acoso sexual son la
+//      fracción VIII del art. 47. Verificado en el texto oficial.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Protocolo para prevenir la discriminación y atender la violencia laboral.
+ *
+ * Exige representantes de las personas trabajadoras porque el art. 132
+ * fr. XXXI condiciona el protocolo a que se implemente "en acuerdo con los
+ * trabajadores": uno redactado unilateralmente no cumple la obligación, por
+ * bien escrito que esté.
+ */
+function generateProtocoloViolenciaLaboral(empresa, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+
+  const repsT = (d.representantes_trabajadores || []).filter(Boolean);
+  if (!repsT.length) {
+    throw new Error(
+      'El art. 132 fr. XXXI de la LFT obliga a implementar el protocolo "en acuerdo con los ' +
+      'trabajadores". Captura al menos un representante de las personas trabajadoras: un protocolo ' +
+      'redactado unilateralmente por el patrón no cumple la obligación.'
+    );
+  }
+  if (!d.responsable_recepcion) {
+    throw new Error(
+      'Indica quién recibe las denuncias y por qué medio. Un protocolo sin una vía de denuncia ' +
+      'identificable no atiende nada: es el punto que primero revisa la inspección y el primero ' +
+      'que se cuestiona en juicio.'
+    );
+  }
+
+  const fecha = d.fecha || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Protocolo para Prevenir la Discriminacion y Atender la Violencia Laboral',
+    'Articulo 132 fraccion XXXI de la Ley Federal del Trabajo',
+    u, 'PROTVL'
+  );
+
+  _p(state, `Protocolo de ${np(u.nombre)}, implementado en acuerdo con las personas trabajadoras el ${formatDateLong(fecha)}, para prevenir la discriminacion por razones de genero, atender los casos de violencia y acoso u hostigamiento sexual, y erradicar el trabajo forzoso e infantil.`);
+
+  _recuadro(state,
+    'El articulo 3o. de la Ley Federal del Trabajo declara de interes social garantizar un ambiente laboral libre de discriminacion y de violencia. Este protocolo aplica a todas las personas que laboran en el centro de trabajo, cualquiera que sea su jerarquia, y a quienes acuden a el por razones de trabajo.',
+    'info');
+
+  _hSeccion(state, '1. DEFINICIONES (ARTICULO 3o. BIS LFT)');
+  _p(state, `Hostigamiento: el ejercicio del poder en una relacion de subordinacion real de la victima frente al agresor en el ambito laboral, que se expresa en conductas verbales, fisicas o ambas.`);
+  _p(state, `Acoso sexual: una forma de violencia en la que, si bien no existe la subordinacion, hay un ejercicio abusivo del poder que conlleva a un estado de indefension y de riesgo para la victima, independientemente de que se realice en uno o varios eventos.`);
+  _p(state, `Discriminacion: cualquier distincion, exclusion o preferencia por origen etnico o nacional, genero, edad, discapacidad, condicion social, condiciones de salud, religion, condicion migratoria, opiniones, preferencias sexuales, estado civil o cualquier otra que atente contra la dignidad humana (articulo 3o. de la Ley). No se consideran discriminatorias las distinciones que se sustenten en las calificaciones particulares que exija una labor determinada.`);
+
+  _hSeccion(state, '2. PROHIBICIONES A CARGO DE LA EMPRESA');
+  _p(state, `Queda prohibido a la empresa y a sus representantes realizar actos de hostigamiento o acoso sexual contra cualquier persona en el lugar de trabajo, asi como PERMITIR O TOLERAR esos actos en el centro de trabajo (articulo 133 fracciones XII y XIII de la Ley Federal del Trabajo). La tolerancia es por si misma una infraccion: no basta con no ser el agresor.`);
+  _p(state, `Queda igualmente prohibido exigir certificados medicos de no embarazo para el ingreso, permanencia o ascenso, y despedir o coaccionar a una trabajadora para que renuncie por estar embarazada, por cambio de estado civil o por tener el cuidado de hijos menores (articulo 133 fracciones XIV y XV).`);
+
+  _hSeccion(state, '3. COMO SE DENUNCIA');
+  _p(state, `Las denuncias se presentan ante ${np(d.responsable_recepcion)}${d.medio_denuncia ? `, por ${np(d.medio_denuncia)}` : ''}. Pueden presentarlas la persona afectada o cualquiera que tenga conocimiento de los hechos. Se admiten denuncias verbales, que se asentaran por escrito y se leeran a quien las formula antes de firmarlas.`);
+  _p(state, `Si la persona senalada como agresora es precisamente quien recibe las denuncias, o su superior jerarquico, la denuncia se presenta ante ${np(d.responsable_alterno || 'la persona que ocupe la representacion legal de la empresa o, en su defecto, ante la Procuraduria de la Defensa del Trabajo')}. Una via de denuncia que pasa por el denunciado no es una via de denuncia.`);
+  _p(state, `La denuncia debe contener, en la medida de lo posible: nombre de quien denuncia y datos para contactarle, descripcion de los hechos con fecha, hora y lugar, nombre de la persona senalada y de quienes presenciaron los hechos, y las pruebas de que se disponga. La falta de alguno de estos datos no impide iniciar la investigacion.`);
+
+  _hSeccion(state, '4. MEDIDAS DE PROTECCION INMEDIATAS');
+  _p(state, `Recibida la denuncia, la empresa adoptara de inmediato las medidas necesarias para evitar el contacto entre las personas involucradas y prevenir represalias: cambio temporal de area, horario o linea de reporte de la PERSONA SENALADA —no de quien denuncia—, suspension del ejercicio de facultades disciplinarias sobre la persona denunciante, y cualquier otra proporcional al caso.`);
+  _p(state, `Las medidas de proteccion son cautelares y no prejuzgan sobre la responsabilidad. Trasladar o cambiar de turno a quien denuncia, en lugar de a quien fue senalado, constituye una represalia.`, { bold: true });
+
+  _hSeccion(state, '5. INVESTIGACION Y DEBIDO PROCESO');
+  _p(state, `La investigacion se conduce por ${np(d.responsable_investigacion || d.responsable_recepcion)} y observa las garantias siguientes:`);
+  _p(state, `a) Se hace saber a la persona senalada, por escrito, los hechos que se le atribuyen y la fecha en que habrian ocurrido. b) Se le concede audiencia para que manifieste lo que a su derecho convenga y ofrezca pruebas. c) Se recaban las declaraciones de quienes presenciaron los hechos y las demas pruebas conducentes. d) Todas las actuaciones se asientan en acta circunstanciada. e) La investigacion concluye en un plazo de ${np(d.plazo_investigacion || 'quince dias habiles')}, prorrogable por una sola vez cuando la complejidad del caso lo justifique.`, { indent: 6 });
+  _p(state, `Sin audiencia de la persona senalada no hay investigacion valida: una sancion impuesta sin oirla se cae, y con ella se cae la defensa de la empresa frente a la persona denunciante.`);
+
+  _hSeccion(state, '6. CONFIDENCIALIDAD Y PROHIBICION DE REPRESALIAS');
+  _p(state, `La identidad de quien denuncia, de quien es senalado y de quienes declaran, asi como el contenido del expediente, son confidenciales. Solo acceden a el quienes intervienen en la investigacion y las autoridades que legalmente lo requieran. Los datos de la investigacion son datos personales y se tratan conforme al Aviso de Privacidad de la empresa.`);
+  _p(state, `Queda prohibida toda represalia contra quien denuncia, declara o participa en la investigacion. Las represalias se sancionan conforme a este protocolo, con independencia de que la denuncia original resulte o no fundada.`);
+
+  _hSeccion(state, '7. RESOLUCION Y CONSECUENCIAS');
+  _p(state, `Concluida la investigacion se emite una resolucion escrita, fundada y motivada, que se notifica a ambas partes. Segun la gravedad, puede dar lugar a medidas de restauracion del ambiente laboral, capacitacion, amonestacion, suspension —que no puede exceder de ocho dias (articulo 423 fraccion X de la Ley)— o rescision de la relacion de trabajo.`);
+  _p(state, `La rescision sin responsabilidad para el patron procede por los actos inmorales o el hostigamiento y/o acoso sexual del trabajador, previstos en el ARTICULO 47 FRACCION VIII de la Ley Federal del Trabajo, y se ejerce con el aviso que ese mismo articulo exige. La accion prescribe en un mes contado desde el dia siguiente a aquel en que la empresa tuvo conocimiento de la causa (articulo 517 fraccion I).`, { bold: true });
+  _p(state, `Cuando la persona agresora sea el patron, sus familiares o cualquiera de sus representantes, la persona trabajadora puede rescindir la relacion sin responsabilidad para ella, conforme al articulo 51 fracciones II y III de la Ley, separandose dentro de los treinta dias siguientes (articulo 52), con derecho a la indemnizacion del articulo 50.`);
+  _p(state, `Este protocolo no sustituye ni limita el derecho de la persona afectada a denunciar los hechos ante el Ministerio Publico o cualquier otra autoridad. La empresa no puede condicionar la atencion interna a que la persona se abstenga de acudir a ellas.`);
+
+  _hSeccion(state, '8. TRABAJO FORZOSO E INFANTIL');
+  _p(state, `La empresa no admite ninguna forma de trabajo forzoso ni de trabajo infantil. Verifica la edad de toda persona antes de contratarla, no emplea a menores de quince anos, y respecto de las personas mayores de quince y menores de dieciocho observa las restricciones de los articulos 175 y 176 de la Ley Federal del Trabajo en labores insalubres o peligrosas. Cualquier indicio de estas practicas, en la empresa o en su cadena de proveedores, debe denunciarse por la via prevista en este protocolo.`);
+
+  _hSeccion(state, '9. DIFUSION Y VIGENCIA');
+  _p(state, `Este protocolo se entrega a cada persona trabajadora recabando su acuse, se fija en los lugares de mayor afluencia del centro de trabajo y se revisa al menos cada ${np(d.periodicidad_revision || 'dos anos')} o cuando cambien las circunstancias que lo motivaron.`);
+
+  _gap(state, 6);
+  _hSeccion(state, 'IMPLEMENTADO EN ACUERDO CON LAS PERSONAS TRABAJADORAS');
+  _pdfcFirmasMixtas(state,
+    (d.representantes_patron || []).filter(Boolean).length
+      ? d.representantes_patron.filter(Boolean)
+      : [u.representante || ''],
+    repsT);
+
+  return _salidaDoc(state, u, 'protocolo-violencia-laboral.pdf', opts);
+}
+
+/**
+ * Acta de investigación de hostigamiento o acoso.
+ *
+ * Se niega a emitirse sin la manifestación de la persona señalada. No es una
+ * formalidad: una sanción impuesta sin haberla oído se anula, y al anularse
+ * deja a la empresa sin haber atendido la denuncia — expuesta por partida
+ * doble, frente a quien denunció y frente a quien fue sancionado.
+ */
+function generateActaInvestigacionAcoso(empresa, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+
+  if (!d.hechos_denunciados) {
+    throw new Error(
+      'Falta la descripción de los hechos denunciados, con fecha y lugar. Un acta que no precisa ' +
+      'qué se investiga no permite a la persona señalada defenderse ni a la empresa acreditar que ' +
+      'atendió la denuncia.'
+    );
+  }
+  if (!d.manifestacion_senalado) {
+    throw new Error(
+      'Falta la manifestación de la persona señalada. El derecho de audiencia es el requisito que ' +
+      'sostiene toda la investigación: sin él, la sanción que derive de ella se anula y la empresa ' +
+      'queda como si no hubiera atendido la denuncia.'
+    );
+  }
+
+  const fecha = d.fecha || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Acta de Investigacion de Violencia Laboral',
+    'Protocolo del articulo 132 fraccion XXXI de la Ley Federal del Trabajo',
+    u, 'ACTINV'
+  );
+
+  _p(state, `En ${np(d.lugar || u.domicilio || u.ciudad)}, siendo las ${np(d.hora_inicio || '____')} horas del ${formatDateLong(fecha)}, se hace constar el desarrollo de la investigacion iniciada con motivo de la denuncia recibida el ${d.fecha_denuncia ? formatDateLong(d.fecha_denuncia) : '____________'}, ante ${np(d.responsable_investigacion || u.representante || '____________')}.`);
+
+  _recuadro(state,
+    'Las actuaciones de esta acta son confidenciales. Su divulgacion fuera de las personas que intervienen en la investigacion y de las autoridades que legalmente la requieran constituye una falta en si misma, y puede exponer a la empresa frente a ambas partes.',
+    'warn');
+
+  _hSeccion(state, 'I. PERSONAS QUE INTERVIENEN');
+  _table(state, [['Calidad', 'Nombre', 'Puesto']], [
+    ['Persona denunciante', np(d.denunciante_nombre || '(se reserva)'), np(d.denunciante_puesto || '')],
+    ['Persona senalada',    np(d.senalado_nombre || ''),                np(d.senalado_puesto || '')],
+    ['Conduce la investigacion', np(d.responsable_investigacion || u.representante || ''), np(d.responsable_puesto || '')],
+  ]);
+
+  _hSeccion(state, 'II. HECHOS DENUNCIADOS');
+  _p(state, np(d.hechos_denunciados));
+
+  _hSeccion(state, 'III. MEDIDAS DE PROTECCION ADOPTADAS');
+  _p(state, np(d.medidas_proteccion || 'No se adoptaron medidas de proteccion. Se hace constar la razon: ______________________________.'));
+
+  _hSeccion(state, 'IV. AUDIENCIA DE LA PERSONA SENALADA');
+  _p(state, `Se hizo saber a la persona senalada, en forma clara, los hechos que se le atribuyen y la fecha en que habrian ocurrido, y se le concedio el uso de la palabra para manifestar lo que a su derecho conviniera y ofrecer pruebas. Manifesto lo siguiente:`);
+  _p(state, `"${np(d.manifestacion_senalado)}"`, { indent: 6 });
+  if (d.pruebas_senalado) {
+    _p(state, `Pruebas ofrecidas por la persona senalada: ${np(d.pruebas_senalado)}.`);
+  }
+
+  if (d.declaraciones) {
+    _hSeccion(state, 'V. OTRAS DECLARACIONES Y PRUEBAS');
+    _p(state, np(d.declaraciones));
+  }
+
+  _hSeccion(state, d.declaraciones ? 'VI. CIERRE' : 'V. CIERRE');
+  _p(state, `${d.hora_cierre ? `Siendo las ${np(d.hora_cierre)} horas del dia de su fecha se cierra la presente acta. ` : ''}Se hace constar que la investigacion continua abierta hasta la emision de la resolucion escrita, que se notificara a ambas partes. Ninguna manifestacion contenida en esta acta prejuzga sobre la responsabilidad de persona alguna.`);
+  _p(state, `Se apercibe a todos los intervinientes de la prohibicion de ejercer represalias contra quien denuncio, declaro o participo en la investigacion, con independencia del resultado de esta.`);
+
+  _gap(state, 8);
+  const { ml, tw } = state;
+  const colW = tw / 2 - 8;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'PERSONA SENALADA', d.senalado_nombre, d.senalado_ine, null, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'CONDUCE LA INVESTIGACION',
+    d.responsable_investigacion || u.representante, d.responsable_ine, null, ml + colW + 16, colW);
+  state.y = Math.max(y1, y2) + 10;
+
+  if (d.testigo1_nombre || d.testigo2_nombre) _bloqueTestigos(state, d);
+
+  return _salidaDoc(state, u, 'acta-investigacion-violencia-laboral.pdf', opts);
+}
+
+/** Constancia de difusión y entrega del protocolo a una persona trabajadora. */
+function generateConstanciaDifusionProtocolo(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+  const fecha = d.fecha_entrega || new Date().toISOString().split('T')[0];
+
+  const state = _initDocLegal(
+    'Constancia de Difusion del Protocolo de Violencia Laboral',
+    'Articulo 132 fraccion XXXI de la Ley Federal del Trabajo',
+    u, 'ACPROT'
+  );
+  _ciudadFecha(state, np(u.ciudad || ''), fecha);
+
+  _p(state, `Yo, ${np(trab.nombre)}${trab.puesto ? `, con el puesto de ${np(trab.puesto)}` : ''}, hago constar que en esta fecha:`);
+  _p(state, `PRIMERO. Recibi un ejemplar del Protocolo para prevenir la discriminacion y atender los casos de violencia y acoso u hostigamiento sexual de ${np(u.nombre)}, y se me explico su contenido.`);
+  _p(state, `SEGUNDO. Se me informo la via para presentar denuncias: ${np(d.responsable_recepcion || '____________________________')}, y la via alterna aplicable cuando la persona senalada sea quien recibe las denuncias o su superior.`);
+  _p(state, `TERCERO. Se me informo que la denuncia es confidencial, que estan prohibidas las represalias contra quien denuncia o declara, y que puedo acudir en todo momento ante las autoridades que correspondan sin que la empresa pueda condicionar por ello la atencion interna.`);
+  _p(state, `CUARTO. Se me informo que la empresa no admite ninguna forma de trabajo forzoso ni de trabajo infantil.`);
+
+  _recuadro(state,
+    'Esta constancia acredita la difusion del protocolo. No implica que quien la firma acepte hecho alguno ni renuncie a derecho alguno, y no puede usarse en su contra.',
+    'info');
+
+  _gap(state, 10);
+  const { ml, tw } = state;
+  const colW = tw / 2 - 8;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'RECIBE — LA PERSONA TRABAJADORA', trab.nombre,
+    trab.num_identificacion, trab.domicilio, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'ENTREGA — POR LA EMPRESA',
+    d.entrega_nombre || u.representante, d.entrega_ine, u.domicilio, ml + colW + 16, colW);
+  state.y = Math.max(y1, y2) + 8;
+
+  return _salidaDoc(state, u, _nombreArchivo('acuse-protocolo-violencia', trab), opts);
+}

@@ -33,6 +33,9 @@ const DOCS_CUMPLIMIENTO = [
   { clave:'consentimiento_monitoreo', label:'Consentimiento de monitoreo', fundamento:'Arts. 3 fr. IV y 7 LFPDPPP',
     porQue:'Correo, GPS, videovigilancia y uso de imagen.',
     accion:'generarConsentimientoMonitoreoUI' },
+  { clave:'protocolo_violencia', label:'Protocolo de violencia laboral', fundamento:'Art. 132 fr. XXXI LFT',
+    porQue:'Prerrequisito para rescindir por acoso (art. 47 fr. VIII).',
+    accion:'generarAcuseProtocolo' },
 ];
 
 /**
@@ -438,4 +441,250 @@ function generarEntregaRIT(trabajadorId) {
     (trab, sucursal, hoy) => generateConstanciaEntregaRIT(
       CTX.empresa, trab, { fecha_entrega: hoy, version }, sucursal),
     { version });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  PROTOCOLO DE VIOLENCIA LABORAL (art. 132 fr. XXXI LFT)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showModalProtocoloViolencia() {
+  const e = CTX.empresa || {};
+  const hoy = new Date().toISOString().split('T')[0];
+
+  showModal(`
+    <div class="modal animate-in" style="max-width:700px;display:flex;flex-direction:column;max-height:92vh;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Protocolo de violencia laboral</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">Artículo 132 fracción XXXI de la Ley Federal del Trabajo</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;overflow-y:auto;">
+        <div class="alert alert-info" style="margin-bottom:16px;">
+          <svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
+          <span style="font-size:.82rem;">La ley obliga a implementar el protocolo <strong>en acuerdo con los trabajadores</strong>.
+          Uno redactado sólo por el patrón no cumple la obligación, por bien escrito que esté.</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="prot-fecha">Fecha del acuerdo</label>
+            <input id="prot-fecha" type="date" class="form-input" value="${hoy}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="prot-revision">Periodicidad de revisión</label>
+            <input id="prot-revision" type="text" class="form-input" placeholder="dos años" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="prot-recepcion">Quién recibe las denuncias</label>
+            <input id="prot-recepcion" type="text" class="form-input" placeholder="Ej. la Dirección de Capital Humano" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="prot-medio">Medio para denunciar</label>
+            <input id="prot-medio" type="text" class="form-input" placeholder="Ej. correo a denuncias@empresa.com, o de forma verbal" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="prot-alterno">Vía alterna si la persona señalada es quien recibe las denuncias</label>
+            <input id="prot-alterno" type="text" class="form-input" placeholder="Déjalo vacío para usar el texto base" />
+            <div class="helper-text">Una vía de denuncia que pasa por el denunciado no es una vía de denuncia.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="prot-investiga">Quién conduce la investigación</label>
+            <input id="prot-investiga" type="text" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="prot-plazo">Plazo de investigación</label>
+            <input id="prot-plazo" type="text" class="form-input" placeholder="quince días hábiles" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="prot-reps-patron">Representantes del patrón</label>
+            <textarea id="prot-reps-patron" class="form-input" rows="3" placeholder="Un nombre por línea">${escapeHtml(e.representante) || ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="prot-reps-trab">Representantes de las personas trabajadoras</label>
+            <textarea id="prot-reps-trab" class="form-input" rows="3" placeholder="Un nombre por línea"></textarea>
+          </div>
+        </div>
+        <div id="prot-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="prot-btn" onclick="handleGenerarProtocolo()">Generar protocolo</button>
+      </div>
+    </div>
+  `);
+}
+
+function handleGenerarProtocolo() {
+  const btn = eid('prot-btn');
+  const box = eid('prot-msg');
+  if (box) box.style.display = 'none';
+  btnCargando(btn, 'Generando…');
+  try {
+    generateProtocoloViolenciaLaboral(CTX.empresa, {
+      fecha: eid('prot-fecha')?.value,
+      responsable_recepcion:    eid('prot-recepcion')?.value.trim(),
+      medio_denuncia:           eid('prot-medio')?.value.trim(),
+      responsable_alterno:      eid('prot-alterno')?.value.trim(),
+      responsable_investigacion:eid('prot-investiga')?.value.trim(),
+      plazo_investigacion:      eid('prot-plazo')?.value.trim(),
+      periodicidad_revision:    eid('prot-revision')?.value.trim(),
+      representantes_patron:       _lineasANombres(eid('prot-reps-patron')?.value),
+      representantes_trabajadores: _lineasANombres(eid('prot-reps-trab')?.value),
+    });
+    showToast('Protocolo generado. Difúndelo y recaba el acuse de cada persona.', 'success', 7000);
+  } catch (e) {
+    if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }
+    else showToast(e.message, 'error', 7000);
+  } finally {
+    btnRestaurar(btn);
+  }
+}
+
+/**
+ * La vía de denuncia se pregunta aquí y no se guarda en la empresa: puede
+ * cambiar entre centros de trabajo, y una vía equivocada impresa en la
+ * constancia es peor que una línea en blanco que se llena a mano.
+ */
+function generarAcuseProtocolo(trabajadorId) {
+  showModal(`
+    <div class="modal animate-in" style="max-width:480px;">
+      <div class="modal-header">
+        <div class="modal-title">Constancia de difusión del protocolo</div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;">
+        <div class="form-group">
+          <label class="form-label" for="acp-via">Ante quién se presentan las denuncias</label>
+          <input id="acp-via" type="text" class="form-input" placeholder="Ej. la Dirección de Capital Humano" />
+          <div class="helper-text">Se imprime en la constancia. Déjalo vacío para llenarlo a mano.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="_generarAcuseProtocolo('${trabajadorId}')">Generar</button>
+      </div>
+    </div>
+  `);
+}
+
+async function _generarAcuseProtocolo(trabajadorId) {
+  const via = eid('acp-via')?.value.trim() || null;
+  closeModal();
+  await _generarYRegistrarAcuse(trabajadorId, 'protocolo_violencia',
+    (trab, sucursal, hoy) => generateConstanciaDifusionProtocolo(CTX.empresa, trab, {
+      fecha_entrega: hoy,
+      responsable_recepcion: via,
+    }, sucursal));
+}
+
+// ─── Acta de investigación ───────────────────────────────────────────────────
+
+function showModalActaInvestigacion() {
+  const hoy = new Date().toISOString().split('T')[0];
+  showModal(`
+    <div class="modal animate-in" style="max-width:720px;display:flex;flex-direction:column;max-height:92vh;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Acta de investigación de violencia laboral</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">Debido proceso del protocolo del art. 132 fr. XXXI LFT</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;overflow-y:auto;">
+        <div class="alert alert-warn" style="margin-bottom:16px;">
+          <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+          <span style="font-size:.82rem;">Una sanción impuesta sin oír a la persona señalada se anula, y al anularse
+          deja a la empresa como si no hubiera atendido la denuncia. La manifestación es obligatoria.</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="inv-fecha">Fecha de la diligencia</label>
+            <input id="inv-fecha" type="date" class="form-input" value="${hoy}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-fecha-den">Fecha de la denuncia</label>
+            <input id="inv-fecha-den" type="date" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-hora-ini">Hora de inicio</label>
+            <input id="inv-hora-ini" type="time" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-hora-fin">Hora de cierre</label>
+            <input id="inv-hora-fin" type="time" class="form-input" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="inv-lugar">Lugar</label>
+            <input id="inv-lugar" type="text" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-denunciante">Persona denunciante</label>
+            <input id="inv-denunciante" type="text" class="form-input" placeholder="Déjalo vacío para reservar la identidad" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-senalado">Persona señalada</label>
+            <input id="inv-senalado" type="text" class="form-input" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="inv-hechos">Hechos denunciados <span class="req">*</span></label>
+            <textarea id="inv-hechos" class="form-textarea" rows="3"
+              placeholder="Qué ocurrió, con fecha, hora y lugar. Sin esto la persona señalada no puede defenderse."></textarea>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="inv-medidas">Medidas de protección adoptadas</label>
+            <textarea id="inv-medidas" class="form-textarea" rows="2"
+              placeholder="Se cambia de área o turno a la persona SEÑALADA, no a quien denuncia."></textarea>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="inv-manifestacion">Manifestación de la persona señalada <span class="req">*</span></label>
+            <textarea id="inv-manifestacion" class="form-textarea" rows="3"
+              placeholder="Lo que declaró textualmente al concedérsele el uso de la palabra."></textarea>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="inv-declaraciones">Otras declaraciones y pruebas</label>
+            <textarea id="inv-declaraciones" class="form-textarea" rows="2"></textarea>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="inv-responsable">Quién conduce la investigación</label>
+            <input id="inv-responsable" type="text" class="form-input" value="${escapeHtml(CTX.empresa?.representante) || ''}" />
+          </div>
+        </div>
+        <div id="inv-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="inv-btn" onclick="handleGenerarActaInvestigacion()">Generar acta</button>
+      </div>
+    </div>
+  `);
+}
+
+function handleGenerarActaInvestigacion() {
+  const btn = eid('inv-btn');
+  const box = eid('inv-msg');
+  if (box) box.style.display = 'none';
+  btnCargando(btn, 'Generando…');
+  try {
+    generateActaInvestigacionAcoso(CTX.empresa, {
+      fecha:         eid('inv-fecha')?.value,
+      fecha_denuncia:eid('inv-fecha-den')?.value,
+      hora_inicio:   eid('inv-hora-ini')?.value,
+      hora_cierre:   eid('inv-hora-fin')?.value,
+      lugar:         eid('inv-lugar')?.value.trim(),
+      denunciante_nombre: eid('inv-denunciante')?.value.trim(),
+      senalado_nombre:    eid('inv-senalado')?.value.trim(),
+      hechos_denunciados: eid('inv-hechos')?.value.trim(),
+      medidas_proteccion: eid('inv-medidas')?.value.trim(),
+      manifestacion_senalado: eid('inv-manifestacion')?.value.trim(),
+      declaraciones:      eid('inv-declaraciones')?.value.trim(),
+      responsable_investigacion: eid('inv-responsable')?.value.trim(),
+    });
+    showToast('Acta generada. Consérvala en un expediente reservado.', 'success', 6000);
+  } catch (e) {
+    if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }
+    else showToast(e.message, 'error', 7000);
+  } finally {
+    btnRestaurar(btn);
+  }
 }

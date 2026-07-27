@@ -359,6 +359,8 @@ async function renderEmpresa() {
       </div>
     </div>
 
+    ${_cardDocumentosCumplimiento()}
+
     <div class="view-header animate-in" style="margin-bottom:16px;">
       <div>
         <div class="view-title" style="font-size:1.2rem;">Centros de Trabajo</div>
@@ -845,4 +847,47 @@ async function handleGuardarNotificaciones() {
     msg.textContent = 'Configuración de notificaciones guardada.';
     msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) { msg.textContent = friendlyError(e); msg.className = 'error-msg'; msg.style.display = ''; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DOCUMENTOS DE CUMPLIMIENTO A NIVEL EMPRESA
+//
+//  Los que no dependen de una persona en particular: protocolo de violencia
+//  laboral, política de riesgos psicosociales y actas de las comisiones
+//  mixtas. Cada uno se genera desde su propio modal en cumplimiento.js.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DOCS_EMPRESA_CUMPLIMIENTO = [
+  { label:'Protocolo de violencia laboral y hostigamiento',
+    fundamento:'Art. 132 fr. XXXI LFT',
+    porQue:'Obligatorio, y prerrequisito para poder rescindir por acoso (art. 47 fr. VIII).',
+    accion:'showModalProtocoloViolencia()', boton:'Generar' },
+  { label:'Acta de investigación de violencia laboral',
+    fundamento:'Debido proceso del protocolo',
+    porQue:'Sin audiencia de la persona señalada, la sanción se anula.',
+    accion:'showModalActaInvestigacion()', boton:'Levantar acta' },
+];
+
+function _cardDocumentosCumplimiento() {
+  return `
+    <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
+      <div class="card-header"><span class="card-title">Documentos de cumplimiento</span></div>
+      <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;">
+        Lo que revisa una inspección de la STPS y lo que se pide en juicio. Genera cada documento, difúndelo
+        y recaba el acuse de cada persona desde la pestaña Cumplimiento de su perfil.
+      </p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Documento</th><th>Fundamento</th><th></th></tr></thead>
+          <tbody>
+            ${DOCS_EMPRESA_CUMPLIMIENTO.map(d => `<tr>
+              <td><strong>${escapeHtml(d.label)}</strong>
+                  <div style="font-size:.75rem;color:var(--text-muted);">${escapeHtml(d.porQue)}</div></td>
+              <td style="font-size:.8rem;color:var(--text-muted);">${escapeHtml(d.fundamento)}</td>
+              <td><button class="btn-secondary btn-sm" onclick="${d.accion}">${escapeHtml(d.boton)}</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
