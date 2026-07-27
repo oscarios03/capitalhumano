@@ -58,7 +58,7 @@ inferior al salario mínimo general vigente en la zona de que se trate.
 QUINTA. LUGAR Y JORNADA. EL TRABAJADOR prestará sus servicios en [DOMICILIO_SUCURSAL].
 Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de
 trabajo dentro del mismo municipio o zona metropolitana, se lo notificará con al
-menos ocho días naturales de anticipación y cubrirá los gastos de traslado que se
+menos tres días naturales de anticipación y cubrirá los gastos de traslado que se
 originen; el cambio no implicará modificación del salario ni de las demás
 condiciones de trabajo (Art. 25 fracción IV LFT). Cualquier reubicación fuera de
 dicha zona requerirá el consentimiento expreso de EL TRABAJADOR.

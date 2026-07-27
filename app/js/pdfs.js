@@ -455,7 +455,7 @@ function _exigirJornadaCapturada(data) {
  * hechos, una rescisión disfrazada de traslado).
  */
 function _textoLugarTrabajo(domicilioBase) {
-  return `EL TRABAJADOR prestara sus servicios en ${np(domicilioBase)}. Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de trabajo dentro del mismo municipio o zona metropolitana, se lo notificara con al menos ocho dias naturales de anticipacion y cubrira los gastos de traslado que se originen; el cambio no implicara modificacion del salario ni de las demas condiciones de trabajo (Art. 25 fracc. IV LFT). Cualquier reubicacion fuera de dicha zona requerira el consentimiento expreso de EL TRABAJADOR.`;
+  return `EL TRABAJADOR prestara sus servicios en ${np(domicilioBase)}. Si por necesidades del servicio EL PATRON requiere reubicarlo a otro centro de trabajo dentro del mismo municipio o zona metropolitana, se lo notificara con al menos tres dias naturales de anticipacion y cubrira los gastos de traslado que se originen; el cambio no implicara modificacion del salario ni de las demas condiciones de trabajo (Art. 25 fracc. IV LFT). Cualquier reubicacion fuera de dicha zona requerira el consentimiento expreso de EL TRABAJADOR.`;
 }
 
 /**
