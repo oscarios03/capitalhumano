@@ -109,8 +109,12 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
         </div>
         <div class="form-group span-2" id="ac-prescripcion-warn"></div>
         <div class="form-group">
-          <label class="form-label" for="ac-hora">Hora (aprox.)</label>
+          <label class="form-label" for="ac-hora">Hora de inicio (aprox.)</label>
           <input id="ac-hora" type="time" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-hora-cierre">Hora de cierre de la diligencia <span class="req">*</span></label>
+          <input id="ac-hora-cierre" type="time" class="form-input" required aria-required="true" />
         </div>
         <div class="form-group span-2">
           <label class="form-label" for="ac-lugar">Lugar</label>
@@ -136,6 +140,11 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
           <label class="form-label" for="ac-descripcion">Descripción de los hechos <span class="req">*</span></label>
           <textarea id="ac-descripcion" class="form-textarea" placeholder="Describe con precisión los hechos…" required aria-required="true"></textarea>
         </div>
+        <div class="form-group span-2">
+          <label class="form-label" for="ac-manifestacion">Derecho de audiencia — manifestación del trabajador <span class="req">*</span></label>
+          <textarea id="ac-manifestacion" class="form-textarea" placeholder="Se le concede el uso de la voz. Transcribe lo que declara, o anota si se niega a manifestar algo." required aria-required="true"></textarea>
+          <div class="helper-text">El acta debe dejar constancia de que se le dio al trabajador oportunidad de manifestarse, aun si decide no hacerlo.</div>
+        </div>
         <div class="form-group">
           <label class="form-label" for="ac-t1">Testigo 1 — Nombre</label>
           <input id="ac-t1" type="text" class="form-input" placeholder="Nombre del testigo" />
@@ -145,12 +154,28 @@ function showModalActa(trabId, tipoPresel, faltaPresel) {
           <input id="ac-t1p" type="text" class="form-input" placeholder="Ej. Supervisor" />
         </div>
         <div class="form-group">
+          <label class="form-label" for="ac-t1-ine">Testigo 1 — INE</label>
+          <input id="ac-t1-ine" type="text" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-t1-dom">Testigo 1 — Domicilio</label>
+          <input id="ac-t1-dom" type="text" class="form-input" placeholder="Para poder citarlo si el litigio llega años después" />
+        </div>
+        <div class="form-group">
           <label class="form-label" for="ac-t2">Testigo 2 — Nombre</label>
           <input id="ac-t2" type="text" class="form-input" placeholder="Nombre del testigo (opcional)" />
         </div>
         <div class="form-group">
           <label class="form-label" for="ac-t2p">Testigo 2 — Puesto</label>
           <input id="ac-t2p" type="text" class="form-input" placeholder="Ej. Jefe de área" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-t2-ine">Testigo 2 — INE</label>
+          <input id="ac-t2-ine" type="text" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ac-t2-dom">Testigo 2 — Domicilio</label>
+          <input id="ac-t2-dom" type="text" class="form-input" />
         </div>
       </div>
       <div id="ac-error" class="error-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
@@ -254,10 +279,13 @@ async function handleGuardarActa() {
   const fecha   = eid('ac-fecha')?.value;
   const desc    = eid('ac-descripcion')?.value.trim();
   const causal  = eid('ac-causal')?.value.trim();
+  const horaCierre = eid('ac-hora-cierre')?.value;
+  const manifestacion = eid('ac-manifestacion')?.value.trim();
   const tipoFaltaSel = eid('ac-tipo-falta');
 
-  if (!trabId || !tipo || !fecha || !desc || !causal) {
-    err.textContent = 'Completa todos los campos requeridos.'; err.style.display=''; return;
+  if (!trabId || !tipo || !fecha || !desc || !causal || !horaCierre || !manifestacion) {
+    err.textContent = 'Completa todos los campos requeridos, incluyendo la hora de cierre y la manifestación del trabajador (derecho de audiencia).';
+    err.style.display=''; return;
   }
 
   // Bloqueo con confirmación explícita: pasado el mes del art. 517 fr. I la
@@ -286,11 +314,17 @@ async function handleGuardarActa() {
     causal, descripcion: desc,
     lugar:           eid('ac-lugar')?.value.trim() || null,
     hora_falta:      eid('ac-hora')?.value || null,
+    hora_cierre:     horaCierre,
+    manifestacion_trabajador: manifestacion,
     reincidente:     eid('ac-reincidente')?.value === 'si',
-    testigo1:        eid('ac-t1')?.value.trim() || null,
-    testigo1_puesto: eid('ac-t1p')?.value.trim() || null,
-    testigo2:        eid('ac-t2')?.value.trim() || null,
-    testigo2_puesto: eid('ac-t2p')?.value.trim() || null,
+    testigo1:          eid('ac-t1')?.value.trim() || null,
+    testigo1_puesto:   eid('ac-t1p')?.value.trim() || null,
+    testigo1_ine:      eid('ac-t1-ine')?.value.trim() || null,
+    testigo1_domicilio:eid('ac-t1-dom')?.value.trim() || null,
+    testigo2:          eid('ac-t2')?.value.trim() || null,
+    testigo2_puesto:   eid('ac-t2p')?.value.trim() || null,
+    testigo2_ine:      eid('ac-t2-ine')?.value.trim() || null,
+    testigo2_domicilio:eid('ac-t2-dom')?.value.trim() || null,
     aceptacion:      eid('ac-aceptacion')?.value,
   };
 

@@ -2096,6 +2096,18 @@ function generateActaPDF(acta, empresa, trab, sucursal = null, opts = {}) {
   const dl = doc.splitTextToSize(np(acta.descripcion||''), tw);
   doc.text(dl, ml, y); y += dl.length * 5.2 + 8;
 
+  // Derecho de audiencia — sólo se imprime si se capturó (actas anteriores a
+  // esta migración no lo tienen y deben poder regenerarse sin fabricarlo).
+  if (String(acta.manifestacion_trabajador || '').trim()) {
+    if (y + 24 > ph - 20) { doc.addPage(); y = 25; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(50,50,50);
+    doc.text('Se concede el uso de la voz al trabajador, quien manifiesta textualmente:', ml, y);
+    y += 5.5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30,30,30);
+    const ml_ = doc.splitTextToSize(np(acta.manifestacion_trabajador), tw);
+    doc.text(ml_, ml, y); y += ml_.length * 5.2 + 8;
+  }
+
   y = pdfLine(doc, y, ml, mr) + 5;
   let clausula = '';
   if (acta.tipo === 'amonestacion') {
@@ -2116,6 +2128,17 @@ function generateActaPDF(acta, empresa, trab, sucursal = null, opts = {}) {
   doc.setTextColor(acta.aceptacion === 'no_firma' ? 160 : 80, acta.aceptacion === 'no_firma' ? 50 : 80, acta.aceptacion === 'no_firma' ? 50 : 80);
   const al = doc.splitTextToSize(aceptTxt, tw); doc.text(al, ml, y); y += al.length * 5 + 10;
 
+  // Constancia de lectura y cierre — sólo si se capturó la hora de cierre
+  // (obligatoria para actas nuevas; las anteriores a esta migración no la
+  // tienen y deben poder regenerarse sin fabricarla).
+  if (String(acta.hora_cierre || '').trim()) {
+    if (y + 30 > ph - 20) { doc.addPage(); y = 25; }
+    const constancia = `No habiendo mas hechos que hacer constar, se da por concluida la presente diligencia siendo las ${np(acta.hora_cierre)} horas del dia ${npDate(acta.fecha+'T00:00:00')}, leyendose integramente la presente acta a los que en ella intervinieron, quienes manifiestan estar conformes con su contenido y firman al margen y al calce para constancia.`;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+    const cn = doc.splitTextToSize(np(constancia), tw);
+    doc.text(cn, ml, y); y += cn.length * 5 + 10;
+  }
+
   if (y + 80 > ph - 20) { doc.addPage(); y = 25; }
   y = pdfSignatures(doc, `${np(empresa.nombre)}${empresa.representante ? '\n' + np(empresa.representante) : ''}`, `${np(trab.nombre)}\n${np(trab.puesto||'')}`, y, ml, mr);
 
@@ -2129,13 +2152,23 @@ function generateActaPDF(acta, empresa, trab, sucursal = null, opts = {}) {
       doc.line(ml, y, mid-8, y);
       doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
       doc.text(np(acta.testigo1), (ml+mid-8)/2, y+5, { align:'center' });
-      if (acta.testigo1_puesto) { doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text(np(acta.testigo1_puesto), (ml+mid-8)/2, y+10, { align:'center' }); }
+      let yy1 = y + 10;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+      if (acta.testigo1_puesto) { doc.text(np(acta.testigo1_puesto), (ml+mid-8)/2, yy1, { align:'center' }); yy1 += 4; }
+      // INE y domicilio: sin ellos no hay forma de citar al testigo si la
+      // testimonial se desahoga años después de levantada el acta.
+      if (acta.testigo1_ine) { doc.setFontSize(6.8); doc.text(np(`INE: ${acta.testigo1_ine}`), (ml+mid-8)/2, yy1, { align:'center' }); yy1 += 3.6; }
+      if (acta.testigo1_domicilio) { doc.setFontSize(6.8); doc.text(np(`Domicilio: ${acta.testigo1_domicilio}`), (ml+mid-8)/2, yy1, { align:'center', maxWidth: mid-ml-16 }); }
     }
     if (acta.testigo2) {
       doc.line(mid+8, y, pw-mr, y);
       doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(30,30,30);
       doc.text(np(acta.testigo2), (mid+8+pw-mr)/2, y+5, { align:'center' });
-      if (acta.testigo2_puesto) { doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80); doc.text(np(acta.testigo2_puesto), (mid+8+pw-mr)/2, y+10, { align:'center' }); }
+      let yy2 = y + 10;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+      if (acta.testigo2_puesto) { doc.text(np(acta.testigo2_puesto), (mid+8+pw-mr)/2, yy2, { align:'center' }); yy2 += 4; }
+      if (acta.testigo2_ine) { doc.setFontSize(6.8); doc.text(np(`INE: ${acta.testigo2_ine}`), (mid+8+pw-mr)/2, yy2, { align:'center' }); yy2 += 3.6; }
+      if (acta.testigo2_domicilio) { doc.setFontSize(6.8); doc.text(np(`Domicilio: ${acta.testigo2_domicilio}`), (mid+8+pw-mr)/2, yy2, { align:'center', maxWidth: pw-mr-mid-16 }); }
     }
   }
 
