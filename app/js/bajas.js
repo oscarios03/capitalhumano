@@ -358,6 +358,7 @@ async function handleProcesarBaja() {
     smgZone:             trab.smg_zone || 'general',
     diasPendientes,
     tieneAntig,
+    motivo:              tipo, // calcFiniquito: Art. 162 fr. III LFT — 15 años sólo aplica en renuncia
     vacacionesPendientes: vacGozadas ? 0 : (parseInt(eid('baja-vac-pend')?.value) || 0),
     aguinaldoPagado:      eid('baja-ag-pagado')?.checked || false,
   };

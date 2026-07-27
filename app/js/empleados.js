@@ -1560,7 +1560,10 @@ function _cardCostoYSalida(trab) {
       diasPendientes: 0,
     };
     liq = calcLiquidacion(params);
-    fin = calcFiniquito(params);
+    // Este escenario modela la RENUNCIA (ver comentario de la card): calcFiniquito
+    // exige el motivo porque el Art. 162 fr. III LFT sólo pide 15 años de
+    // antigüedad para la prima en la renuncia, no en despido o rescisión.
+    fin = calcFiniquito({ ...params, motivo: 'renuncia' });
   } catch(e) { console.warn('costo/salida:', e.message); return ''; }
 
   const filaEscenario = (titulo, sub, r, color) => `

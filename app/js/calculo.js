@@ -778,7 +778,25 @@ function calcFiniquito(p) {
   const entitlement = vacDaysForYear(completed + 1, prest.vacDiasExtra);
   const sdi    = calcSDI(daily, entitlement, prest.primaVacPct, prest.aguinaldoDias);
   const sdiCap = Math.min(sdi, 2 * smg);
-  const hasAntig = completed >= 15 || p.tieneAntig;
+
+  // Art. 162 fr. III LFT: la antigüedad mínima de 15 años para la prima de
+  // antigüedad SÓLO aplica cuando el trabajador se separa VOLUNTARIAMENTE
+  // (renuncia). En despido o rescisión —justificada o no— la ley la concede
+  // "independientemente de la justificación o injustificación del despido",
+  // sin mínimo de años. calcFiniquito se usa tanto para renuncia como para
+  // rescisión justificada (bajas.js): sin este parámetro, ambas compartían el
+  // mismo mínimo de 15 años, negando la prima en una rescisión justificada
+  // con menos antigüedad salvo que alguien marcara manualmente la casilla
+  // "voluntaria" — un derecho tratado como si fuera opcional cuando la ley lo
+  // hace obligatorio.
+  if (!['renuncia', 'justificada', 'injustificada'].includes(p.motivo)) {
+    throw new Error(
+      'calcFiniquito requiere indicar el motivo de la baja (renuncia, justificada o ' +
+      'injustificada): el Art. 162 fr. III LFT exige 15 años de antigüedad para la prima ' +
+      'SÓLO en la renuncia; en despido o rescisión procede sin importar los años de servicio.'
+    );
+  }
+  const hasAntig = p.motivo === 'renuncia' ? (completed >= 15 || p.tieneAntig) : true;
 
   // Periodo de devengo de cada concepto (ver nota en calcLiquidacion).
   const aniversario = new Date(p.startDate);
