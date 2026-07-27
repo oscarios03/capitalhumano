@@ -301,6 +301,9 @@ async function generateContrato(trabajadorId, tipoContrato) {
     ]);
     const { data: empresa } = await _sb.from('empresas').select('*').eq('id', perfil.empresa_id).single();
     const data = _buildContratoData(trab, empresa, trab.sucursales);
+    data.empresaId = empresa.id;
+    data.trabajadorId = trab.id;
+    data.generadoPor = user.id;
     const generators = {
       indeterminado: generateContratoIndeterminado,
       indefinido:    generateContratoIndeterminado,
@@ -309,7 +312,7 @@ async function generateContrato(trabajadorId, tipoContrato) {
       temporada:     generateContratoTemporada,
       comision:      generateContratoComision,
     };
-    (generators[tipoContrato] || generateContratoIndeterminado)(data);
+    await (generators[tipoContrato] || generateContratoIndeterminado)(data);
   } catch(err) {
     console.error('generateContrato:', err);
     alert('Error al generar contrato: ' + (err.message || err));
@@ -524,8 +527,11 @@ function _cHeader(state, titulo, subtitulo, data) {
  * sustituida después de firmado el documento. La última página no la repite
  * porque ahí ya va el bloque de firma completo.
  * `notaExtra` es para una nota puntual que no cabe en razonSocial (p. ej.
- * "Generado con IA" en los documentos del agente). */
-function _footerFolio(doc, ml, mr, folio, razonSocial, notaExtra) {
+ * "Generado con IA" en los documentos del agente). `hash8` son los primeros
+ * 8 caracteres del SHA-256 del documento (ver _hashDocumento) — quien lo
+ * imprime debe haberlo calculado ANTES de llamar a esta función, sobre el
+ * documento sin este pie, porque un hash no puede incluirse a sí mismo. */
+function _footerFolio(doc, ml, mr, folio, razonSocial, notaExtra, hash8) {
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
@@ -543,12 +549,61 @@ function _footerFolio(doc, ml, mr, folio, razonSocial, notaExtra) {
     doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
     doc.line(ml, ph - 11, pw - mr, ph - 11);
     doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`Folio ${folio}  |  Página ${i} de ${total}  |  ${razonSocial || ''}${notaExtra ? '  |  ' + notaExtra : ''}`, pw/2, ph - 7, { align:'center' });
+    doc.text(`Folio ${folio}${hash8 ? '  |  Hash ' + hash8 : ''}  |  Página ${i} de ${total}  |  ${razonSocial || ''}${notaExtra ? '  |  ' + notaExtra : ''}`, pw/2, ph - 7, { align:'center' });
   }
 }
 
 function _addFooters(state, data) {
   _footerFolio(state.doc, state.ml, state.mr, state.folio, data.razonSocial);
+}
+
+/** SHA-256 del PDF ya renderizado, en hexadecimal. No es un sello de tiempo
+ * NOM-151-SCFI-2016 (eso exige que lo emita un Prestador de Servicios de
+ * Certificación acreditado, no la propia aplicación) — ver el comentario de
+ * la migración 47. Sirve para detectar si el documento cambió después de
+ * generado y para armar la trazabilidad de documentos_generados. */
+async function _hashDocumento(doc) {
+  const bytes = doc.output('arraybuffer');
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Inserta el registro de trazabilidad (migración 47). Nunca debe tronar la
+ * descarga del documento: si falla el registro, se reporta en consola y se
+ * continúa — el documento ya existe y el usuario lo necesita igual. */
+async function _registrarDocumentoGenerado({ empresaId, trabajadorId, tipoDocumento, folio, hash, generadoPor, parametros }) {
+  try {
+    const { error } = await window.supabase.from('documentos_generados').insert({
+      empresa_id: empresaId,
+      trabajador_id: trabajadorId || null,
+      tipo_documento: tipoDocumento,
+      folio,
+      hash_sha256: hash,
+      generado_por: generadoPor || null,
+      parametros: parametros ? JSON.parse(JSON.stringify(parametros)) : null,
+    });
+    if (error) console.error('_registrarDocumentoGenerado:', error);
+  } catch (e) {
+    console.error('_registrarDocumentoGenerado:', e);
+  }
+}
+
+/** Cierra un contrato: calcula el hash del documento tal cual quedó
+ * renderizado (todavía sin pie), estampa el pie con folio + hash + rúbrica,
+ * registra la trazabilidad y dispara la descarga. */
+async function _cerrarContrato(state, data, tipoDocumento, nombreArchivo) {
+  const hash = await _hashDocumento(state.doc);
+  _footerFolio(state.doc, state.ml, state.mr, state.folio, data.razonSocial, undefined, hash.slice(0, 8));
+  await _registrarDocumentoGenerado({
+    empresaId: data.empresaId,
+    trabajadorId: data.trabajadorId,
+    tipoDocumento,
+    folio: state.folio,
+    hash,
+    generadoPor: data.generadoPor,
+    parametros: data,
+  });
+  state.doc.save(nombreArchivo);
 }
 
 function _newPage(state) {
@@ -807,7 +862,7 @@ function _firmas(state, data) {
 }
 
 // ── Generador 1: Tiempo Indeterminado ────────────────────────────────────────
-function generateContratoIndeterminado(data) {
+async function generateContratoIndeterminado(data) {
   const state = _initContratoDoc(
     'CONTRATO INDIVIDUAL DE TRABAJO POR TIEMPO INDETERMINADO',
     'Artículo 35 — Ley Federal del Trabajo 2026', data);
@@ -834,12 +889,11 @@ function generateContratoIndeterminado(data) {
 
   _clausulasComunes(state, data, 7);
   _firmas(state, data);
-  _addFooters(state, data);
-  state.doc.save(`contrato-indeterminado-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  await _cerrarContrato(state, data, 'contrato_indeterminado', `contrato-indeterminado-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 // ── Generador 2: Tiempo Determinado ─────────────────────────────────────────
-function generateContratoDeterminado(data) {
+async function generateContratoDeterminado(data) {
   const state = _initContratoDoc(
     'CONTRATO INDIVIDUAL DE TRABAJO POR TIEMPO DETERMINADO',
     'Artículo 37 — Ley Federal del Trabajo 2026', data);
@@ -868,12 +922,11 @@ function generateContratoDeterminado(data) {
 
   _clausulasComunes(state, data, 6);
   _firmas(state, data);
-  _addFooters(state, data);
-  state.doc.save(`contrato-determinado-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  await _cerrarContrato(state, data, 'contrato_determinado', `contrato-determinado-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 // ── Generador 3: Por Obra ────────────────────────────────────────────────────
-function generateContratoObra(data) {
+async function generateContratoObra(data) {
   const state = _initContratoDoc(
     'CONTRATO INDIVIDUAL DE TRABAJO POR OBRA O SERVICIO DETERMINADO',
     'Artículo 36 — Ley Federal del Trabajo 2026', data);
@@ -899,8 +952,7 @@ function generateContratoObra(data) {
 
   _clausulasComunes(state, data, 7);
   _firmas(state, data);
-  _addFooters(state, data);
-  state.doc.save(`contrato-obra-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  await _cerrarContrato(state, data, 'contrato_obra', `contrato-obra-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 // ── Generador 4: Por Temporada ───────────────────────────────────────────────
@@ -914,7 +966,7 @@ function generateContratoObra(data) {
 // la inasistencia prolongada se rige por las reglas ordinarias de rescisión
 // (Art. 47 fracc. X LFT — más de tres faltas en 30 días —, con su propio aviso
 // y sujeta al plazo de prescripción del Art. 517 fracc. I LFT).
-function generateContratoTemporada(data) {
+async function generateContratoTemporada(data) {
   const state = _initContratoDoc(
     'CONTRATO INDIVIDUAL DE TRABAJO POR TEMPORADA',
     'Artículos 35, 42 fracción VIII y 43 fracción V — Ley Federal del Trabajo 2026', data);
@@ -948,12 +1000,11 @@ function generateContratoTemporada(data) {
 
   _clausulasComunes(state, data, 7);
   _firmas(state, data);
-  _addFooters(state, data);
-  state.doc.save(`contrato-temporada-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  await _cerrarContrato(state, data, 'contrato_temporada', `contrato-temporada-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 // ── Generador 5: Por Comisión ────────────────────────────────────────────────
-function generateContratoComision(data) {
+async function generateContratoComision(data) {
   const state = _initContratoDoc(
     'CONTRATO INDIVIDUAL DE TRABAJO PARA TRABAJADOR COMISIONISTA',
     'Artículos 285-289 — Ley Federal del Trabajo 2026', data);
@@ -1021,8 +1072,7 @@ function generateContratoComision(data) {
     [data.tipoIdentificacion || 'Identificacion', data.numIdentificacion],
   ]);
 
-  _addFooters(state, data);
-  state.doc.save(`contrato-comisión-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
+  await _cerrarContrato(state, data, 'contrato_comision', `contrato-comisión-${data.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 // ─── CONTRATO INDIVIDUAL DE TRABAJO (legado — mantener compatibilidad) ────────
