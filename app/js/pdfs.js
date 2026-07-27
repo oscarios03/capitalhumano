@@ -520,16 +520,26 @@ function _cHeader(state, titulo, subtitulo, data) {
   return 44;
 }
 
-function _addFooters(state, data) {
-  const { doc, pw, ph, ml, mr, folio } = state;
+/** Pie estándar de los documentos que se firman: folio, página y razón
+ * social de la empresa — sin la nota de "carácter referencial". Esa
+ * advertencia sigue viva antes de firmar (modal de descarga, ToS), pero no
+ * pertenece al documento que el trabajador firma y que puede acabar ante una
+ * Junta: ahí sólo debe leerse lo que las partes están reconociendo. */
+function _footerFolio(doc, ml, mr, folio, razonSocial) {
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
     doc.line(ml, ph - 11, pw - mr, ph - 11);
     doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`Folio ${folio}  |  Página ${i} de ${total}  |  Capital Humano MX  |  Carácter referencial, no sustituye asesoria jurídica`, pw/2, ph - 7, { align:'center' });
+    doc.text(`Folio ${folio}  |  Página ${i} de ${total}  |  ${razonSocial || ''}`, pw/2, ph - 7, { align:'center' });
   }
+}
+
+function _addFooters(state, data) {
+  _footerFolio(state.doc, state.ml, state.mr, state.folio, data.razonSocial);
 }
 
 function _newPage(state) {
@@ -1017,6 +1027,7 @@ function generateContratoPDF(empresa, trab, sucursal = null, opts = {}) {
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const tw = pw - ml - mr;
+  const folio = `CONT-${Date.now().toString().slice(-7)}`;
 
   const tipoLabel = { indefinido:'Tiempo Indeterminado', determinado:'Tiempo Determinado', obra:'Obra o Servicio Determinado', temporada:'Temporada' }[trab.tipo_contrato] || 'Tiempo Indeterminado';
   let y = pdfHeader(doc, `CONTRATO INDIVIDUAL DE TRABAJO`, `Por ${tipoLabel} — Ley Federal del Trabajo 2026`, ml, mr);
@@ -1106,9 +1117,7 @@ function generateContratoPDF(empresa, trab, sucursal = null, opts = {}) {
     `${trab.nombre}\n${trab.puesto || ''}`,
     y, ml, mr);
 
-  // Footer
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text('Documento generado por Capital Humano MX | LFT 2026 | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   if (opts.asBlob) return doc.output('blob');
   doc.save(`contrato-${trab.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
@@ -1144,6 +1153,7 @@ function generateCartaRenuncia(empresa, trab, sucursal = null) {
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const tw = pw - ml - mr;
+  const folio = `RENU-${Date.now().toString().slice(-7)}`;
   let y = pdfHeader(doc, 'CARTA DE RENUNCIA VOLUNTARIA', 'Documento unilateral del trabajador', ml, mr);
 
   doc.setFont('Roboto','normal'); doc.setFontSize(10); doc.setTextColor(60,60,60);
@@ -1204,8 +1214,7 @@ function generateCartaRenuncia(empresa, trab, sucursal = null) {
   doc.text(recLines, ml + 5, y + 6);
   y += recH;
 
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text('Documento generado por Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
   doc.save('carta-renuncia.pdf');
 }
 
@@ -1303,15 +1312,7 @@ function _bloqueTestigos(state, d) {
 
 /** Pie con folio, página y razón social. Sin la nota de "carácter referencial". */
 function _pieLegal(state, empresa) {
-  const { doc, pw, ph, ml, mr, folio } = state;
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph - 11, pw - mr, ph - 11);
-    doc.setFontSize(6.5); doc.setFont('Roboto','normal'); doc.setTextColor(160,160,160);
-    doc.text(`Folio ${folio}  |  Página ${i} de ${total}  |  ${empresa.nombre || ''}`, pw/2, ph - 7, { align:'center' });
-  }
+  _footerFolio(state.doc, state.ml, state.mr, state.folio, empresa.nombre);
 }
 
 function _nombreArchivo(base, trab) {
@@ -2540,8 +2541,7 @@ function generateActaPDF(acta, empresa, trab, sucursal = null, opts = {}) {
     }
   }
 
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text(`Folio ${folio} | Capital Humano MX | Referencial — no sustituye asesoria legal`, pw/2, ph-10, { align:'center' });
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
   if (opts.asBlob) return doc.output('blob');
   doc.save(`acta-${acta.tipo}.pdf`);
   return doc;
@@ -2563,6 +2563,7 @@ function generateConstanciaVacacionesPDF(empresa, trab, datos, sucursal = null) 
   const ph = doc.internal.pageSize.getHeight();
   const tw = pw - ml - mr;
   const s  = datos.solicitud;
+  const folio = `VAC-${Date.now().toString().slice(-7)}`;
 
   let y = pdfHeader(doc, 'CONSTANCIA DE VACACIONES', 'Artículo 81 de la Ley Federal del Trabajo', ml, mr);
 
@@ -2608,8 +2609,7 @@ function generateConstanciaVacacionesPDF(empresa, trab, datos, sucursal = null) 
   if (y + 60 > ph - 20) { doc.addPage(); y = 25; }
   y = pdfSignatures(doc, `${empresa.nombre}${empresa.representante ? '\n' + empresa.representante : ''}`, `${trab.nombre}\n${trab.puesto||''}`, y, ml, mr);
 
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text('Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
   doc.save(`constancia-vacaciones-${trab.nombre.replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 

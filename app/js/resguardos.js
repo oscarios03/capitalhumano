@@ -1,7 +1,7 @@
 /**
  * Capital Humano MX — Resguardos de herramientas, uniformes y equipo
  * Depende de: db.js pattern, expediente.js (subirDocumento, bucket 'expedientes'),
- * pdfs.js (pdfHeader, pdfLine, npDate, fmt)
+ * pdfs.js (pdfHeader, pdfLine, npDate, fmt, _footerFolio)
  */
 
 async function _listarResguardos(trabajadorId) {
@@ -232,6 +232,7 @@ function generarCartaResponsivaPDF(empresa, trab, items, opts = {}) {
   const ml = 25, mr = 25;
   const pw = doc.internal.pageSize.getWidth();
   const tw = pw - ml - mr;
+  const folio = `RSG-${Date.now().toString().slice(-7)}`;
   let y = pdfHeader(doc, 'CARTA RESPONSIVA DE RESGUARDO', 'Entrega de herramienta, equipo y/o uniforme', ml, mr);
 
   doc.setFont('Roboto','normal'); doc.setFontSize(10); doc.setTextColor(60,60,60);
@@ -277,9 +278,7 @@ function generarCartaResponsivaPDF(empresa, trab, items, opts = {}) {
   doc.text(trab.nombre, ml, y);
   doc.text(empresa.representante || empresa.nombre || '', pw - mr - 75, y);
 
-  const ph = doc.internal.pageSize.getHeight();
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text('Documento generado por Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   if (opts.asBlob) return doc.output('blob');
   doc.save(`carta-responsiva-${(trab.nombre||'trabajador').replace(/\s+/g,'-').toLowerCase()}.pdf`);
@@ -347,6 +346,7 @@ function generarConstanciaDevolucionPDF(empresa, trab, resguardos) {
   const ml = 25, mr = 25;
   const pw = doc.internal.pageSize.getWidth();
   const tw = pw - ml - mr;
+  const folio = `DEV-${Date.now().toString().slice(-7)}`;
   let y = pdfHeader(doc, 'CONSTANCIA DE DEVOLUCIÓN DE EQUIPO', 'Anexo al finiquito/liquidación', ml, mr);
 
   doc.setFont('Roboto','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
@@ -375,9 +375,7 @@ function generarConstanciaDevolucionPDF(empresa, trab, resguardos) {
     doc.text(l, ml, y); y += l.length * 5 + 6;
   }
 
-  const ph = doc.internal.pageSize.getHeight();
-  doc.setFontSize(7); doc.setTextColor(160,160,160);
-  doc.text('Documento generado por Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   doc.save(`constancia-devolución-${(trab.nombre||'trabajador').replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
