@@ -156,12 +156,20 @@ async function renderTabCumplimiento(trabajadorId) {
     <div class="spinner" style="margin:0 auto 10px;"></div>Revisando los acuses…</div></div>`;
 
   try {
-    const { data: acuses, error } = await window.supabase
-      .from('acuses_documentos')
-      .select('documento, version, fecha_entrega')
-      .eq('trabajador_id', trabajadorId)
-      .order('fecha_entrega', { ascending: false });
+    const [{ data: acuses, error }, { data: cursos, error: errCursos }] = await Promise.all([
+      window.supabase
+        .from('acuses_documentos')
+        .select('documento, version, fecha_entrega')
+        .eq('trabajador_id', trabajadorId)
+        .order('fecha_entrega', { ascending: false }),
+      window.supabase
+        .from('capacitaciones')
+        .select('id, nombre_curso, tipo, horas, fecha_inicio, fecha_fin, instructor_nombre, aprobado')
+        .eq('trabajador_id', trabajadorId)
+        .order('fecha_inicio', { ascending: false }),
+    ]);
     if (error) throw error;
+    if (errCursos) throw errCursos;
 
     const ultimo = {};
     for (const a of (acuses || [])) if (!ultimo[a.documento]) ultimo[a.documento] = a;
@@ -196,6 +204,37 @@ async function renderTabCumplimiento(trabajadorId) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">
+            Capacitación
+          </div>
+          <button class="btn-secondary btn-sm" onclick="showModalCapacitacion('${trabajadorId}')">+ Registrar curso</button>
+        </div>
+        <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px;">
+          Constancias de competencias del artículo 153-V de la LFT. Alimentan la carpeta de capacitación del
+          expediente del artículo 804.
+        </p>
+        ${(cursos || []).length ? `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Curso</th><th>Periodo</th><th>Horas</th><th>Instructor</th><th>Resultado</th></tr></thead>
+            <tbody>
+              ${cursos.map(c => `<tr>
+                <td><strong>${escapeHtml(c.nombre_curso)}</strong></td>
+                <td>${formatDateShort(c.fecha_inicio)}${c.fecha_fin ? ' – ' + formatDateShort(c.fecha_fin) : ''}</td>
+                <td>${c.horas ?? '—'}</td>
+                <td>${escapeHtml(c.instructor_nombre) || '—'}</td>
+                <td>${c.aprobado
+                  ? '<span style="color:var(--green-ok);font-weight:600;">Aprobado</span>'
+                  : '<span style="color:var(--amber-warn);font-weight:600;">No aprobado</span>'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `
+        <div style="font-size:.82rem;color:var(--text-muted);">Sin cursos registrados.</div>`}
       </div>`;
   } catch (e) {
     cont.innerHTML = `<div class="card"><div class="error-msg">${escapeHtml(friendlyError(e))}</div></div>`;
@@ -687,4 +726,292 @@ function handleGenerarActaInvestigacion() {
   } finally {
     btnRestaurar(btn);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  NOM-035, COMISIONES MIXTAS Y CONSTANCIAS DE CAPACITACIÓN
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showModalNOM035() {
+  const hoy = new Date().toISOString().split('T')[0];
+  showModal(`
+    <div class="modal animate-in" style="max-width:560px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Política de riesgos psicosociales</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">NOM-035-STPS-2018</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="nom-fecha">Vigente a partir de</label>
+            <input id="nom-fecha" type="date" class="form-input" value="${hoy}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="nom-periodicidad">Periodicidad de revisión</label>
+            <input id="nom-periodicidad" type="text" class="form-input" placeholder="dos años" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="nom-responsable">Responsable de aplicarla y de recibir denuncias</label>
+            <input id="nom-responsable" type="text" class="form-input" placeholder="Ej. la Dirección de Capital Humano" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="nom-via">Vía para presentar quejas</label>
+            <input id="nom-via" type="text" class="form-input" placeholder="Déjalo vacío para usar el texto base" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="nom-firma">Firma la máxima autoridad del centro de trabajo</label>
+            <input id="nom-firma" type="text" class="form-input" value="${escapeHtml(CTX.empresa?.representante) || ''}" />
+          </div>
+        </div>
+        <div id="nom-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="nom-btn" onclick="handleGenerarNOM035()">Generar política</button>
+      </div>
+    </div>
+  `);
+}
+
+function handleGenerarNOM035() {
+  const btn = eid('nom-btn'), box = eid('nom-msg');
+  if (box) box.style.display = 'none';
+  btnCargando(btn, 'Generando…');
+  try {
+    generatePoliticaNOM035(CTX.empresa, {
+      fecha:        eid('nom-fecha')?.value,
+      responsable:  eid('nom-responsable')?.value.trim(),
+      via_denuncia: eid('nom-via')?.value.trim(),
+      periodicidad: eid('nom-periodicidad')?.value.trim(),
+      firma_nombre: eid('nom-firma')?.value.trim(),
+    });
+    showToast('Política generada. Fíjala en los lugares visibles y recaba el acuse.', 'success', 7000);
+  } catch (e) {
+    if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }
+    else showToast(e.message, 'error', 7000);
+  } finally { btnRestaurar(btn); }
+}
+
+/**
+ * Modal común de comisión mixta.
+ *
+ * Los arts. 509 y 153-E describen ambas comisiones como compuestas "por igual
+ * número" de representantes de cada parte, así que el formulario es el mismo y
+ * la paridad se valida en el generador.
+ */
+function showModalComisionMixta(tipo) {
+  const cfg = tipo === 'sh'
+    ? { titulo:'Comisión de Seguridad e Higiene', sub:'Artículos 509 y 510 de la Ley Federal del Trabajo',
+        extra:`<div class="form-group span-2">
+                 <label class="form-label" for="cm-recorridos">Periodicidad de los recorridos</label>
+                 <input id="cm-recorridos" type="text" class="form-input" placeholder="al menos cada tres meses" />
+               </div>` }
+    : { titulo:'Comisión Mixta de Capacitación, Adiestramiento y Productividad',
+        sub:'Artículos 153-E y 153-F de la Ley Federal del Trabajo',
+        extra:`<div class="form-group span-2">
+                 <label class="form-label" for="cm-num">Número de personas trabajadoras</label>
+                 <input id="cm-num" type="number" class="form-input" min="0" />
+                 <div class="helper-text">Obligatoria con más de 50. Con menos se puede constituir igual: el art. 39-A pide su opinión para terminar en período de prueba.</div>
+               </div>` };
+  const hoy = new Date().toISOString().split('T')[0];
+
+  showModal(`
+    <div class="modal animate-in" style="max-width:640px;display:flex;flex-direction:column;max-height:92vh;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">${cfg.titulo}</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">${cfg.sub}</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;overflow-y:auto;">
+        <div class="alert alert-info" style="margin-bottom:14px;">
+          <svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
+          <span style="font-size:.82rem;">La ley exige <strong>igual número</strong> de representantes de cada parte.
+          Una comisión desequilibrada es de lo primero que revisa la inspección.</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="cm-fecha">Fecha de la sesión</label>
+            <input id="cm-fecha" type="date" class="form-input" value="${hoy}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cm-lugar">Lugar</label>
+            <input id="cm-lugar" type="text" class="form-input" value="${escapeHtml(CTX.empresa?.domicilio) || ''}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cm-hora-ini">Hora de inicio</label>
+            <input id="cm-hora-ini" type="time" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cm-hora-fin">Hora de cierre</label>
+            <input id="cm-hora-fin" type="time" class="form-input" />
+          </div>
+          ${cfg.extra}
+          <div class="form-group">
+            <label class="form-label" for="cm-reps-patron">Representantes del patrón</label>
+            <textarea id="cm-reps-patron" class="form-input" rows="4" placeholder="Un nombre por línea">${escapeHtml(CTX.empresa?.representante) || ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cm-reps-trab">Representantes de las personas trabajadoras</label>
+            <textarea id="cm-reps-trab" class="form-input" rows="4" placeholder="Un nombre por línea"></textarea>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="cm-acuerdos">Acuerdos</label>
+            <textarea id="cm-acuerdos" class="form-textarea" rows="2"></textarea>
+          </div>
+        </div>
+        <div id="cm-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="cm-btn" onclick="handleGenerarComisionMixta('${tipo}')">Generar acta</button>
+      </div>
+    </div>
+  `);
+}
+
+function handleGenerarComisionMixta(tipo) {
+  const btn = eid('cm-btn'), box = eid('cm-msg');
+  if (box) box.style.display = 'none';
+  btnCargando(btn, 'Generando…');
+  try {
+    const datos = {
+      fecha_sesion: eid('cm-fecha')?.value,
+      lugar:        eid('cm-lugar')?.value.trim(),
+      hora_inicio:  eid('cm-hora-ini')?.value,
+      hora_cierre:  eid('cm-hora-fin')?.value,
+      acuerdos:     eid('cm-acuerdos')?.value.trim(),
+      representantes_patron:       _lineasANombres(eid('cm-reps-patron')?.value),
+      representantes_trabajadores: _lineasANombres(eid('cm-reps-trab')?.value),
+    };
+    if (tipo === 'sh') {
+      datos.periodicidad_recorridos = eid('cm-recorridos')?.value.trim();
+      generateActaComisionSeguridadHigiene(CTX.empresa, datos);
+    } else {
+      const n = parseInt(eid('cm-num')?.value, 10);
+      if (!isNaN(n)) datos.num_trabajadores = n;
+      generateActaComisionCapacitacion(CTX.empresa, datos);
+    }
+    showToast('Acta generada.', 'success');
+  } catch (e) {
+    if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }
+    else showToast(e.message, 'error', 7000);
+  } finally { btnRestaurar(btn); }
+}
+
+// ─── Constancia de capacitación (art. 153-V) ─────────────────────────────────
+
+function showModalCapacitacion(trabajadorId) {
+  const hoy = new Date().toISOString().split('T')[0];
+  showModal(`
+    <div class="modal animate-in" style="max-width:600px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Constancia de competencias</div>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:3px;">Artículo 153-V de la Ley Federal del Trabajo</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div style="padding:16px 24px;">
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label" for="cap-curso">Nombre del curso <span class="req">*</span></label>
+            <input id="cap-curso" type="text" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cap-area">Área temática</label>
+            <input id="cap-area" type="text" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cap-tipo">Tipo</label>
+            <select id="cap-tipo" class="form-select">
+              <option value="capacitacion">Capacitación</option>
+              <option value="adiestramiento">Adiestramiento</option>
+              <option value="seguridad_higiene">Seguridad e higiene</option>
+              <option value="nom035">NOM-035</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cap-inicio">Fecha de inicio <span class="req">*</span></label>
+            <input id="cap-inicio" type="date" class="form-input" value="${hoy}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cap-fin">Fecha de fin</label>
+            <input id="cap-fin" type="date" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cap-horas">Duración en horas</label>
+            <input id="cap-horas" type="number" class="form-input" min="0" step="0.5" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cap-instructor">Instructor</label>
+            <input id="cap-instructor" type="text" class="form-input" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="cap-registro">Registro del agente capacitador ante la STPS</label>
+            <input id="cap-registro" type="text" class="form-input" placeholder="Opcional, pero es lo que da peso a la constancia" />
+          </div>
+          <div class="form-group span-2">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;">
+              <input type="checkbox" id="cap-aprobado" checked style="width:16px;height:16px;accent-color:var(--gold-primary);" />
+              <span>Aprobó el curso</span>
+            </label>
+            <div class="helper-text">El art. 153-V condiciona la constancia a haber llevado <strong>y aprobado</strong> el curso.</div>
+          </div>
+        </div>
+        <div id="cap-msg" role="alert" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="cap-btn" onclick="handleGuardarCapacitacion('${trabajadorId}')">Registrar y generar</button>
+      </div>
+    </div>
+  `);
+}
+
+async function handleGuardarCapacitacion(trabajadorId) {
+  const btn = eid('cap-btn'), box = eid('cap-msg');
+  if (box) box.style.display = 'none';
+  btnCargando(btn, 'Generando…');
+  try {
+    const horas = parseFloat(eid('cap-horas')?.value);
+    const curso = {
+      nombre_curso:  eid('cap-curso')?.value.trim(),
+      area_tematica: eid('cap-area')?.value.trim() || null,
+      tipo:          eid('cap-tipo')?.value,
+      horas:         isNaN(horas) ? null : horas,
+      fecha_inicio:  eid('cap-inicio')?.value,
+      fecha_fin:     eid('cap-fin')?.value || null,
+      instructor_nombre: eid('cap-instructor')?.value.trim() || null,
+      instructor_registro_stps: eid('cap-registro')?.value.trim() || null,
+      aprobado:      !!eid('cap-aprobado')?.checked,
+    };
+
+    const trab = await db.getTrabajador(trabajadorId);
+    const sucursal = trab.sucursal_id ? await db.getSucursal(trab.sucursal_id) : null;
+
+    // Se genera ANTES de guardar: si el generador rechaza el curso (por
+    // ejemplo, no aprobado), no queda un registro huérfano en la base.
+    generateConstanciaDC3(CTX.empresa, trab, curso, sucursal);
+
+    const { data: { user } } = await window.supabase.auth.getUser();
+    const { error } = await window.supabase.from('capacitaciones').insert({
+      empresa_id: CTX.empresa.id,
+      trabajador_id: trabajadorId,
+      ...curso,
+      creado_por: user?.id || null,
+    });
+    if (error) throw error;
+
+    closeModal();
+    showToast('Constancia generada y curso registrado.', 'success');
+    renderTabCumplimiento(trabajadorId);
+  } catch (e) {
+    if (box) { box.textContent = e.message; box.className = 'error-msg'; box.style.display = ''; }
+    else showToast(e.message, 'error', 8000);
+  } finally { btnRestaurar(btn); }
 }

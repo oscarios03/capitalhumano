@@ -781,3 +781,294 @@ function generateConstanciaDifusionProtocolo(empresa, trab, datos = {}, sucursal
 
   return _salidaDoc(state, u, _nombreArchivo('acuse-protocolo-violencia', trab), opts);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  3.4 — NOM-035, COMISIONES MIXTAS Y CONSTANCIAS DE CAPACITACIÓN
+//
+//  Base legal en la LFT (DOF 14-05-2026):
+//
+//   · Art. 132 fr. XVI, XVII y XVIII — instalar y operar los centros de
+//     trabajo conforme a las normas oficiales mexicanas de seguridad, salud
+//     y medio ambiente; cumplirlas; y FIJARLAS VISIBLEMENTE y difundirlas,
+//     junto con la información sobre los riesgos a los que se está expuesto.
+//     Es lo que obliga a tener una política escrita y difundida.
+//   · Art. 509 — comisiones de seguridad e higiene, "compuestas por IGUAL
+//     NÚMERO de representantes de los trabajadores y del patrón".
+//   · Art. 510 — se desempeñan gratuitamente dentro de las horas de trabajo.
+//   · Art. 153-E — Comisiones Mixtas de Capacitación, Adiestramiento y
+//     Productividad, "integradas por igual número" de representantes, en las
+//     empresas que tengan MÁS DE 50 TRABAJADORES.
+//   · Art. 153-V — la constancia de competencias o de habilidades laborales
+//     acredita haber llevado Y APROBADO un curso.
+//
+//  Dos precisiones frente a lo que pedía la auditoría:
+//
+//   1. No son dos comisiones distintas. La LFT reconoce una sola Comisión
+//      Mixta de Capacitación, Adiestramiento y Productividad (arts. 153-E y
+//      153-F), que es la misma cuya opinión exige el art. 39-A para el
+//      período de prueba.
+//   2. La constancia del art. 153-V no es el formato DC-3. El DC-3 es un
+//      formato oficial de la STPS; esta constancia acredita el curso entre
+//      las partes y sirve de base para llenarlo, y así lo dice en su cuerpo
+//      en vez de hacerse pasar por él.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Las comisiones de los arts. 509 y 153-E exigen IGUAL número por parte. */
+function _pdfcExigirParidad(repsP, repsT, articulo) {
+  if (!repsP.length || !repsT.length) {
+    throw new Error(
+      `El ${articulo} de la LFT exige una comisión con representantes de ambas partes. ` +
+      'Captura al menos un representante del patrón y uno de las personas trabajadoras.'
+    );
+  }
+  if (repsP.length !== repsT.length) {
+    throw new Error(
+      `El ${articulo} de la LFT exige que la comisión se componga por IGUAL NÚMERO de ` +
+      `representantes de los trabajadores y del patrón. Capturaste ${repsP.length} del patrón y ` +
+      `${repsT.length} de las personas trabajadoras: una comisión desequilibrada no cumple el ` +
+      'requisito y es de lo primero que revisa la inspección.'
+    );
+  }
+}
+
+/**
+ * Política de prevención de riesgos psicosociales (NOM-035-STPS-2018).
+ *
+ * Se apoya en el art. 132 fr. XVI-XVIII LFT, que es lo que hace exigible una
+ * NOM frente al patrón y lo que obliga a fijarla visiblemente. La política no
+ * enuncia las obligaciones que la NOM escalona por número de personas: eso
+ * depende del centro de trabajo y afirmarlo aquí sería inventar.
+ */
+function generatePoliticaNOM035(empresa, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+
+  if (!d.responsable) {
+    throw new Error(
+      'Indica quién es responsable de aplicar la política y de recibir las denuncias. ' +
+      'Una política sin responsable identificable no se puede acreditar como implementada.'
+    );
+  }
+
+  const fecha = d.fecha || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Politica de Prevencion de Riesgos Psicosociales',
+    'NOM-035-STPS-2018 y articulo 132 fracciones XVI a XVIII de la Ley Federal del Trabajo',
+    u, 'NOM035'
+  );
+
+  _p(state, `${np(u.nombre)} adopta la presente politica, vigente a partir del ${formatDateLong(fecha)}, en cumplimiento de la Norma Oficial Mexicana NOM-035-STPS-2018, Factores de riesgo psicosocial en el trabajo. Identificacion, analisis y prevencion, y de las obligaciones que el articulo 132 fracciones XVI, XVII y XVIII de la Ley Federal del Trabajo impone al patron de operar el centro de trabajo conforme a las normas oficiales mexicanas, cumplirlas, y fijarlas visiblemente y difundirlas junto con la informacion sobre los riesgos a los que el personal esta expuesto.`);
+
+  _hSeccion(state, 'COMPROMISOS');
+  _p(state, `1. PREVENIR LOS FACTORES DE RIESGO PSICOSOCIAL. La empresa identifica y analiza los factores de riesgo psicosocial derivados de las condiciones en el ambiente de trabajo, las cargas de trabajo, la falta de control sobre el trabajo, las jornadas y la rotacion de turnos que exceden lo previsto en la Ley, la interferencia en la relacion trabajo-familia y el liderazgo y las relaciones negativas en el trabajo, y adopta medidas para prevenirlos y controlarlos.`);
+  _p(state, `2. PREVENIR LA VIOLENCIA LABORAL. Quedan prohibidos los actos de hostigamiento, acoso, malos tratos y cualquier forma de violencia laboral. Esta politica opera de forma conjunta con el Protocolo de la empresa previsto en el articulo 132 fraccion XXXI de la Ley Federal del Trabajo, que fija la via de denuncia y el procedimiento de investigacion.`);
+  _p(state, `3. PROMOVER UN ENTORNO ORGANIZACIONAL FAVORABLE. La empresa promueve el sentido de pertenencia, la definicion clara de responsabilidades, la distribucion adecuada de cargas de trabajo, la evaluacion y el reconocimiento del desempeno, la participacion del personal y la difusion de la informacion necesaria para desempenar el trabajo.`);
+  _p(state, `4. ATENDER LOS ACONTECIMIENTOS TRAUMATICOS SEVEROS. Cuando una persona trabajadora experimente o presencie un acontecimiento traumatico severo con motivo del trabajo, la empresa facilitara su canalizacion para la atencion clinica que corresponda y adoptara las medidas necesarias durante su recuperacion.`);
+
+  _hSeccion(state, 'RESPONSABLE Y VIA DE ATENCION');
+  _p(state, `Corresponde a ${np(d.responsable)} aplicar esta politica, recibir las quejas y denuncias relacionadas con ella y dar seguimiento a las medidas que se adopten. Las denuncias pueden presentarse ${np(d.via_denuncia || 'por escrito o de forma verbal, en cuyo caso se asentaran por escrito y se leeran a quien las formula antes de firmarlas')}.`);
+  _p(state, `La informacion que las personas trabajadoras proporcionen con motivo de la identificacion y analisis de los factores de riesgo psicosocial y de la evaluacion del entorno organizacional se trata de manera confidencial y unicamente con fines de prevencion. Los datos de salud que llegaran a recabarse son datos personales sensibles y se tratan conforme al Aviso de Privacidad de la empresa.`);
+
+  _hSeccion(state, 'DIFUSION Y REVISION');
+  _p(state, `Esta politica se fija en los lugares mas visibles del centro de trabajo, se entrega a cada persona trabajadora recabando su acuse y se revisa al menos cada ${np(d.periodicidad || 'dos anos')} o cuando cambien las condiciones que la motivaron. Los registros de su aplicacion se conservan a disposicion de la autoridad laboral.`);
+
+  _gap(state, 10);
+  const { ml, tw } = state;
+  const anchoFirma = Math.min(tw * 0.6, 110);
+  const { doc } = state;
+  doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y + 16, ml + anchoFirma, state.y + 16);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(30, 30, 30);
+  doc.text(np('POR LA MAXIMA AUTORIDAD DEL CENTRO DE TRABAJO'), ml, state.y + 21);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+  doc.text(np(d.firma_nombre || u.representante || ''), ml, state.y + 26);
+  state.y += 34;
+
+  return _salidaDoc(state, u, 'politica-nom-035.pdf', opts);
+}
+
+/**
+ * Acta de integración de la Comisión de Seguridad e Higiene (art. 509 LFT).
+ *
+ * Punto fijo de inspección de la STPS. Exige paridad porque el art. 509 la
+ * describe literalmente como compuesta "por igual número de representantes".
+ */
+function generateActaComisionSeguridadHigiene(empresa, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+  const repsP = (d.representantes_patron || []).filter(Boolean);
+  const repsT = (d.representantes_trabajadores || []).filter(Boolean);
+  _pdfcExigirParidad(repsP, repsT, 'artículo 509');
+
+  const fecha = d.fecha_sesion || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Acta de Integracion de la Comision de Seguridad e Higiene',
+    'Articulos 509 y 510 de la Ley Federal del Trabajo',
+    u, 'ACSH'
+  );
+
+  _p(state, `En ${np(d.lugar || u.domicilio || u.ciudad)}, siendo las ${np(d.hora_inicio || '____')} horas del ${formatDateLong(fecha)}, se reunieron las personas que al final firman para integrar la Comision de Seguridad e Higiene del centro de trabajo de ${np(u.nombre)}, conforme al articulo 509 de la Ley Federal del Trabajo.`);
+
+  _hSeccion(state, 'PRIMERO. INTEGRACION');
+  _p(state, `La comision se integra por igual numero de representantes de las personas trabajadoras y del patron, como sigue:`);
+  _table(state,
+    [['Representantes del patron', 'Representantes de las personas trabajadoras']],
+    repsP.map((r, i) => [np(r), np(repsT[i] || '')]));
+  _p(state, `Coordina la comision ${np(d.coordinador || repsP[0])} y funge como secretario ${np(d.secretario || repsT[0])}.`);
+
+  _hSeccion(state, 'SEGUNDO. OBJETO');
+  _p(state, `Conforme al articulo 509 de la Ley, la comision tiene por objeto INVESTIGAR LAS CAUSAS DE LOS ACCIDENTES Y ENFERMEDADES, PROPONER MEDIDAS PARA PREVENIRLOS Y VIGILAR QUE SE CUMPLAN. Para ello realizara recorridos de verificacion ${np(d.periodicidad_recorridos || 'al menos cada tres meses')} y levantara acta de cada uno con las condiciones inseguras detectadas y las medidas propuestas.`);
+
+  _hSeccion(state, 'TERCERO. GRATUIDAD Y HORARIO');
+  _p(state, `Las funciones de la comision se desempenan GRATUITAMENTE Y DENTRO DE LAS HORAS DE TRABAJO (articulo 510 de la Ley Federal del Trabajo). El tiempo dedicado a ellas se considera tiempo efectivamente laborado y no puede descontarse ni compensarse fuera de la jornada.`, { bold: true });
+
+  _hSeccion(state, 'CUARTO. VIGENCIA');
+  _p(state, `La comision entra en funciones a partir de esta fecha y se mantiene vigente hasta su renovacion. Cualquier cambio en su integracion se hara constar en acta y se comunicara al personal.`);
+
+  if (d.acuerdos) {
+    _hSeccion(state, 'QUINTO. ACUERDOS');
+    _p(state, np(d.acuerdos));
+  }
+
+  if (d.hora_cierre) {
+    _p(state, `No habiendo otro asunto que tratar, se cierra la presente acta siendo las ${np(d.hora_cierre)} horas del dia de su fecha.`);
+  }
+
+  _gap(state, 6);
+  _pdfcFirmasMixtas(state, repsP, repsT);
+
+  return _salidaDoc(state, u, 'acta-comision-seguridad-higiene.pdf', opts);
+}
+
+/**
+ * Acta de integración de la Comisión Mixta de Capacitación, Adiestramiento y
+ * Productividad (art. 153-E LFT).
+ *
+ * Es la MISMA comisión cuya opinión exige el art. 39-A para dar por terminada
+ * una relación al concluir el período de prueba. El art. 153-E la vuelve
+ * obligatoria en empresas de más de 50 trabajadores; por debajo de ese número
+ * se puede constituir voluntariamente, y conviene hacerlo justo por el 39-A.
+ */
+function generateActaComisionCapacitacion(empresa, datos = {}, sucursal = null, opts = {}) {
+  const d = datos || {};
+  const u = resolveUbicacion(empresa, sucursal);
+  const repsP = (d.representantes_patron || []).filter(Boolean);
+  const repsT = (d.representantes_trabajadores || []).filter(Boolean);
+  _pdfcExigirParidad(repsP, repsT, 'artículo 153-E');
+
+  const fecha = d.fecha_sesion || new Date().toISOString().split('T')[0];
+  const state = _initDocLegal(
+    'Acta de Integracion de la Comision Mixta de Capacitacion, Adiestramiento y Productividad',
+    'Articulos 153-E y 153-F de la Ley Federal del Trabajo',
+    u, 'ACMCAP'
+  );
+
+  _p(state, `En ${np(d.lugar || u.domicilio || u.ciudad)}, siendo las ${np(d.hora_inicio || '____')} horas del ${formatDateLong(fecha)}, se reunieron las personas que al final firman para integrar la Comision Mixta de Capacitacion, Adiestramiento y Productividad de ${np(u.nombre)}.`);
+
+  // El art. 153-E la impone a partir de más de 50 trabajadores. Constituirla
+  // con menos no sobra: el art. 39-A pide su opinión para terminar en período
+  // de prueba, sin importar el tamaño de la empresa.
+  if (typeof d.num_trabajadores === 'number' && d.num_trabajadores <= 50) {
+    _recuadro(state,
+      `El articulo 153-E de la Ley Federal del Trabajo obliga a constituir esta comision en las empresas que tengan MAS DE 50 TRABAJADORES; esta empresa declara ${d.num_trabajadores}. La comision se constituye de forma voluntaria, y su integracion resulta igualmente util: el articulo 39-A exige tomar en cuenta la opinion de esta comision para dar por terminada la relacion al concluir el periodo de prueba, sin importar el tamano de la empresa.`,
+      'info');
+  }
+
+  _hSeccion(state, 'PRIMERO. INTEGRACION');
+  _table(state,
+    [['Representantes del patron', 'Representantes de las personas trabajadoras']],
+    repsP.map((r, i) => [np(r), np(repsT[i] || '')]));
+
+  _hSeccion(state, 'SEGUNDO. FUNCIONES (ARTICULO 153-E)');
+  _p(state, `I. Vigilar, instrumentar, operar y mejorar los sistemas y los programas de capacitacion y adiestramiento. II. Proponer los cambios necesarios en la maquinaria, los equipos, la organizacion del trabajo y las relaciones laborales que incrementen la productividad. III. Proponer las medidas acordadas por el Comite Nacional y los Comites Estatales de Productividad. IV. Vigilar el cumplimiento de los acuerdos de productividad. V. Resolver las objeciones que presenten las personas trabajadoras con motivo de la distribucion de los beneficios de la productividad.`, { indent: 6 });
+  _p(state, `Adicionalmente, corresponde a esta comision emitir la opinion que el articulo 39-A de la Ley exige para dar por terminada la relacion de trabajo al concluir el periodo de prueba, y la del articulo 39-B tratandose de la capacitacion inicial.`);
+
+  _hSeccion(state, 'TERCERO. PLANES Y PROGRAMAS');
+  _p(state, `La comision elaborara y revisara los planes y programas de capacitacion, adiestramiento y productividad, que deberan referirse a periodos no mayores de dos anos y comprender todos los puestos y niveles existentes en la empresa (articulo 153-H). La empresa los conservara a disposicion de la Secretaria del Trabajo y Prevision Social y de la Secretaria de Economia (articulo 153-F Bis).`);
+
+  if (d.acuerdos) {
+    _hSeccion(state, 'CUARTO. ACUERDOS');
+    _p(state, np(d.acuerdos));
+  }
+
+  if (d.hora_cierre) {
+    _p(state, `No habiendo otro asunto que tratar, se cierra la presente acta siendo las ${np(d.hora_cierre)} horas del dia de su fecha.`);
+  }
+
+  _gap(state, 6);
+  _pdfcFirmasMixtas(state, repsP, repsT);
+
+  return _salidaDoc(state, u, 'acta-comision-capacitacion.pdf', opts);
+}
+
+/**
+ * Constancia de competencias o de habilidades laborales (art. 153-V LFT).
+ *
+ * El art. 153-V la define como el documento con el cual el trabajador acredita
+ * haber llevado Y APROBADO un curso: por eso se niega a emitirla cuando el
+ * curso no se aprobó. Y dice en su cuerpo que no es el formato DC-3, en vez de
+ * hacerse pasar por él.
+ */
+function generateConstanciaDC3(empresa, trab, curso = {}, sucursal = null, opts = {}) {
+  const c = curso || {};
+  const u = resolveUbicacion(empresa, sucursal);
+
+  if (!c.nombre_curso) {
+    throw new Error('Indica el nombre del curso: la constancia del art. 153-V LFT acredita un curso concreto.');
+  }
+  if (!c.fecha_inicio) {
+    throw new Error('Indica la fecha de inicio del curso.');
+  }
+  if (c.aprobado === false) {
+    throw new Error(
+      'El artículo 153-V de la LFT define la constancia como el documento con el cual el trabajador ' +
+      'acredita haber llevado Y APROBADO un curso. No puede expedirse por un curso no aprobado: ' +
+      'registra el resultado como aprobado o no expidas la constancia.'
+    );
+  }
+
+  const state = _initDocLegal(
+    'Constancia de Competencias o de Habilidades Laborales',
+    'Articulo 153-V de la Ley Federal del Trabajo',
+    u, 'CONSTCAP'
+  );
+
+  _p(state, `${np(u.nombre)}${u.rfc ? `, R.F.C. ${np(u.rfc)}` : ''}, hace constar que:`);
+  _gap(state, 2);
+
+  _table(state, [['Concepto', 'Dato']], [
+    ['Nombre de la persona trabajadora', np(trab.nombre || '')],
+    ['CURP',    np(trab.curp || '')],
+    ['Puesto',  np(trab.puesto || '')],
+    ['Nombre del curso', np(c.nombre_curso)],
+    ['Area tematica',    np(c.area_tematica || '')],
+    ['Duracion en horas', c.horas != null ? String(c.horas) : ''],
+    ['Periodo', `${formatDateShort(c.fecha_inicio)}${c.fecha_fin ? ' – ' + formatDateShort(c.fecha_fin) : ''}`],
+    ['Instructor', np(c.instructor_nombre || '')],
+    ['Registro del agente capacitador ante la STPS', np(c.instructor_registro_stps || 'No aplica')],
+  ]);
+
+  _p(state, `Llevo y APROBO el curso senalado, por lo que se expide la presente constancia con fundamento en el articulo 153-V de la Ley Federal del Trabajo.`);
+  _p(state, `Esta constancia surte plenos efectos para fines de ascenso dentro de esta empresa. La empresa remitira a la Secretaria del Trabajo y Prevision Social, para su registro y control, la lista de las constancias expedidas a su personal (articulo 153-V, segundo y tercer parrafos).`);
+
+  _recuadro(state,
+    'Esta constancia acredita el curso entre las partes y sirve de base para llenar el formato oficial DC-3 que expide la Secretaria del Trabajo y Prevision Social. No sustituye a ese formato: para los tramites que lo requieran debe presentarse el DC-3 vigente.',
+    'warn');
+
+  _gap(state, 8);
+  const { ml, tw } = state;
+  const colW = tw / 2 - 8;
+  const y0 = state.y;
+  const y1 = _firmaConIdentificacion(state, 'INSTRUCTOR', c.instructor_nombre, null, null, ml, colW);
+  state.y = y0;
+  const y2 = _firmaConIdentificacion(state, 'POR LA EMPRESA',
+    c.firma_nombre || u.representante, null, null, ml + colW + 16, colW);
+  state.y = Math.max(y1, y2) + 10;
+
+  const y3 = state.y;
+  _firmaConIdentificacion(state, 'RECIBE — LA PERSONA TRABAJADORA', trab.nombre,
+    trab.num_identificacion, null, ml, colW);
+  state.y = Math.max(state.y, y3) + 4;
+
+  return _salidaDoc(state, u, _nombreArchivo('constancia-capacitacion', trab), opts);
+}

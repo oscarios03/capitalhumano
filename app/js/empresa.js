@@ -866,6 +866,18 @@ const DOCS_EMPRESA_CUMPLIMIENTO = [
     fundamento:'Debido proceso del protocolo',
     porQue:'Sin audiencia de la persona señalada, la sanción se anula.',
     accion:'showModalActaInvestigacion()', boton:'Levantar acta' },
+  { label:'Política de prevención de riesgos psicosociales',
+    fundamento:'NOM-035-STPS-2018 y art. 132 fr. XVI-XVIII LFT',
+    porQue:'Debe fijarse visiblemente y difundirse en el centro de trabajo.',
+    accion:'showModalNOM035()', boton:'Generar' },
+  { label:'Comisión de Seguridad e Higiene',
+    fundamento:'Arts. 509 y 510 LFT',
+    porQue:'Punto fijo de inspección. Exige igual número de representantes por parte.',
+    accion:"showModalComisionMixta('sh')", boton:'Integrar' },
+  { label:'Comisión Mixta de Capacitación, Adiestramiento y Productividad',
+    fundamento:'Arts. 153-E y 153-F LFT',
+    porQue:'Es la misma cuya opinión pide el art. 39-A para el período de prueba.',
+    accion:"showModalComisionMixta('cap')", boton:'Integrar' },
 ];
 
 function _cardDocumentosCumplimiento() {
