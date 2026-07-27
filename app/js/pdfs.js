@@ -2106,6 +2106,261 @@ function generateConvenioTerminacion(empresa, trab, result, datos = {}, sucursal
   return _salidaDoc(state, empresa, _nombreArchivo('convenio-terminacion', trab), opts);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  PERIODO A PRUEBA — COMISIÓN MIXTA DE PRODUCTIVIDAD (Arts. 39-A y 39-B LFT)
+//
+//  Los arts. 39-A y 39-B condicionan la terminación al término del periodo a
+//  prueba o de la capacitación inicial a que se haga "a juicio del patrón,
+//  tomando en cuenta la opinión de la Comisión Mixta de Productividad,
+//  Capacitación y Adiestramiento". Terminar sin esa opinión deja la
+//  terminación sin el soporte que la ley exige, y en juicio se traduce en
+//  despido injustificado.
+//
+//  Los tres documentos se emiten en este orden y cada uno se apoya en el
+//  anterior — un dictamen fechado DESPUÉS de la notificación de terminación
+//  evidencia que la opinión se fabricó para justificar una decisión ya tomada:
+//    1. Acta de sesión de la Comisión Mixta ..... emite la opinión
+//    2. Dictamen del periodo a prueba .......... la recoge y resuelve
+//    3. Notificación de no acreditación ........ comunica al trabajador
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Acta de la sesión en que la Comisión Mixta emite su opinión.
+ * @param {Object} datos { fecha_sesion, hora_inicio, hora_cierre, lugar,
+ *   trabajador_nombre, trabajador_puesto, tipo_periodo, opinion,
+ *   representantes_patron[], representantes_trabajadores[] }
+ */
+function generateActaComisionMixtaProductividad(empresa, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  if (!String(datos.opinion || '').trim()) {
+    throw new Error(
+      'Falta la opinión de la Comisión Mixta de Productividad, Capacitación y ' +
+      'Adiestramiento. Los artículos 39-A y 39-B LFT condicionan la terminación al ' +
+      'término del periodo a que se tome en cuenta esa opinión: un acta sin ella no ' +
+      'sirve para sostener la terminación.'
+    );
+  }
+  const repP = Array.isArray(datos.representantes_patron) ? datos.representantes_patron.filter(Boolean) : [];
+  const repT = Array.isArray(datos.representantes_trabajadores) ? datos.representantes_trabajadores.filter(Boolean) : [];
+  if (!repP.length || !repT.length) {
+    throw new Error(
+      'La Comisión Mixta debe integrarse con representantes de AMBAS partes: ' +
+      'captura al menos un representante del patrón y uno de los trabajadores. ' +
+      'Una comisión integrada sólo por la empresa no es mixta y su opinión no ' +
+      'cumple lo previsto en los artículos 39-A y 39-B LFT.'
+    );
+  }
+
+  const fecha = datos.fecha_sesion || new Date().toISOString().slice(0, 10);
+  const tipoPeriodo = datos.tipo_periodo === 'capacitacion'
+    ? { etiqueta: 'capacitación inicial', articulo: '39-B' }
+    : { etiqueta: 'periodo a prueba',     articulo: '39-A' };
+
+  const state = _initDocLegal(
+    'Acta de la Comisión Mixta de Productividad, Capacitación y Adiestramiento',
+    `Opinión prevista en el artículo ${tipoPeriodo.articulo} de la Ley Federal del Trabajo`,
+    empresa, 'ACM');
+
+  _ciudadFecha(state, empresa.ciudad, fecha);
+
+  const { doc, ml } = state;
+  _p(state, `En ${np(datos.lugar || empresa.domicilio || empresa.ciudad)}, siendo las ${np(datos.hora_inicio || '____:____')} horas del ${npDate(fecha)}, se reunieron los integrantes de la Comisión Mixta de Productividad, Capacitación y Adiestramiento de ${np(empresa.nombre)}, para emitir la opinión a que se refiere el artículo ${tipoPeriodo.articulo} de la Ley Federal del Trabajo respecto del ${tipoPeriodo.etiqueta} del C. ${np(datos.trabajador_nombre || '_______________________________')}, quien desempeña el puesto de ${np(datos.trabajador_puesto || '_______________')}.`);
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+  _checkY(state, 12);
+  doc.text('INTEGRANTES PRESENTES', ml, state.y); state.y += 7;
+  _table(state,
+    [['Representación', 'Nombre']],
+    [
+      ...repP.map(r => ['Del patrón', np(r)]),
+      ...repT.map(r => ['De los trabajadores', np(r)]),
+    ],
+    { columnStyles: { 0:{ cellWidth:52, fontStyle:'bold' } } }
+  );
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+  _checkY(state, 12);
+  doc.text('OPINION DE LA COMISION', ml, state.y); state.y += 7;
+  _p(state, datos.opinion, { indent: 3 });
+
+  _p(state, `No habiendo mas asuntos que tratar, se da por concluida la presente sesion siendo las ${np(datos.hora_cierre || '____:____')} horas del ${npDate(fecha)}, firmando al calce quienes en ella intervinieron.`);
+
+  // Firmas de todos los integrantes, en dos columnas
+  _gap(state, 6);
+  _checkY(state, 30);
+  const colW = state.tw / 2 - 8;
+  const todos = [...repP.map(r => ['Representante del patron', r]), ...repT.map(r => ['Representante de los trabajadores', r])];
+  todos.forEach(([rotulo, nombre], i) => {
+    const x = ml + (i % 2) * (colW + 16);
+    if (i % 2 === 0) _checkY(state, 26);
+    doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+    doc.line(x, state.y + 14, x + colW, state.y + 14);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(30,30,30);
+    doc.text(np(rotulo), x, state.y + 18);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+    doc.text(np(nombre), x, state.y + 22);
+    if (i % 2 === 1 || i === todos.length - 1) state.y += 28;
+  });
+
+  return _salidaDoc(state, empresa, `acta-comision-mixta-${np(datos.trabajador_nombre || '').replace(/\s+/g,'-').toLowerCase() || 'sesion'}.pdf`, opts);
+}
+
+/**
+ * Dictamen del patrón que recoge la opinión de la Comisión Mixta y resuelve.
+ * Debe emitirse ANTES de notificar la terminación al trabajador.
+ * @param {Object} datos { tipo_periodo, fecha_dictamen, fecha_inicio_periodo,
+ *   fecha_fin_periodo, fecha_acta_comision, opinion_comision, resultado,
+ *   requisitos_evaluados, fundamentacion }
+ */
+function generateDictamenPeriodoPrueba(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  if (!String(datos.opinion_comision || '').trim()) {
+    throw new Error(
+      'El dictamen debe recoger la opinión de la Comisión Mixta de Productividad, ' +
+      'Capacitación y Adiestramiento (Arts. 39-A y 39-B LFT). Genera primero el acta ' +
+      'de la sesión de la Comisión y captura aquí su opinión.'
+    );
+  }
+  if (!String(datos.fundamentacion || '').trim()) {
+    throw new Error(
+      'Falta la fundamentación del dictamen: qué requisitos y conocimientos ' +
+      'necesarios para el puesto no se acreditaron y con qué elementos se evaluó. ' +
+      'Un dictamen sin motivos es una decisión sin sustento.'
+    );
+  }
+
+  const tipoPeriodo = datos.tipo_periodo === 'capacitacion'
+    ? { etiqueta: 'capacitación inicial', articulo: '39-B', verbo: 'acreditar competencia' }
+    : { etiqueta: 'periodo a prueba',     articulo: '39-A', verbo: 'acreditar que satisface los requisitos y conocimientos necesarios para desarrollar las labores' };
+  const fecha    = datos.fecha_dictamen || new Date().toISOString().slice(0, 10);
+  const acredita = datos.resultado === 'acredita';
+
+  const state = _initDocLegal(
+    `Dictamen del ${tipoPeriodo.etiqueta}`,
+    `Artículo ${tipoPeriodo.articulo} de la Ley Federal del Trabajo`,
+    empresa, 'DIC');
+
+  _ciudadFecha(state, empresa.ciudad, fecha);
+
+  _p(state, `${np(empresa.nombre)}, por conducto de ${np(empresa.representante || '_______________________________')}, emite el presente dictamen respecto del ${tipoPeriodo.etiqueta} del C. ${np(trab.nombre)}, quien desempena el puesto de ${np(trab.puesto || '_______________')}, comprendido del ${datos.fecha_inicio_periodo ? npDate(datos.fecha_inicio_periodo) : '____________'} al ${datos.fecha_fin_periodo ? npDate(datos.fecha_fin_periodo) : '____________'}.`);
+
+  _hSeccion(state, 'I. Requisitos y conocimientos evaluados');
+  _p(state, datos.requisitos_evaluados || 'Los inherentes al puesto conforme al contrato individual de trabajo.', { indent: 3 });
+
+  _hSeccion(state, 'II. Opinión de la Comisión Mixta de Productividad, Capacitación y Adiestramiento');
+  _p(state, `Recabada en sesion de fecha ${datos.fecha_acta_comision ? npDate(datos.fecha_acta_comision) : '____________'}, en los siguientes terminos:`, { indent: 3 });
+  _p(state, `"${datos.opinion_comision}"`, { indent: 6 });
+
+  _hSeccion(state, 'III. Fundamentación y motivación');
+  _p(state, datos.fundamentacion, { indent: 3 });
+
+  _hSeccion(state, 'IV. Resolución');
+  _p(state, acredita
+    ? `Tomando en cuenta la opinion de la Comision Mixta de Productividad, Capacitacion y Adiestramiento y la naturaleza de la categoria o puesto, se resuelve que EL TRABAJADOR SI ACREDITO ${np(tipoPeriodo.verbo.toUpperCase())}, por lo que la relacion de trabajo continua por tiempo indeterminado, computandose la antiguedad desde el inicio del periodo (Art. 39-E LFT).`
+    : `Tomando en cuenta la opinion de la Comision Mixta de Productividad, Capacitacion y Adiestramiento y la naturaleza de la categoria o puesto, se resuelve que EL TRABAJADOR NO ACREDITO ${np(tipoPeriodo.verbo.toUpperCase())}, por lo que se dara por terminada la relacion de trabajo sin responsabilidad para EL PATRON, en terminos del articulo ${tipoPeriodo.articulo} de la Ley Federal del Trabajo. Esta resolucion se notificara por escrito a EL TRABAJADOR.`);
+
+  _gap(state, 8);
+  _checkY(state, 30);
+  const { doc, ml } = state;
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y + 16, ml + 90, state.y + 16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text(np('EL PATRON / REPRESENTANTE LEGAL'), ml, state.y + 20.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(empresa.representante || empresa.nombre), ml, state.y + 25);
+  state.y += 32;
+
+  return _salidaDoc(state, empresa, _nombreArchivo('dictamen-periodo-prueba', trab), opts);
+}
+
+/**
+ * Notificación al trabajador de que no acreditó el periodo. Se apoya en el
+ * dictamen, cuya fecha debe ser anterior o igual a la de esta notificación.
+ * @param {Object} datos { tipo_periodo, fecha_dictamen, fecha_efectos, fecha_fin_periodo }
+ */
+function generateNotificacionNoAcreditacionPrueba(empresa, trab, datos = {}, sucursal = null, opts = {}) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  _exigirCiudad(empresa.ciudad);
+
+  if (!datos.fecha_dictamen) {
+    throw new Error(
+      'Falta la fecha del dictamen que sustenta esta notificación. Genera primero el ' +
+      'Dictamen del periodo a prueba: la notificación debe apoyarse en él, no al revés.'
+    );
+  }
+  const fechaEfectos = datos.fecha_efectos || trab.fecha_baja || new Date().toISOString().slice(0, 10);
+  // Un dictamen firmado después de notificar la terminación evidencia que la
+  // opinión de la Comisión se recabó para justificar una decisión ya tomada.
+  if (String(datos.fecha_dictamen) > String(fechaEfectos)) {
+    throw new Error(
+      `El dictamen (${datos.fecha_dictamen}) es posterior a la fecha de efectos de la ` +
+      `terminación (${fechaEfectos}). El dictamen y la opinión de la Comisión Mixta deben ` +
+      `preceder a la terminación: fechados después, evidencian que se recabaron para ` +
+      `justificar una decisión ya tomada.`
+    );
+  }
+
+  const tipoPeriodo = datos.tipo_periodo === 'capacitacion'
+    ? { etiqueta: 'capacitación inicial', articulo: '39-B' }
+    : { etiqueta: 'periodo a prueba',     articulo: '39-A' };
+
+  const state = _initDocLegal(
+    `Notificación de terminación al concluir el ${tipoPeriodo.etiqueta}`,
+    `Artículo ${tipoPeriodo.articulo} de la Ley Federal del Trabajo`,
+    empresa, 'NNA');
+
+  _ciudadFecha(state, empresa.ciudad, fechaEfectos);
+
+  const { doc, ml } = state;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(np(`C. ${(trab.nombre || '').toUpperCase()}`), ml, state.y); state.y += 5.5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  if (trab.puesto) { doc.text(np(`Puesto: ${trab.puesto}`), ml, state.y); state.y += 4.6; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text('P R E S E N T E', ml, state.y); state.y += 10;
+
+  _p(state, `Por medio del presente se le comunica que, concluido el ${tipoPeriodo.etiqueta} pactado en su contrato individual de trabajo${datos.fecha_fin_periodo ? `, el ${npDate(datos.fecha_fin_periodo)}` : ''}, y tomando en cuenta la opinion de la Comision Mixta de Productividad, Capacitacion y Adiestramiento asi como la naturaleza de la categoria o puesto, ${np(empresa.nombre)} ha determinado que no se acreditaron los requisitos y conocimientos necesarios para desarrollar las labores contratadas, segun consta en el dictamen de fecha ${npDate(datos.fecha_dictamen)}, del que se le entrega copia.`);
+
+  _p(state, `En consecuencia, con fundamento en el articulo ${tipoPeriodo.articulo} de la Ley Federal del Trabajo, se da por terminada la relacion de trabajo SIN RESPONSABILIDAD PARA EL PATRON, con efectos a partir del ${npDate(fechaEfectos)}.`);
+
+  _p(state, `Quedan a su disposicion, en el domicilio de la empresa, las cantidades que le correspondan por concepto de partes proporcionales de las prestaciones generadas durante el periodo laborado.`);
+
+  // Acuse — mismo criterio que el aviso del art. 47: sin constancia de
+  // entrega, la notificación es un dicho del patrón sin respaldo.
+  _gap(state, 4);
+  _checkY(state, 44);
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.setFillColor(250,250,252);
+  doc.roundedRect(ml, state.y, state.tw, 36, 2, 2, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(50,50,50);
+  doc.text('ACUSE DE RECIBO', ml + 5, state.y + 7);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
+  doc.text('Recibi original de la presente notificacion y copia del dictamen el dia ____', ml + 5, state.y + 15);
+  doc.text('de ______________ de ______ a las ____:____ horas.', ml + 5, state.y + 21);
+  doc.setDrawColor(150,150,150);
+  doc.line(ml + 5, state.y + 31, ml + 78, state.y + 31);
+  doc.setFontSize(7); doc.setTextColor(90,90,90);
+  doc.text(np('Firma de EL TRABAJADOR'), ml + 5, state.y + 34.5);
+  state.y += 44;
+
+  _checkY(state, 30);
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
+  doc.line(ml, state.y + 16, ml + 90, state.y + 16);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.text(np('EL PATRON / REPRESENTANTE LEGAL'), ml, state.y + 20.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(np(empresa.representante || empresa.nombre), ml, state.y + 25);
+  state.y += 34;
+
+  _bloqueTestigos(state, datos);
+
+  return _salidaDoc(state, empresa, _nombreArchivo('notificacion-no-acreditacion', trab), opts);
+}
+
 // ─── ANEXO — INSTRUCTIVO DE RATIFICACIÓN ─────────────────────────────────────
 /**
  * Hoja separada del convenio (no forma parte del cuerpo que se firma): explica

@@ -837,7 +837,52 @@ function _validarPeriodosContrato(esDireccion, pruebaDias, capacitacionDias) {
   if (capacitacionDias && capacitacionDias > maxCapacitacion) {
     return `La capacitación inicial (${capacitacionDias} días) excede el máximo de ${maxCapacitacion} días para este tipo de puesto (Art. 39-B LFT).`;
   }
+  // Art. 39-D LFT: los periodos a prueba y de capacitación inicial son
+  // improrrogables y no pueden aplicarse en forma SIMULTÁNEA al mismo
+  // trabajador. Pactar ambos a la vez es el caso más común de exceso: suma
+  // un lapso de terminación libre mayor al que la ley permite.
+  if (pruebaDias && capacitacionDias) {
+    return 'No pueden pactarse simultáneamente un periodo a prueba y uno de capacitación inicial ' +
+      'para el mismo trabajador: el artículo 39-D de la Ley Federal del Trabajo lo prohíbe expresamente. ' +
+      'Elige uno de los dos y deja el otro vacío.';
+  }
   return null;
+}
+
+/**
+ * Art. 39-D LFT: dentro de una misma empresa no puede aplicarse al mismo
+ * trabajador un periodo a prueba o de capacitación inicial en forma sucesiva
+ * ni en más de una ocasión, "ni tratándose de puestos de trabajo distintos, o
+ * de ascensos, aun cuando concluida la relación de trabajo surja otra con el
+ * mismo patrón". Se busca por CURP porque es lo que identifica a la persona
+ * a través de altas y bajas sucesivas: recontratar a alguien que ya estuvo en
+ * la empresa y volver a sujetarlo a prueba es exactamente el supuesto que la
+ * ley cierra.
+ *
+ * Devuelve un mensaje de advertencia, o null si no hay antecedente.
+ */
+async function _verificarPruebaPrevia(curp, idActual) {
+  if (!curp || !curp.trim()) return null;
+  try {
+    const { data, error } = await window.supabase
+      .from('trabajadores')
+      .select('id, nombre, fecha_ingreso, estado, periodo_prueba_dias, capacitacion_inicial_dias')
+      .eq('empresa_id', CTX.empresa.id)
+      .eq('curp', curp.trim().toUpperCase());
+    if (error || !Array.isArray(data)) return null;
+    const previos = data.filter(t =>
+      t.id !== idActual &&
+      ((t.periodo_prueba_dias || 0) > 0 || (t.capacitacion_inicial_dias || 0) > 0));
+    if (!previos.length) return null;
+    const detalle = previos
+      .map(t => `${t.nombre} (ingreso ${formatDateShort(t.fecha_ingreso)}, ${t.estado || 'sin estado'})`)
+      .join('; ');
+    return 'Esta persona (misma CURP) ya tuvo un periodo a prueba o de capacitación inicial en esta empresa: ' +
+      detalle + '. El artículo 39-D de la Ley Federal del Trabajo prohíbe aplicarlos en forma simultánea o ' +
+      'sucesiva, ni en más de una ocasión, ni tratándose de puestos distintos o de ascensos, aun cuando ' +
+      'concluida la relación de trabajo surja otra con el mismo patrón. Un segundo periodo a prueba sería ' +
+      'nulo, y terminar la relación durante él se consideraría despido injustificado.';
+  } catch { return null; }
 }
 
 function calcularFechaVencimiento() {
@@ -1137,6 +1182,24 @@ async function handleGuardarTrabajador(id = '') {
     err.textContent = errPeriodos;
     err.style.display = '';
     return;
+  }
+
+  // Art. 39-D LFT — antecedente de prueba/capacitación con la misma CURP.
+  // Se advierte con confirmación explícita en vez de bloquear: puede haber
+  // homonimia de CURP mal capturada, o el usuario puede estar corrigiendo un
+  // registro anterior. La decisión debe tomarse a sabiendas.
+  const pactaPeriodo = (parseInt(eid('n-prueba')?.value) || 0) > 0 ||
+                       (parseInt(eid('n-capacitacion')?.value) || 0) > 0;
+  if (pactaPeriodo) {
+    const avisoPrueba = await _verificarPruebaPrevia(eid('n-curp')?.value, id);
+    if (avisoPrueba && typeof showConfirmacion === 'function') {
+      const seguir = await showConfirmacion(
+        avisoPrueba + '\n\n¿Deseas guardar de todas formas?',
+        { titulo: 'Periodo a prueba repetido (Art. 39-D LFT)', textoOk: 'Guardar de todas formas',
+          textoCancelar: 'Cancelar', peligro: true }
+      );
+      if (!seguir) return;
+    }
   }
 
   const dias_semana       = [...document.querySelectorAll('input[name="dias-semana"]:checked')].map(cb => cb.value);
