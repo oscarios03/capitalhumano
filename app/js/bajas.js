@@ -479,6 +479,37 @@ async function _confirmarBaja() {
   delete window._pendingBaja;
 }
 
+// Renuncias masivas "voluntarias" en poco tiempo son un patrón que los
+// Tribunales asocian con renuncias inducidas para evitar el pago de
+// indemnizaciones (constructive/simulated resignations). No se puede saber
+// con certeza si una renuncia es genuina, pero sí advertir cuando el patrón
+// de uso es inusual, para que quien la genera lo confirme a sabiendas.
+// sessionStorage (no localStorage): la advertencia es por sesión de trabajo,
+// no un límite permanente — quien de verdad procesa varias renuncias legítimas
+// en un día puede seguir, sólo confirmando cada vez a partir del umbral.
+const UMBRAL_RENUNCIAS_SESION = 3;
+
+function _contarRenunciasSesion(empresaId) {
+  return parseInt(sessionStorage.getItem(`renuncias_generadas_${empresaId}`) || '0', 10);
+}
+
+async function _generarCartaRenunciaConAviso(empresa, trab, sucursal) {
+  const previas = _contarRenunciasSesion(empresa.id);
+  if (previas >= UMBRAL_RENUNCIAS_SESION) {
+    const seguir = await showConfirmacion(
+      `Ya se han generado ${previas} cartas de renuncia en esta sesión para esta empresa. ` +
+      `Un volumen inusual de renuncias "voluntarias" en poco tiempo es un patrón que los ` +
+      `Tribunales asocian con renuncias inducidas o simuladas para evitar el pago de ` +
+      `indemnizaciones. Verifica que ésta responda a una decisión verdaderamente ` +
+      `individual y voluntaria del trabajador antes de continuar.`,
+      { titulo: 'Varias renuncias en esta sesión', textoOk: 'Generar de todas formas', textoCancelar: 'Cancelar', peligro: true }
+    );
+    if (!seguir) return;
+  }
+  sessionStorage.setItem(`renuncias_generadas_${empresa.id}`, String(previas + 1));
+  generateCartaRenuncia(empresa, trab, sucursal);
+}
+
 function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = null, datosArt47 = null) {
   const main = eid('main-view');
 
@@ -510,7 +541,7 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
       { icon:'', titulo:'Anexo — Instructivo de Ratificación', desc:'Explica el trámite; no se firma',     fn: () => generateAnexoInstructivoRatificacion(empresa, trabajadorPdf, sucursal) },
     ],
     renuncia: [
-      { icon:'', titulo:'Carta de Renuncia',    desc:'Renuncia voluntaria e irrevocable (Art. 51 LFT)',   fn: () => generateCartaRenuncia(empresa, trabajadorPdf, sucursal) },
+      { icon:'', titulo:'Carta de Renuncia',    desc:'Renuncia voluntaria e irrevocable — documento unilateral del trabajador', fn: () => _generarCartaRenunciaConAviso(empresa, trabajadorPdf, sucursal) },
       { icon:'', titulo:'Recibo de Finiquito',   desc:'Desglose de prestaciones proporcionales',           fn: () => generateRecibo(empresa, trabajadorPdf, result, sucursal) },
       { icon:'', titulo:'Convenio de Terminación (opcional)', desc:'Para ratificar ante el Centro de Conciliación y cerrar el asunto con efecto de cosa juzgada (Art. 33 LFT)', fn: () => generateConvenioTerminacion(empresa, trabajadorPdf, result, datosConvenio, sucursal) },
       { icon:'', titulo:'Anexo — Instructivo de Ratificación', desc:'Explica el trámite; no se firma',     fn: () => generateAnexoInstructivoRatificacion(empresa, trabajadorPdf, sucursal) },
@@ -701,9 +732,9 @@ function descargarDocBaja(idx, btn) {
   const orig = btn.innerHTML;
   btnCargando(btn, 'Generando PDF…');
 
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
-      docCfg.fn();
+      await docCfg.fn();
       setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1800);
     } catch(e) {
       console.error('Error al generar PDF de baja:', e);

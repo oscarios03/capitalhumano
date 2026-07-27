@@ -1052,6 +1052,25 @@ function generateContratoPDF(empresa, trab, sucursal = null, opts = {}) {
 }
 
 // ─── CARTA DE RENUNCIA ────────────────────────────────────────────────────────
+/**
+ * Carta de renuncia — documento UNILATERAL del trabajador.
+ *
+ * No cita el Art. 51 LFT (la versión anterior sí lo hacía): ese artículo
+ * regula la rescisión CON causa imputable al patrón por parte del
+ * trabajador (el espejo del art. 47), no la renuncia simple — citarlo aquí
+ * sugeriría, al revés de lo que el documento busca acreditar, que hubo una
+ * causa atribuible a la empresa. Una renuncia sin causa no necesita
+ * fundamento de rescisión: es el ejercicio ordinario de la libertad de
+ * trabajo. Si ambas partes quieren dejar constancia firmada del cierre,
+ * ese es el Convenio de Terminación (Art. 53 fracc. I y 33 LFT), no esta
+ * carta.
+ *
+ * Ciudad, fecha y motivo se dejan en blanco para llenarse de puño y letra:
+ * una renuncia con fecha y lugar ya impresos por el sistema de la empresa
+ * antes de que el trabajador la firme sugiere que fue preparada por la
+ * empresa, no redactada por decisión propia del trabajador — exactamente
+ * lo contrario de lo que el documento pretende acreditar.
+ */
 function generateCartaRenuncia(empresa, trab, sucursal = null) {
   empresa = resolveUbicacion(empresa, sucursal);
   const { jsPDF } = window.jspdf;
@@ -1060,10 +1079,14 @@ function generateCartaRenuncia(empresa, trab, sucursal = null) {
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
   const tw = pw - ml - mr;
-  let y = pdfHeader(doc, 'CARTA DE RENUNCIA VOLUNTARIA', 'Ley Federal del Trabajo — Articulo 51', ml, mr);
+  let y = pdfHeader(doc, 'CARTA DE RENUNCIA VOLUNTARIA', 'Documento unilateral del trabajador', ml, mr);
 
   doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(60,60,60);
-  doc.text(`${np(empresa.ciudad)}, a ${npDate(trab.fecha_baja)}`, pw - mr, y, { align:'right' }); y += 12;
+  doc.text('_______________________________, a _____ de _______________________ de __________', pw - mr, y, { align:'right' });
+  y += 6;
+  doc.setFontSize(7); doc.setTextColor(140,140,140);
+  doc.text('(lugar y fecha — a llenar de puño y letra por el trabajador al momento de firmar)', pw - mr, y, { align:'right' });
+  y += 10;
 
   doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
   doc.text(np(empresa.nombre.toUpperCase()), ml, y); y += 6;
@@ -1076,15 +1099,24 @@ function generateCartaRenuncia(empresa, trab, sucursal = null) {
   const p1 = `Por medio del presente escrito, yo ${np(trab.nombre)}, con RFC ${np(trab.rfc || 'N/A')} y CURP ${np(trab.curp || 'N/A')}, quien he prestado mis servicios como ${np(trab.puesto || 'empleado(a)')}${trab.departamento ? ' en el departamento de ' + np(trab.departamento) : ''} en su empresa desde el ${npDate(trab.fecha_ingreso)}, me permito comunicarle mi decision de presentar RENUNCIA VOLUNTARIA e irrevocable al cargo que venia desempenando, con efectos a partir del dia ${npDate(trab.fecha_baja)}.`;
   let l = doc.splitTextToSize(p1, tw); doc.text(l, ml, y); y += l.length * 5.5 + 8;
 
-  const p2 = `Lo anterior de conformidad con lo dispuesto por la Ley Federal del Trabajo vigente, sin que medie presion o condicionamiento alguno de parte de la empresa.`;
-  l = doc.splitTextToSize(p2, tw); doc.text(l, ml, y); y += l.length * 5.5 + 8;
-
   const p3 = `Manifiesto que no tengo adeudo alguno pendiente con la empresa por ningun concepto, y agradezco sinceramente la oportunidad de haber formado parte de su organizacion. Quedo en espera del pago de las prestaciones proporcionales correspondientes conforme a la Ley.`;
-  l = doc.splitTextToSize(p3, tw); doc.text(l, ml, y); y += l.length * 5.5 + 12;
+  l = doc.splitTextToSize(p3, tw); doc.text(l, ml, y); y += l.length * 5.5 + 10;
 
+  // Espacio para el motivo, de puño y letra: un motivo escrito a mano por el
+  // propio trabajador pesa mucho más como evidencia de voluntariedad que
+  // cualquier texto impreso por el sistema de la empresa.
+  if (y + 34 > ph - 20) { doc.addPage(); y = 25; }
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(50,50,50);
+  doc.text('Motivo de la separacion (escribir de puno y letra):', ml, y); y += 8;
+  doc.setDrawColor(190,190,190); doc.setLineWidth(0.3);
+  for (let i = 0; i < 3; i++) { doc.line(ml, y, pw - mr, y); y += 8; }
+  y += 4;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40,40,40);
   doc.text('Sin otro particular, quedo de usted.', ml, y); y += 8;
   doc.setFont('helvetica','italic'); doc.text('A t e n t a m e n t e,', ml, y); y += 18;
 
+  if (y + 40 > ph - 24) { doc.addPage(); y = 25; }
   doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
   doc.line(ml, y, ml + 100, y); y += 5;
   doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
@@ -1093,6 +1125,19 @@ function generateCartaRenuncia(empresa, trab, sucursal = null) {
   if (trab.rfc)  { doc.text(`RFC: ${np(trab.rfc)}`, ml, y); y += 4.5; }
   if (trab.curp) { doc.text(`CURP: ${np(trab.curp)}`, ml, y); y += 4.5; }
   if (trab.nss)  { doc.text(`NSS: ${np(trab.nss)}`, ml, y); y += 4.5; }
+  y += 6;
+
+  // Recomendación — no obligatoria, pero fortalece el valor probatorio de
+  // un documento cuya autenticidad se puede impugnar después.
+  const rec = 'Se recomienda firmar con huella digital y ante dos testigos identificados, y ratificar el finiquito correspondiente ante el Centro de Conciliacion competente (Art. 33 LFT) para dar mayor certeza juridica a ambas partes.';
+  if (y + 18 > ph - 20) { doc.addPage(); y = 25; }
+  doc.setFillColor(248,248,252); doc.setDrawColor(210,210,215); doc.setLineWidth(0.3);
+  const recLines = doc.splitTextToSize(np(rec), tw - 10);
+  const recH = recLines.length * 4.4 + 8;
+  doc.roundedRect(ml, y, tw, recH, 2, 2, 'FD');
+  doc.setFont('helvetica','italic'); doc.setFontSize(7.8); doc.setTextColor(90,90,90);
+  doc.text(recLines, ml + 5, y + 6);
+  y += recH;
 
   doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text('Documento generado por Capital Humano MX | Referencial — no sustituye asesoria legal', pw/2, ph-10, { align:'center' });
