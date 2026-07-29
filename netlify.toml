@@ -57,4 +57,14 @@
     # `googleads.g.doubleclick.net` y `www.googleadservices.com` como SCRIPT
     # (no solo como conexión), así que deben estar en script-src o el tracking
     # deja de registrar conversiones en silencio.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.facebook.com; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://graph.facebook.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://checkout.stripe.com https://td.doubleclick.net https://www.googletagmanager.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+    #
+    # fonts.googleapis.com / fonts.gstatic.com: `css/app.css` abre con un
+    # `@import` a Google Fonts (Public Sans y Source Serif 4), y ese archivo lo
+    # cargan las 10 páginas. Se detectó en el deploy preview del PR #9: la CSP
+    # inicial no los incluía y bloqueaba el @import ANTES de emitir la petición,
+    # así que no aparecía nada en la pestaña de red ni error en consola — la
+    # única señal era `document.fonts` vacío y el texto cayendo a system-ui.
+    # Van dos hosts distintos a propósito: googleapis sirve la hoja de estilo
+    # (style-src) y gstatic los archivos de fuente (font-src); con uno solo la
+    # tipografía sigue sin cargar.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.facebook.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://graph.facebook.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://checkout.stripe.com https://td.doubleclick.net https://www.googletagmanager.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"

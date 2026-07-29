@@ -199,6 +199,26 @@ Contenido:
 | Datos existentes vs. constraints nuevos | Conteo de violaciones en las 5 tablas | **0 violaciones** — ninguna fila actual quedaría bloqueada al editarse |
 | Efectos colaterales | Conteo de filas tras todas las pruebas | `bitacora=0`, `usos_ia=0`, `consentimientos=0`, `bajas=1`, `trabajadores=3` — las pruebas no dejaron basura |
 | Sintaxis | `new Function()` sobre 12 archivos JS | 12/12 OK; 7/7 páginas HTTP 200 |
+| **Cabeceras (deploy preview PR #9)** | `curl -D -` sobre `/`, `/app.html`, `/kiosco.html` | Las 7 cabeceras aplican en las 3; `camera=(self)` presente, que es lo que necesita el lector QR del kiosco |
+| **SRI (deploy preview PR #9)** | Descarga de los 7 recursos del CDN y recálculo del SHA-384 | 7/7 hashes coinciden; 7/7 versiones fijadas; supabase-js y html5-qrcode cargan sin error en el navegador |
+| **CSP vs. Google Fonts** | `document.fonts` tras `fonts.ready` en el preview | 🔴 **Regresión encontrada y corregida** — ver abajo |
+
+### Regresión de CSP detectada en el deploy preview (corregida)
+
+`css/app.css` abre con un `@import` a Google Fonts y lo cargan **las 10 páginas**. La CSP
+inicial no incluía esos hosts, así que la tipografía de marca (Public Sans / Source Serif 4)
+no cargaba y todo caía a `system-ui`. No es un fallo de seguridad, pero sí un cambio de
+diseño no intencionado, que la auditoría se había propuesto explícitamente no hacer.
+
+Lo relevante para futuras revisiones es **por qué casi se escapa**: la CSP bloquea el
+`@import` *antes* de emitir la petición, así que no aparece nada en la pestaña de red ni
+error en consola. `document.fonts.check()` tampoco sirve — devuelve `true` porque resuelve a
+la fuente de respaldo. La única señal fiable fue `document.fonts` vacío tras esperar
+`document.fonts.ready`.
+
+Corregido agregando `https://fonts.googleapis.com` a `style-src` (la hoja de estilo) y
+`https://fonts.gstatic.com` a `font-src` (los archivos de fuente). Son dos hosts distintos:
+con uno solo la tipografía sigue sin cargar.
 
 ---
 
