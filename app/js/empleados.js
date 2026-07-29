@@ -81,9 +81,10 @@ async function renderEmpleados() {
 async function renderTrabajadoresLista() {
   const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
   try {
-    const [trabajadores, sucursales] = await Promise.all([
+    const [trabajadores, sucursales, incidencias] = await Promise.all([
       db.getTrabajadores(),
       db.getSucursales(false),
+      db.getIncidenciasRecientes(),
     ]);
     if (typeof _navStale === 'function' && _navStale(_gen)) return;
     const sucursalesBranch = sucursales.filter(s => s.tipo !== 'matriz');
@@ -155,6 +156,29 @@ async function renderTrabajadoresLista() {
         <div id="sec-bajas" class="seccion-body" style="display:none;">
           ${tablaHTML('tabla-bajas', bajas)}
         </div>
+      </div>
+
+      <!-- Incidencias recientes -->
+      <div class="card animate-in" style="margin-top:16px;">
+        <div class="card-header">
+          <span class="card-title" style="display:inline-flex;align-items:center;gap:8px;">
+            <svg class="ic" style="color:var(--text-muted);"><use href="#i-file"></use></svg> Incidencias recientes de asistencia
+          </span>
+          <button class="btn-secondary btn-sm" onclick="navigate('asistencia')">Ver todas</button>
+        </div>
+        ${incidencias.length === 0
+          ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin incidencias registradas</div></div>`
+          : `<div class="table-wrap"><table class="data-table">
+              <thead><tr><th>Trabajador</th><th>Tipo</th><th>Fecha</th><th>Justificada</th></tr></thead>
+              <tbody>${incidencias.map(r => `
+                <tr>
+                  <td><strong>${escapeHtml(r.trabajadores?.nombre) || '—'}</strong></td>
+                  <td><span class="badge ${r.tipo==='falta'?'badge-falta':'badge-retardo'}">${r.tipo==='falta'?'Falta':'Retardo'}</span></td>
+                  <td>${formatDateShort(r.fecha)}</td>
+                  <td>${r.justificada ? '<span style="color:var(--green-ok)">✓ Sí</span>' : '<span style="color:var(--red-warn)">✗ No</span>'}</td>
+                </tr>`).join('')}
+              </tbody></table></div>`
+        }
       </div>
     `;
   } catch(e) { showError(e); }
@@ -1277,7 +1301,7 @@ async function renderPerfilEmpleado(id) {
     const start = new Date(trab.fecha_ingreso + 'T00:00:00');
     const end   = trab.estado === 'baja' && trab.fecha_baja ? new Date(trab.fecha_baja+'T00:00:00') : new Date();
     const antiguedad = antiguedadLabel(start, end);
-    const faltas30 = await db.getFaltasRecientes30Dias(id);
+    const causal47X = await db.getCausalFaltas47X(id);
 
     const dias      = diasParaVencimiento(trab.fecha_vencimiento_contrato);
     const necesitaRenovar = (trab.tipo_contrato === 'determinado') && dias !== null;
@@ -1322,9 +1346,9 @@ async function renderPerfilEmpleado(id) {
       ${alertaVencHTML(dias, trab.tipo_contrato)}
       ${_semaforoExpedienteHTML(trab, docsExp)}
 
-      ${faltas30.length >= 3 ? `
+      ${causal47X ? `
         <div class="alert alert-danger animate-in"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
-          <span><strong>Atención:</strong> ${escapeHtml(trab.nombre)} acumula <strong>${faltas30.length} faltas injustificadas</strong> en los últimos 30 días (Art. 47 Fracc. X LFT).
+          <span><strong>Atención:</strong> ${escapeHtml(trab.nombre)} acumuló <strong>${causal47X.faltas.length} faltas injustificadas</strong> en un periodo de 30 días naturales (última: ${formatDateShort(causal47X.fechaTercera)}, Art. 47 Fracc. X LFT). El derecho a rescindir sin responsabilidad vence el <strong>${formatDateShort(causal47X.fechaLimite)}</strong> (${causal47X.diasRestantes} día${causal47X.diasRestantes!==1?'s':''}, Art. 517 Fracc. I LFT).
           <button class="btn-danger btn-sm" style="margin-left:12px;" onclick="showModalActa('${id}','rescisoria','asistencia')">Generar acta</button></span>
         </div>
       ` : ''}
