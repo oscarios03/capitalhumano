@@ -1549,6 +1549,9 @@ function _cardCostoYSalida(trab) {
         ${filaEscenario('Despido injustificado', 'Liquidación — Art. 50 LFT (3 meses + 20 días/año + prima antigüedad + proporcionales)', liq, 'var(--red-warn)')}
         ${filaEscenario('Renuncia voluntaria', 'Finiquito — proporcionales devengados', fin, 'var(--green-ok)')}
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+        <button class="btn-secondary btn-sm" onclick="navigate('bajas', '${trab.id}')">Simular propuesta de salida</button>
+      </div>
       <div style="font-size:.72rem;color:var(--text-muted);margin-top:10px;">
         Mismo motor de cálculo que el módulo de Bajas (SDI ${fmt(liq.sdi)}, antigüedad ${liq.frac.toFixed(2)} años). No incluye salarios pendientes ni vacaciones de años anteriores no gozadas — captúralos al procesar la baja real.
       </div>

@@ -126,7 +126,10 @@ function _renderRoute(route, param) {
     checador:      renderChecador,
     nomina:        renderNomina,
     disciplinario: renderDisciplinario,
-    bajas:         renderBajas,
+    // Con param: preselecciona al trabajador (lo usan el perfil del empleado y
+    // las alertas). Sin la arrow, el id del hash se perdía y renderBajas abría
+    // siempre el selector vacío.
+    bajas:         () => renderBajas(param),
     imss:          renderIMSS,
     empresa:       renderEmpresa,
     vacaciones:    renderVacaciones,

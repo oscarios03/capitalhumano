@@ -66,6 +66,11 @@ correr una migración dos veces no rompe nada.
 |---|---------|----------|
 | 21 | `21_migration_planes.sql` | `planes`, `suscripciones`, triggers de enforcement (`zz_*`), índices de rendimiento y **supersede** `handle_new_user()` + `setup_empresa()` + `admin_set_plan()` |
 
+### 🚪 Bajas y terminación
+| # | Archivo | Qué hace |
+|---|---------|----------|
+| 38 | `38_migration_bajas_documentadas.sql` | **Separa causa real, documento y monto**: columnas `documentado_como` / `incluye_prima_antiguedad` / `gratificacion_*` / `propuesta_json` en `bajas` (permite imprimir carta de renuncia aunque la causa real sea un despido), y tabla `propuestas_baja` — borrador de negociación de un trabajador todavía activo, con escenarios de 15/30/45/60/75/90 días o monto manual, un solo borrador vivo por trabajador (índice único parcial). ⚠️ `bajas.tipo_baja` **sigue siendo la causa real**: la leen `_causaBajaDesdeTipo()` (imss.js), `db.darDeBaja()` y el reporte de rotación |
+
 ### 🐛 Fase beta — reportes de bug
 | # | Archivo | Qué hace |
 |---|---------|----------|
