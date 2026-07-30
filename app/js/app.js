@@ -22,6 +22,23 @@ function escapeHtml(value) {
   }[ch]));
 }
 
+// Escapa un valor que se va a interpolar DENTRO de un string JS que a su vez
+// vive dentro de un atributo HTML: `onclick="fn('${valor}')"`.
+// Escapar solo la comilla simple (patrón anterior `.replace(/'/g,"\\'")`) NO
+// basta: una comilla doble en el dato cierra el atributo `onclick="` y permite
+// inyectar HTML/JS arbitrario desde, por ejemplo, el nombre de un trabajador.
+// Orden obligatorio: primero se escapa como string JS (backslash, comilla,
+// saltos de línea) y DESPUÉS como texto de atributo HTML — el navegador
+// decodifica las entidades antes de entregarle el valor al parser de JS, así
+// que `\&#39;` llega al JS como `\'`, que es lo que queremos.
+function escapeAttrJs(value) {
+  const comoStringJs = String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, ' ');
+  return escapeHtml(comoStringJs);
+}
+
 // ═══════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════
@@ -183,10 +200,10 @@ async function busquedaGlobal(q) {
       } else {
         box.innerHTML = lista.slice(0, 8).map(t => `
           <div class="global-result-item" onclick="eid('global-search').value='';eid('global-results').style.display='none';navigate('empleado','${t.id}')" role="button" tabindex="0">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--gold-dim);display:grid;place-items:center;font-size:.78rem;font-weight:700;color:var(--gold-primary);flex-shrink:0;">${iniciales(t.nombre)}</div>
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--gold-dim);display:grid;place-items:center;font-size:.78rem;font-weight:700;color:var(--gold-primary);flex-shrink:0;">${escapeHtml(iniciales(t.nombre))}</div>
             <div>
               <div class="global-result-name">${escapeHtml(t.nombre)}</div>
-              <div class="global-result-meta">${t.puesto || '—'} · ${badgeEstado(t.estado)}</div>
+              <div class="global-result-meta">${escapeHtml(t.puesto) || '—'} · ${badgeEstado(t.estado)}</div>
             </div>
           </div>`).join('');
       }
@@ -1350,7 +1367,7 @@ async function switchEmpresa() {
       </div>
       <div style="padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px;">
         ${empresas.map(e => `
-          <button onclick="_seleccionarEmpresa('${e.id}','${e.nombre.replace(/'/g,"\\'")}','${e.rfc||''}')"
+          <button onclick="_seleccionarEmpresa('${e.id}','${escapeAttrJs(e.nombre)}','${escapeAttrJs(e.rfc||'')}')"
             style="background:${CTX.empresa.id===e.id?'var(--gold-dim)':'transparent'};border:1.5px solid ${CTX.empresa.id===e.id?'var(--gold-primary)':'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;text-align:left;cursor:pointer;color:var(--text-primary);">
             <div style="font-weight:700;">${escapeHtml(e.nombre)}</div>
             ${e.rfc ? `<div style="font-size:.78rem;color:var(--text-muted);">${escapeHtml(e.rfc)}</div>` : ''}
@@ -1403,11 +1420,43 @@ const _ERROR_PATTERNS = [
   [/Failed to fetch|NetworkError|ERR_INTERNET|ERR_CONNECTION/i, 'No se pudo conectar con el servidor. Verifica tu conexión a internet e intenta de nuevo.'],
   [/relation .* does not exist|column .* does not exist|schema cache/i, 'La aplicación necesita una actualización de base de datos pendiente. Contacta a soporte.'],
 ];
+// Huellas de un mensaje que viene del motor (Postgres/PostgREST/runtime JS) y
+// no de la propia app. Devolver esos mensajes tal cual filtra nombres de tablas,
+// constraints, detalles de políticas RLS y stack traces al usuario final.
+const _ERROR_TECNICO = [
+  /\b(pg_|PGRST|SQLSTATE|plpgsql)/i,
+  /\b(constraint|relation|column|schema|tuple|sequence|rollback|deadlock)\b/i,
+  /\bviolates\b|\bnull value in\b|\bsyntax error\b|\binvalid input syntax\b/i,
+  /\b(TypeError|ReferenceError|SyntaxError|RangeError)\b/i,
+  /\bis not (a function|defined|iterable)\b|\bundefined\b|\bcannot read propert/i,
+  /^\s*\{|\bat [\w.]+ \(/,           // JSON crudo o stack trace
+  /\b[a-z]+_[a-z_]{3,}\b.*\b(does not exist|already exists)\b/i,
+];
+function _pareceErrorTecnico(msg) {
+  return _ERROR_TECNICO.some(re => re.test(msg));
+}
+
+// Código de referencia corto (ej. ERR-4F2A) para correlacionar lo que ve el
+// usuario con el detalle técnico logueado. No es un identificador de seguridad:
+// solo sirve para soporte, así que Math.random() es suficiente.
+function _codigoReferencia() {
+  return 'ERR-' + Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+}
+
 function friendlyError(e) {
   console.error(e);
   const raw = e?.message || String(e);
   for (const [re, friendly] of _ERROR_PATTERNS) {
     if (re.test(raw)) return friendly;
+  }
+  // Ningún patrón conocido. Si el mensaje huele a error de motor, se sustituye
+  // por uno genérico con código de referencia (el detalle ya quedó en consola
+  // vía el console.error de arriba). Si no, es un mensaje de validación que la
+  // propia app redactó en español y se muestra tal cual.
+  if (_pareceErrorTecnico(raw)) {
+    const ref = _codigoReferencia();
+    console.error(`[${ref}] detalle del error mostrado al usuario como genérico`);
+    return `Ocurrió un error inesperado. Si el problema persiste, repórtalo con el código ${ref}.`;
   }
   return raw;
 }

@@ -61,7 +61,17 @@ Deno.serve(async (req: Request) => {
 
   // Gate de plan: el Agente IA solo está incluido en Full/Despacho.
   // Requiere la migración 21 (get_plan_actual) aplicada antes del deploy.
+  //
+  // OJO (auditoría 2026-07): al día de hoy la migración 21 NO está aplicada en
+  // producción, así que `get_plan_actual` no existe y este gate rechaza el 100%
+  // de las peticiones. Es el comportamiento correcto para un gate de feature de
+  // pago (fallar cerrado, nunca abierto), pero significa que la función está
+  // efectivamente apagada hasta aplicar la 21. Se distingue en el log para que
+  // el síntoma sea diagnosticable sin revelárselo al cliente en la respuesta.
   const { data: planInfo, error: planError } = await supabase.rpc('get_plan_actual');
+  if (planError) {
+    console.error('agente-ia: no se pudo resolver el plan (¿migración 21 sin aplicar?):', planError.code, planError.message);
+  }
   if (planError || planInfo?.features?.agente_ia !== true
       || !['active', 'trialing'].includes(planInfo?.estado)) {
     return new Response(JSON.stringify({
@@ -89,7 +99,7 @@ Deno.serve(async (req: Request) => {
   // Anthropic compartida, inflando costo o cambiando el modelo. system y
   // messages sí vienen del cliente (contienen el caso/plantilla concretos),
   // pero se acotan en tamaño para no permitir payloads absurdamente grandes.
-  let clientBody: { system?: unknown; messages?: unknown };
+  let clientBody: { system?: unknown; messages?: unknown; tipo_doc?: unknown };
   try {
     clientBody = await req.json();
   } catch {
@@ -129,6 +139,49 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Rate limiting (auditoría 2026-07, Fase 4): este es el endpoint más caro de
+  // la plataforma y hasta ahora no tenía ningún freno. El gate de plan de
+  // arriba solo verifica QUÉ plan tiene el usuario, no CUÁNTAS veces llama —
+  // cualquier cuenta con el feature podía invocarlo en bucle contra la cuenta
+  // de Anthropic compartida.
+  //
+  // `agente_ia_consumir_cuota` (migración 39) verifica los 4 límites (usuario/
+  // empresa × hora/día) y registra el consumo en la MISMA transacción, con
+  // advisory lock por usuario, así que ráfagas concurrentes no se cuelan.
+  // Se llama con el JWT del usuario (rol `authenticated`), no con service_role.
+  const { data: cuotaFilas, error: cuotaError } = await supabase.rpc(
+    'agente_ia_consumir_cuota',
+    { p_tipo_doc: typeof clientBody.tipo_doc === 'string' ? clientBody.tipo_doc.slice(0, 60) : null },
+  );
+
+  if (cuotaError) {
+    // Fallar CERRADO: si no se puede contabilizar el consumo, no se gasta
+    // presupuesto de API. El detalle queda en el log del servidor, nunca en la
+    // respuesta al cliente.
+    console.error('agente-ia: error consultando cuota:', cuotaError.code, cuotaError.message);
+    return new Response(JSON.stringify({
+      error: 'CUOTA_NO_DISPONIBLE',
+      message: 'No se pudo verificar tu cuota de uso del Agente IA. Intenta de nuevo en unos minutos.',
+    }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    });
+  }
+
+  const cuota = Array.isArray(cuotaFilas) ? cuotaFilas[0] : cuotaFilas;
+  if (!cuota?.permitido) {
+    const porEmpresa = String(cuota?.motivo ?? '').includes('empresa');
+    return new Response(JSON.stringify({
+      error: 'RATE_LIMIT_AGENTE_IA',
+      message: porEmpresa
+        ? 'Tu empresa alcanzó el límite de generaciones del Agente IA. Inténtalo más tarde.'
+        : 'Alcanzaste tu límite de generaciones del Agente IA. Inténtalo más tarde.',
+    }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '3600', ...CORS_HEADERS },
+    });
+  }
+
   // model y max_tokens se FIJAN aquí — nunca vienen del cliente.
   const anthropicBody = {
     model: MODEL_PERMITIDO,
@@ -148,8 +201,24 @@ Deno.serve(async (req: Request) => {
   });
 
   const responseData = await anthropicRes.json();
+
+  // No reenviar al cliente el cuerpo de error del proveedor: puede incluir
+  // detalle de la cuenta, tipos de error internos y trazas. Solo el caso de
+  // éxito se devuelve tal cual (lo necesita agente.js para parsear el JSON
+  // del documento).
+  if (!anthropicRes.ok) {
+    console.error('agente-ia: Anthropic respondió', anthropicRes.status, JSON.stringify(responseData).slice(0, 500));
+    return new Response(JSON.stringify({
+      error: 'PROVEEDOR_IA',
+      message: 'El Agente IA no pudo generar el documento en este momento. Intenta de nuevo en unos minutos.',
+    }), {
+      status: anthropicRes.status >= 500 ? 502 : 400,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    });
+  }
+
   return new Response(JSON.stringify(responseData), {
-    status: anthropicRes.status,
+    status: 200,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 });

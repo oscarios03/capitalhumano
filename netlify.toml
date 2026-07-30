@@ -1,8 +1,70 @@
 [build]
   publish = "app"
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  CABECERAS DE SEGURIDAD
+#  Proveedor detectado: Netlify (este archivo es el punto de configuración).
+#  Si el hosting cambia, replicar estas mismas cabeceras en `vercel.json`,
+#  `_headers` o el bloque `server {}` de Nginx según corresponda.
+# ═══════════════════════════════════════════════════════════════════════════
+
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "DENY"
+    # Fuerza HTTPS durante 2 años. `preload` se omite a propósito: entrar a la
+    # lista de precarga de los navegadores es prácticamente irreversible y no
+    # debe hacerse antes de tener el dominio definitivo de producción.
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+
+    # No adivinar el tipo MIME (evita que un .txt subido se ejecute como script).
     X-Content-Type-Options = "nosniff"
+
+    # Anti-clickjacking. Se mantiene X-Frame-Options por navegadores viejos;
+    # `frame-ancestors 'none'` en la CSP es el mecanismo moderno equivalente.
+    X-Frame-Options = "DENY"
+
+    # No filtrar la ruta completa (que puede llevar ids de trabajador) a terceros.
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+    # `camera=(self)` — NO se bloquea del todo porque kiosco.html necesita la
+    # cámara para el lector de gafetes QR. `(self)` sigue impidiendo que un
+    # iframe de tercero la use. El resto se apaga por completo.
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()"
+
+    # ── CSP — ETAPA 1 de 2 ───────────────────────────────────────────────
+    # La app usa handlers `onclick` inline y bloques <script> inline en todas
+    # las vistas, así que quitar 'unsafe-inline' AHORA rompería absolutamente
+    # todo. Esta etapa aporta lo que sí se puede aportar sin refactor:
+    #   · default-src 'self' — nada se carga desde un origen no listado
+    #   · lista blanca explícita de los únicos 4 dominios externos que la app
+    #     usa realmente (verificado contra el código, no supuesto)
+    #   · object-src 'none' + base-uri 'self' + frame-ancestors 'none'
+    #   · form-action acotado
+    # 'unsafe-eval' se conserva en esta etapa porque xlsx/jspdf pueden usarlo
+    # internamente; quitarlo es trabajo de la etapa 2, no de esta.
+    #
+    # ETAPA 2 (documentada, NO ejecutada en esta auditoría — ver
+    # AUDITORIA_SEGURIDAD.md §"Pendientes con decisión de negocio"):
+    # migrar los ~200 handlers `onclick=` a `data-*` + `addEventListener`
+    # delegado (el listener delegado global de Enter/Espacio de app.js ya
+    # establece el patrón), mover los <script> inline de index.html y
+    # kiosco.html a archivos propios, y recién entonces retirar
+    # 'unsafe-inline' y 'unsafe-eval' de script-src.
+    #
+    # Los orígenes de la lista blanca NO son supuestos: se verificaron cargando
+    # las páginas reales en un navegador y observando qué se descarga. En
+    # particular, gtag inyecta el pixel de conversión desde
+    # `googleads.g.doubleclick.net` y `www.googleadservices.com` como SCRIPT
+    # (no solo como conexión), así que deben estar en script-src o el tracking
+    # deja de registrar conversiones en silencio.
+    #
+    # fonts.googleapis.com / fonts.gstatic.com: `css/app.css` abre con un
+    # `@import` a Google Fonts (Public Sans y Source Serif 4), y ese archivo lo
+    # cargan las 10 páginas. Se detectó en el deploy preview del PR #9: la CSP
+    # inicial no los incluía y bloqueaba el @import ANTES de emitir la petición,
+    # así que no aparecía nada en la pestaña de red ni error en consola — la
+    # única señal era `document.fonts` vacío y el texto cayendo a system-ui.
+    # Van dos hosts distintos a propósito: googleapis sirve la hoja de estilo
+    # (style-src) y gstatic los archivos de fuente (font-src); con uno solo la
+    # tipografía sigue sin cargar.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.facebook.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://graph.facebook.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src https://js.stripe.com https://checkout.stripe.com https://td.doubleclick.net https://www.googletagmanager.com; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"

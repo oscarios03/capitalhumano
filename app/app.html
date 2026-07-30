@@ -195,10 +195,20 @@
 </div>
 
 <!-- Scripts -->
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<!-- Librerías externas: versión EXACTA + Subresource Integrity (SRI).
+     Sin `integrity` y con un tag flotante (`@2`), un compromiso del paquete o del
+     CDN ejecutaría código arbitrario dentro de la sesión autenticada de RH, con
+     acceso a todos los datos de trabajadores. Los hashes se calcularon sobre el
+     archivo servido el 2026-07-26; si se sube de versión hay que recalcularlos
+     (ver AUDITORIA_SEGURIDAD.md → checklist de re-verificación). -->
+<script src="https://unpkg.com/@supabase/supabase-js@2.110.8/dist/umd/supabase.js" crossorigin="anonymous"
+        integrity="sha384-M65KxMm/JqBppck6onbmAgPVMBHrmPCf1L17Q+71EcvI9/VVI8j5cqoxQf6lj6h2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"
+        integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"
+        integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"
+        integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"></script>
 <script src="js/config.js?v=4"></script>
 <script src="js/auth.js?v=4"></script>
 <script src="js/calculo.js?v=11"></script>
@@ -208,8 +218,10 @@
 <script src="js/db.js?v=6"></script>
 <script src="js/plan.js?v=1"></script>
 <script src="js/roles.js?v=1"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"
+        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"
+        integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG"></script>
 <script src="js/plantillas.js?v=4"></script>
 <script src="js/agente.js?v=4"></script>
 <script src="js/alertas.js?v=5"></script>

@@ -21,6 +21,15 @@ const DEV_EMAIL   = 'oscar_ius@outlook.com';
 // ocurrió. Actualízala en cada despliegue relevante.
 const APP_VERSION = '2026.07';
 
+// ─── Documentos legales ────────────────────────────────────────────────────
+// Versión vigente del Aviso de Privacidad y de los Términos y Condiciones.
+// Se guarda junto con cada aceptación (tabla `consentimientos_legales`,
+// migración 39) para poder acreditar QUÉ texto aceptó cada usuario.
+// IMPORTANTE: al publicar un cambio sustancial en cualquiera de los dos
+// documentos hay que subir esta versión — si no, las aceptaciones nuevas
+// quedarán registradas contra un texto que ya no es el que se mostró.
+const LEGAL_VERSION = '2026-07';
+
 // ─── Constantes de Nómina 2026 ────────────────────────────────────────────
 const UMA_DIARIA          = 113.14;   // Unidad de Medida y Actualización 2026
 const IMSS_OBRERO_PCT     = 0.0225;   // 2.25% cuota obrero total simplificada

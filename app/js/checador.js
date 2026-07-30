@@ -90,7 +90,7 @@ async function _tabKiosco() {
                   ? `<code style="font-size:.78rem;">${_urlKiosco(s.kiosco_token)}</code>`
                   : '<span style="color:var(--text-muted);">Sin generar</span>'}</td>
                 <td style="white-space:nowrap;">
-                  ${s.kiosco_token ? `<button class="btn-secondary btn-sm" onclick="_verQrKiosco('${s.id}','${s.kiosco_token}','${(s.nombre||'').replace(/'/g,"\\'")}')">Ver QR</button>` : ''}
+                  ${s.kiosco_token ? `<button class="btn-secondary btn-sm" onclick="_verQrKiosco('${s.id}','${escapeAttrJs(s.kiosco_token)}','${escapeAttrJs(s.nombre||'')}')">Ver QR</button>` : ''}
                   <button class="btn-secondary btn-sm" onclick="_generarTokenKiosco('${s.id}')">${s.kiosco_token?'Regenerar':'Generar'}</button>
                 </td>
               </tr>`).join('')}
@@ -113,7 +113,7 @@ async function _tabKiosco() {
                 <td>${t.codigo_checador ? 'Asignado' : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td style="white-space:nowrap;">
                   <button class="btn-secondary btn-sm" onclick="_asignarPin('${t.id}')">${t.pin_checador?'PIN':'PIN'}</button>
-                  <button class="btn-secondary btn-sm" onclick="_asignarQr('${t.id}','${(t.nombre||'').replace(/'/g,"\\'")}')">${t.codigo_checador?'Reimprimir gafete':'Generar gafete'}</button>
+                  <button class="btn-secondary btn-sm" onclick="_asignarQr('${t.id}','${escapeAttrJs(t.nombre||'')}')">${t.codigo_checador?'Reimprimir gafete':'Generar gafete'}</button>
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -144,12 +144,12 @@ function _verQrKiosco(sucursalId, token, nombreSucursal) {
   showModal(`
     <div class="modal animate-in" style="max-width:380px;text-align:center;">
       <div class="modal-header">
-        <div class="modal-title">Kiosco — ${nombreSucursal}</div>
+        <div class="modal-title">Kiosco — ${escapeHtml(nombreSucursal)}</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div id="qr-kiosco" style="margin:16px auto;width:220px;height:220px;"></div>
-      <div style="word-break:break-all;font-size:.78rem;color:var(--text-muted);margin-bottom:16px;">${url}</div>
-      <button class="btn-primary" onclick="window.open('${url}','_blank')">Abrir kiosco</button>
+      <div style="word-break:break-all;font-size:.78rem;color:var(--text-muted);margin-bottom:16px;">${escapeHtml(url)}</div>
+      <button class="btn-primary" onclick="window.open('${escapeAttrJs(url)}','_blank')">Abrir kiosco</button>
     </div>
   `);
   if (window.QRCode) new QRCode(eid('qr-kiosco'), { text: url, width: 220, height: 220 });
@@ -174,11 +174,11 @@ async function _asignarQr(trabId, nombre) {
   showModal(`
     <div class="modal animate-in" style="max-width:340px;text-align:center;">
       <div class="modal-header">
-        <div class="modal-title">Gafete — ${nombre}</div>
+        <div class="modal-title">Gafete — ${escapeHtml(nombre)}</div>
         <button class="modal-close" onclick="closeModal()">×</button>
       </div>
       <div id="qr-gafete" style="margin:16px auto;width:200px;height:200px;"></div>
-      <div style="font-weight:600;margin-bottom:16px;">${nombre}</div>
+      <div style="font-weight:600;margin-bottom:16px;">${escapeHtml(nombre)}</div>
       <button class="btn-primary" onclick="window.print()">Imprimir</button>
     </div>
   `);
@@ -253,9 +253,9 @@ async function _crearApiKey() {
       <div class="alert alert-warn" style="margin-bottom:14px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>Guárdala ahora — no volverá a mostrarse completa.</span>
       </div>
       <div style="background:var(--bg-surface);padding:12px;border-radius:8px;word-break:break-all;font-family:monospace;margin-bottom:14px;">
-        ${rawKey}
+        ${escapeHtml(rawKey)}
       </div>
-      <button class="btn-primary" onclick="navigator.clipboard.writeText('${rawKey}');showToast('Copiada','success')">Copiar</button>
+      <button class="btn-primary" onclick="navigator.clipboard.writeText('${escapeAttrJs(rawKey)}');showToast('Copiada','success')">Copiar</button>
     </div>
   `);
   await _cargarTabChecador();

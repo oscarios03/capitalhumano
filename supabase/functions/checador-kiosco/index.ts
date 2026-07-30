@@ -28,6 +28,12 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/** SHA-256 hex. La credencial tecleada NUNCA se guarda en claro. */
+async function sha256Hex(texto: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
@@ -44,6 +50,23 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Faltan datos (kiosco_token, credencial_tipo, credencial_valor)' }, 400);
   }
 
+  // Validación de tipo, formato y longitud (Fase 3 de la auditoría). Este es un
+  // endpoint público: nada de lo que llegue en el body puede darse por bueno.
+  // Los valores se acotan ANTES de tocar la base para no permitir que alguien
+  // mande cadenas enormes y convierta cada intento fallido en una fila gigante.
+  if (typeof kiosco_token !== 'string' || !/^[A-Za-z0-9]{16,64}$/.test(kiosco_token)) {
+    return json({ error: 'Kiosco no reconocido' }, 401);
+  }
+  if (typeof credencial_valor !== 'string') {
+    return json({ error: 'Credencial inválida' }, 400);
+  }
+  const formatoOk = credencial_tipo === 'pin'
+    ? /^[0-9]{4,8}$/.test(credencial_valor)        // PIN numérico
+    : /^[A-Za-z0-9._-]{8,128}$/.test(credencial_valor); // código de gafete QR
+  if (!formatoOk) {
+    return json({ error: 'Credencial no reconocida' }, 404);
+  }
+
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -58,23 +81,45 @@ Deno.serve(async (req: Request) => {
 
   if (!sucursal) return json({ error: 'Kiosco no reconocido' }, 401);
 
-  // Rate limit (A-4): el PIN es de solo 4 dígitos (9,000 combinaciones) y el
-  // kiosco_token está pensado para difundirse (QR/URL en recepción), así que
-  // sin este freno cualquiera con el token puede automatizar fuerza bruta
-  // remota del PIN. Solo se cuentan intentos FALLIDOS — nunca se bloquean
-  // los exitosos, para no frenar horas pico reales con varios trabajadores
-  // checando casi al mismo tiempo.
-  const VENTANA_SEGUNDOS      = 60;
-  const MAX_INTENTOS_FALLIDOS = 8;
-  const desde = new Date(Date.now() - VENTANA_SEGUNDOS * 1000).toISOString();
-  const { count: fallidosRecientes } = await supabase
-    .from('checador_intentos_fallidos')
-    .select('id', { count: 'exact', head: true })
-    .eq('kiosco_token', kiosco_token)
-    .gte('creado_en', desde);
+  // ── Rate limit (A-4, revisado en la auditoría 2026-07) ───────────────────
+  // El PIN es de 4 dígitos (9,000 combinaciones) y el kiosco_token está
+  // pensado para difundirse (QR pegado en recepción), así que sin freno
+  // cualquiera con el token puede automatizar fuerza bruta remota.
+  //
+  // El freno anterior contaba SOLO por kiosco_token: 8 fallos en 60 s
+  // bloqueaban a TODA la sucursal. Eso convertía el candado en un botón de
+  // denegación de servicio — cualquiera que viera el QR podía dejar sin
+  // checar a la plantilla entera — y además un cambio de turno con varios
+  // trabajadores equivocándose lo disparaba sin que hubiera ataque.
+  //
+  // Ahora el freno principal es por CREDENCIAL (un PIN bloqueado no afecta a
+  // los demás trabajadores), con un tope por IP contra el barrido
+  // automatizado y un tope por sucursal muy holgado como última red.
+  // Solo se cuentan intentos FALLIDOS; los exitosos nunca bloquean.
+  const credencialHash = await sha256Hex(`${kiosco_token}:${credencial_valor}`);
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+    || req.headers.get('cf-connecting-ip') || 'desconocida';
 
-  if ((fallidosRecientes || 0) >= MAX_INTENTOS_FALLIDOS) {
-    return json({ error: 'Demasiados intentos fallidos. Espera un minuto e inténtalo de nuevo.' }, 429);
+  const MAX_POR_CREDENCIAL = 5;    // en 15 min — acota el adivinar UN PIN
+  const MAX_POR_IP         = 30;   // en 15 min — acota el barrido de muchos
+  const MAX_POR_SUCURSAL   = 100;  // en 15 min — solo ante abuso masivo
+  const desde15 = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  const [porCredencial, porIp, porSucursal] = await Promise.all([
+    supabase.from('checador_intentos_fallidos').select('id', { count: 'exact', head: true })
+      .eq('kiosco_token', kiosco_token).eq('credencial_hash', credencialHash).gte('creado_en', desde15),
+    supabase.from('checador_intentos_fallidos').select('id', { count: 'exact', head: true })
+      .eq('ip', ip).gte('creado_en', desde15),
+    supabase.from('checador_intentos_fallidos').select('id', { count: 'exact', head: true })
+      .eq('kiosco_token', kiosco_token).gte('creado_en', desde15),
+  ]);
+
+  if ((porCredencial.count || 0) >= MAX_POR_CREDENCIAL
+      || (porIp.count || 0) >= MAX_POR_IP
+      || (porSucursal.count || 0) >= MAX_POR_SUCURSAL) {
+    // Mensaje idéntico en los tres casos: decirle al atacante CUÁL límite
+    // alcanzó le dice cómo evadirlo.
+    return json({ error: 'Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo, o acude con Recursos Humanos.' }, 429);
   }
 
   const columna = credencial_tipo === 'pin' ? 'pin_checador' : 'codigo_checador';
@@ -87,7 +132,10 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (!trabajador) {
-    await supabase.from('checador_intentos_fallidos').insert({ kiosco_token });
+    // Se guarda el HASH, nunca la credencial tecleada: esta tabla es un
+    // registro de intentos fallidos, no un almacén de PINes.
+    await supabase.from('checador_intentos_fallidos')
+      .insert({ kiosco_token, credencial_hash: credencialHash, ip });
     return json({ error: 'Credencial no reconocida' }, 404);
   }
 
@@ -100,7 +148,13 @@ Deno.serve(async (req: Request) => {
     p_dispositivo:   null,
   });
 
-  if (error) return json({ error: error.message }, 500);
+  // No devolver `error.message` crudo: este endpoint es PÚBLICO (sin sesión) y
+  // el mensaje de Postgres filtra nombres de tablas, columnas y constraints a
+  // cualquiera que tenga el enlace del kiosco. El detalle va al log.
+  if (error) {
+    console.error('checador-kiosco: registrar_checada falló:', error.code, error.message);
+    return json({ error: 'No se pudo registrar el checado. Avisa a Recursos Humanos.' }, 500);
+  }
   const fila = Array.isArray(resultado) ? resultado[0] : resultado;
 
   return json({
