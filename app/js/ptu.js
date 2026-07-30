@@ -138,7 +138,7 @@ async function calcularPTU() {
     // Exención de ISR: 15 UMA (Art. 93 fr. XIV LISR); el excedente se grava
     // con el procedimiento del Art. 174 RLISR. Tope individual: 3 meses de
     // salario (Art. 127 fr. VIII LFT, reforma 2021) — el remanente no se paga.
-    const uma        = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    const uma        = _umaVigente();
     const exencionPTU = 15 * uma;
 
     const detalle = trabajadores.map(t => {

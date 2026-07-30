@@ -11,7 +11,7 @@ function _labelPrestacion(tipo) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  TABLAS ISR 2026 — Art. 96 LISR / Anexo 8 RMF (DOF 28/12/2025)
 // ═══════════════════════════════════════════════════════════════════════════
-// ACCIÓN REQUERIDA DEL ADMINISTRADOR: el SAT publica el Anexo 8 de la RMF
+// ACCIÓN REQUERIDA DEL ADMINISTRADOR: el SAT pública el Anexo 8 de la RMF
 // cada fin de año. Las tarifas se actualizan cuando la inflación acumulada
 // desde la última actualización rebasa el 10% (Art. 152 LISR, último párrafo).
 // Para 2026 la inflación acumulada nov-2022 → nov-2025 fue de 13.21%, así que
@@ -33,7 +33,7 @@ const ISR_MENSUAL_2026 = [
 ];
 
 // Tarifa ANUAL (Art. 152 LISR) — la usa el ajuste anual del Art. 97
-// (ajuste_anual.js). No se deriva de la mensual: el SAT la publica aparte.
+// (ajuste_anual.js). No se deriva de la mensual: el SAT la pública aparte.
 const ISR_ANUAL_2026 = [
   { limInf:        0.01, limSup:    10135.11, cuota:       0.00, pct: 0.0192 },
   { limInf:    10135.12, limSup:    86022.11, cuota:     194.59, pct: 0.0640 },
@@ -77,7 +77,7 @@ const ISR_QUINCENAL_2026 = _escalarTarifaISR(ISR_MENSUAL_2026, 15 / 30.4);
  * @param {number} factorMes    Factor para mensualizar (30.4/7, 30.4/15, 1)
  */
 function _subsidioEmpleoPeriodo(basePeriodo, factorMes) {
-  const uma = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+  const uma = _umaVigente();
   const pct = typeof getConfigValor === 'function' ? getConfigValor('subsidio_pct_uma', 0.1502) : 0.1502;
   const lim = typeof getConfigValor === 'function' ? getConfigValor('subsidio_limite_mensual', 11492.66) : 11492.66;
   if (basePeriodo * factorMes > lim) return 0;
@@ -1076,7 +1076,7 @@ async function _tabDetalle() {
     // Si ya está guardado en BD lo usa; si no, lo calcula al vuelo
     if (r.infonavit_patronal != null && parseFloat(r.infonavit_patronal) > 0) return s + parseFloat(r.infonavit_patronal);
     const d = r.dias_laborados > 0 ? parseFloat(r.salario_base) / r.dias_laborados : 0;
-    const uma = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    const uma = _umaVigente();
     return s + parseFloat((Math.min(d, 25*uma) * 0.05 * r.dias_laborados).toFixed(2));
   }, 0);
   // Costo patronal IMSS + ISN (migración 32; 0 en recibos generados antes)
@@ -1146,7 +1146,7 @@ async function _tabDetalle() {
               const infonavitDed  = parseFloat(r.infonavit_descuento||0);
               // Aportación patronal 5% SBC (capped 25 UMA diarias = $2,828.50) — informativa, no reduce neto
               const dailyApprox   = r.dias_laborados > 0 ? parseFloat(r.salario_base) / r.dias_laborados : 0;
-              const sdiCap        = Math.min(dailyApprox, 25 * 113.14);
+              const sdiCap        = Math.min(dailyApprox, 25 * _umaVigente()); // tope 25 UMA, Art. 28 LSS
               const infPatronal   = parseFloat((sdiCap * 0.05 * r.dias_laborados).toFixed(2));
               return `<tr id="rn-${r.id}">
                 <td>
@@ -1334,8 +1334,8 @@ async function editarReciboInline(reciboId) {
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
-              <label class="form-label" for="re-pension">Pensión alimenticia <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. V LFT)</span></label>
-              <input id="re-pension" type="number" class="form-input" value="${nv('pension_alimenticia')}"
+              <label class="form-label" for="re-pensión">Pensión alimenticia <span style="font-size:.68rem;color:var(--text-muted);">(Art. 110 fr. V LFT)</span></label>
+              <input id="re-pensión" type="number" class="form-input" value="${nv('pension_alimenticia')}"
                 min="0" step="0.01" oninput="_recalcularPreviewRecibo()" />
             </div>
             <div class="form-group">
@@ -1428,7 +1428,7 @@ function _reTab(n) {
 // trabajador (fallback: salario diario, y en último caso el % plano previo).
 function _imssObreroRecibo(r, salBase) {
   const t   = (_N.trabajadores || []).find(x => x.id === r.trabajador_id) || {};
-  const uma = typeof _umaVigente === 'function' ? _umaVigente() : (typeof UMA_DIARIA !== 'undefined' ? UMA_DIARIA : 113.14);
+  const uma = _umaVigente();
   const sbcD = parseFloat(t.sbc) > 0
     ? parseFloat(t.sbc)
     : calcSalarioDiario(parseFloat(t.salario_mensual || 0), t.periodo_salario || 'mensual');
@@ -1486,7 +1486,7 @@ function _recalcularPreviewRecibo() {
   const fondoAhorro = g('re-fondo-ahorro');
   const prestamo    = g('re-prestamo');
   const infonavit   = g('re-infonavit');
-  const pension     = g('re-pension');
+  const pension     = g('re-pensión');
   const otrasDed    = g('re-otras-ded');
 
   const totalDed  = parseFloat((montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto + fondoAhorro + prestamo + infonavit + pension + otrasDed).toFixed(2));
@@ -1550,7 +1550,7 @@ async function guardarEdicionRecibo(reciboId) {
   const fondoPatron = g('re-fondo-patron');
   const prestamo    = g('re-prestamo');
   const infonavit   = g('re-infonavit');
-  const pension     = g('re-pension');
+  const pension     = g('re-pensión');
   const otrasDed    = g('re-otras-ded');
   const notas       = gs('re-notas');
 
@@ -1803,7 +1803,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     descMap[d.trabajador_id].push(d);
   });
 
-  const smgDiarioVigente = typeof _smgVigente === 'function' ? _smgVigente('general') : SMG_GENERAL;
+  const smgDiarioVigente = _smgVigente('general');
   const aplicacionesDescuento = []; // se insertan en descuentos_aplicados tras el upsert de recibos
 
   // Prestaciones adicionales de previsión social (migración 18): premios de
@@ -1840,7 +1840,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
   // Vacaciones aprobadas que se traslapan con el período: dan derecho a la
   // prima vacacional (mínimo 25% del salario de los días gozados — Art. 80
   // LFT). Los permisos con/sin goce (tipo permiso_goce/permiso_sin) no
-  // llevan prima, por eso se filtra tipo='vacacion'.
+  // llevan prima, por eso se filtra tipo='vacación'.
   const { data: todasVac, error: errVacPrima } = await _sbN()
     .from('vacaciones')
     .select('trabajador_id, fecha_inicio, fecha_fin')
@@ -1869,7 +1869,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
   const diasPeriodo = Math.ceil((dFin - dIni) / 86400000) + 1;
 
   // UMA diaria vigente (config_valores, migración 15; con respaldo local)
-  const UMA_DIARIA_2026    = typeof _umaVigente === 'function' ? _umaVigente() : 113.14;
+  const UMA_DIARIA_2026    = _umaVigente();
   const SBC_TOPE_INFONAVIT = 25 * UMA_DIARIA_2026; // tope Art. 29 Ley INFONAVIT
 
   const recibos = [];
@@ -2733,6 +2733,7 @@ async function _generarReciboNominaBlob(reciboId) {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+  _registrarFuenteRoboto(doc);
   const ml  = 25, mr = 25;
   const pw  = doc.internal.pageSize.getWidth();
   const ph  = doc.internal.pageSize.getHeight();
@@ -2740,30 +2741,22 @@ async function _generarReciboNominaBlob(reciboId) {
   const t   = recibo.trabajadores   || {};
   const p   = recibo.periodos_nomina || {};
 
-  // Normalizar caracteres especiales
-  const np = s => (s || '').toString()
-    .replace(/[áà]/g,'a').replace(/[éè]/g,'e').replace(/[íì]/g,'i')
-    .replace(/[óò]/g,'o').replace(/[úùü]/g,'u').replace(/ñ/g,'n')
-    .replace(/[ÁÀ]/g,'A').replace(/[ÉÈ]/g,'E').replace(/[ÍÌ]/g,'I')
-    .replace(/[ÓÒ]/g,'O').replace(/[ÚÙÜ]/g,'U').replace(/Ñ/g,'N')
-    .replace(/[¿¡×—]/g,'');
-
   const folio = recibo.folio || `NOM-${reciboId.slice(-6)}`;
   const daily = calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual');
   let y = 0;
-  const ck = (n = 20) => { if (y + n > ph - 16) { doc.addPage(); y = 22; } };
+  const ck = (n = 20) => { if (y + n > ph - 20) { doc.addPage(); y = 22; } };
 
   // 1. ENCABEZADO
   doc.setFillColor(15, 20, 40); doc.rect(0, 0, pw, 36, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
-  doc.text(np(empresa.nombre || ''), pw/2, 11, { align:'center' });
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
-  doc.text(np([empresa.rfc, empresa.domicilio].filter(Boolean).join(' | ')), pw/2, 18, { align:'center' });
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+  doc.setFont('Roboto','bold'); doc.setFontSize(12); doc.setTextColor(21,128,61);
+  doc.text(empresa.nombre || '', pw/2, 11, { align:'center' });
+  doc.setFont('Roboto','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
+  doc.text([empresa.rfc, empresa.domicilio].filter(Boolean).join(' | '), pw/2, 18, { align:'center' });
+  doc.setFont('Roboto','bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
   doc.text('RECIBO DE NOMINA', pw/2, 30, { align:'center' });
   y = 42;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
-  doc.text(`Folio: ${np(folio)}  |  Periodo: ${np(p.nombre || '')}`, pw/2, y, { align:'center' });
+  doc.setFont('Roboto','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text(`Folio: ${folio}  |  Periodo: ${p.nombre || ''}`, pw/2, y, { align:'center' });
   y += 10;
 
   // 2. BLOQUE TRABAJADOR
@@ -2771,26 +2764,26 @@ async function _generarReciboNominaBlob(reciboId) {
   doc.setFillColor(248,248,252); doc.rect(ml, y, tw, bH, 'F');
   doc.setDrawColor(220,220,220); doc.setLineWidth(0.3);
   doc.rect(ml, y, tw, bH); doc.line(pw/2, y, pw/2, y + bH);
-  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
-  doc.text(np(t.nombre || ''), ml+3, y+8);
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+  doc.setFont('Roboto','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(t.nombre || '', ml+3, y+8);
+  doc.setFont('Roboto','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
   let yi = y+14;
-  if (t.rfc)         { doc.text(`RFC: ${np(t.rfc)}`,          ml+3, yi); yi+=4.2; }
-  if (t.nss)         { doc.text(`NSS: ${np(t.nss)}`,          ml+3, yi); yi+=4.2; }
-  if (t.puesto)      { doc.text(`Puesto: ${np(t.puesto)}`,    ml+3, yi); yi+=4.2; }
-  if (t.departamento){ doc.text(`Area: ${np(t.departamento)}`,ml+3, yi); }
+  if (t.rfc)         { doc.text(`RFC: ${t.rfc}`,          ml+3, yi); yi+=4.2; }
+  if (t.nss)         { doc.text(`NSS: ${t.nss}`,          ml+3, yi); yi+=4.2; }
+  if (t.puesto)      { doc.text(`Puesto: ${t.puesto}`,    ml+3, yi); yi+=4.2; }
+  if (t.departamento){ doc.text(`Area: ${t.departamento}`,ml+3, yi); }
   const c2x = pw/2 + 3; let yj = y+8;
-  doc.text(`Periodo: ${np(formatDateShort(p.fecha_inicio))} al ${np(formatDateShort(p.fecha_fin))}`, c2x, yj); yj+=4.5;
-  doc.text(`Dias laborados: ${recibo.dias_laborados}`,  c2x, yj); yj+=4.5;
-  doc.text(`Salario diario: ${np(fmt(daily))}`,         c2x, yj); yj+=4.5;
-  doc.text(`Forma de pago: ${np(recibo.forma_pago || 'Deposito')}`, c2x, yj);
+  doc.text(`Periodo: ${formatDateShort(p.fecha_inicio)} al ${formatDateShort(p.fecha_fin)}`, c2x, yj); yj+=4.5;
+  doc.text(`Días laborados: ${recibo.dias_laborados}`,  c2x, yj); yj+=4.5;
+  doc.text(`Salario diario: ${fmt(daily)}`,         c2x, yj); yj+=4.5;
+  doc.text(`Forma de pago: ${recibo.forma_pago || 'Deposito'}`, c2x, yj);
   y += bH + 10;
 
   // 3. PERCEPCIONES
-  const percRows = [['Salario base', `${recibo.dias_laborados} dias x ${np(fmt(daily))}  Art. 82 LFT`, fmt(recibo.salario_base)]];
-  if (parseFloat(recibo.comisiones_ventas||0) > 0)      percRows.push(['Comision s/ventas', `${np(fmt(recibo.monto_ventas))} x ${((recibo.pct_comision_ventas||0)*100).toFixed(2)}%  Art. 285-289 LFT`, fmt(recibo.comisiones_ventas)]);
-  if (parseFloat(recibo.comisiones_recuperacion||0) > 0) percRows.push(['Comision s/recuperacion', `${np(fmt(recibo.monto_recuperado))} x ${((recibo.pct_comision_recuper||0)*100).toFixed(2)}%  Art. 285-289 LFT`, fmt(recibo.comisiones_recuperacion)]);
-  if (parseFloat(recibo.bono_meta||0) > 0)              percRows.push([`Bono por meta${recibo.concepto_bono_meta?' — '+np(recibo.concepto_bono_meta):''}`, 'RIT / Acuerdo', fmt(recibo.bono_meta)]);
+  const percRows = [['Salario base', `${recibo.dias_laborados} días x ${fmt(daily)}  Art. 82 LFT`, fmt(recibo.salario_base)]];
+  if (parseFloat(recibo.comisiones_ventas||0) > 0)      percRows.push(['Comisión s/ventas', `${fmt(recibo.monto_ventas)} x ${((recibo.pct_comision_ventas||0)*100).toFixed(2)}%  Art. 285-289 LFT`, fmt(recibo.comisiones_ventas)]);
+  if (parseFloat(recibo.comisiones_recuperacion||0) > 0) percRows.push(['Comisión s/recuperación', `${fmt(recibo.monto_recuperado)} x ${((recibo.pct_comision_recuper||0)*100).toFixed(2)}%  Art. 285-289 LFT`, fmt(recibo.comisiones_recuperacion)]);
+  if (parseFloat(recibo.bono_meta||0) > 0)              percRows.push([`Bono por meta${recibo.concepto_bono_meta?' — '+recibo.concepto_bono_meta:''}`, 'RIT / Acuerdo', fmt(recibo.bono_meta)]);
   if (parseFloat(recibo.prima_vacacional||0) > 0)       percRows.push(['Prima vacacional prop.', 'Art. 80 LFT', fmt(recibo.prima_vacacional)]);
   if (parseFloat(recibo.aguinaldo_prop||0) > 0)         percRows.push(['Aguinaldo proporcional', 'Art. 87 LFT', fmt(recibo.aguinaldo_prop)]);
   if (parseFloat(recibo.monto_horas_extra||0) > 0)      percRows.push(['Horas extra', `${recibo.horas_extra} hrs  Art. 67-68 LFT`, fmt(recibo.monto_horas_extra)]);
@@ -2818,19 +2811,19 @@ async function _generarReciboNominaBlob(reciboId) {
 
   // 4. DEDUCCIONES
   const dedRows = [];
-  if (parseFloat(recibo.monto_faltas||0) > 0)           dedRows.push(['Desc. por faltas', `${recibo.dias_falta} dias x ${np(fmt(daily))}  Art. 58 LFT`, `-${fmt(recibo.monto_faltas)}`]);
-  if (parseFloat(recibo.monto_falta_justif||0) > 0)     dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} dias x ${np(fmt(daily))}  Arts. 82-84 LFT`, `-${fmt(recibo.monto_falta_justif)}`]);
+  if (parseFloat(recibo.monto_faltas||0) > 0)           dedRows.push(['Desc. por faltas', `${recibo.dias_falta} días x ${fmt(daily)}  Art. 58 LFT`, `-${fmt(recibo.monto_faltas)}`]);
+  if (parseFloat(recibo.monto_falta_justif||0) > 0)     dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} días x ${fmt(daily)}  Arts. 82-84 LFT`, `-${fmt(recibo.monto_falta_justif)}`]);
   if (parseFloat(recibo.monto_permiso_sin||0) > 0)      dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} dias`, `-${fmt(recibo.monto_permiso_sin)}`]);
   if (parseFloat(recibo.cuota_imss||0) > 0)             dedRows.push(['Cuota IMSS obrero', '2.25% s/base  Art. 25 LSS', `-${fmt(recibo.cuota_imss)}`]);
   if (parseFloat(recibo.isr_retenido||0) > 0)           dedRows.push(['ISR retenido', 'Art. 96 LISR 2026', `-${fmt(recibo.isr_retenido)}`]);
   if (parseFloat(recibo.fondo_ahorro_obrero||0) > 0)    dedRows.push(['Fondo de ahorro obrero', 'Art. 110 fr. IV LFT', `-${fmt(recibo.fondo_ahorro_obrero)}`]);
   if (parseFloat(recibo.prestamo_empresa||0) > 0)       dedRows.push(['Prestamo empresa', 'Art. 110 fr. I LFT', `-${fmt(recibo.prestamo_empresa)}`]);
   if (parseFloat(recibo.infonavit_descuento||0) > 0)    dedRows.push(['INFONAVIT', 'Art. 97 Ley INFONAVIT', `-${fmt(recibo.infonavit_descuento)}`]);
-  if (parseFloat(recibo.pension_alimenticia||0) > 0)    dedRows.push(['Pension alimenticia', 'Art. 110 fr. V LFT', `-${fmt(recibo.pension_alimenticia)}`]);
+  if (parseFloat(recibo.pension_alimenticia||0) > 0)    dedRows.push(['Pensión alimenticia', 'Art. 110 fr. V LFT', `-${fmt(recibo.pension_alimenticia)}`]);
   (Array.isArray(recibo.descuentos_detalle) ? recibo.descuentos_detalle : []).forEach(d => {
-    if (parseFloat(d.monto || 0) > 0) dedRows.push([np(d.descripcion || d.tipo), d.numero_credito ? `Num. ${np(d.numero_credito)}` : 'Art. 110 LFT', `-${fmt(d.monto)}`]);
+    if (parseFloat(d.monto || 0) > 0) dedRows.push([d.descripcion || d.tipo, d.numero_credito ? `Num. ${d.numero_credito}` : 'Art. 110 LFT', `-${fmt(d.monto)}`]);
   });
-  if (parseFloat(recibo.otras_deducciones||0) > 0)      dedRows.push(['Otras deducciones', np(recibo.notas || '—'), `-${fmt(recibo.otras_deducciones)}`]);
+  if (parseFloat(recibo.otras_deducciones||0) > 0)      dedRows.push(['Otras deducciones', recibo.notas || '—', `-${fmt(recibo.otras_deducciones)}`]);
   if (!dedRows.length) dedRows.push(['Sin deducciones','','$0.00']);
   ck(dedRows.length * 10 + 50);
   doc.autoTable({
@@ -2850,10 +2843,10 @@ async function _generarReciboNominaBlob(reciboId) {
   // 5. NETO A PAGAR
   ck(30);
   doc.setFillColor(15,20,40); doc.rect(ml, y, tw, 22, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(180,185,200);
+  doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text('NETO A PAGAR', pw/2, y+7, { align:'center' });
   doc.setFontSize(15); doc.setTextColor(21,128,61);
-  doc.text(np(`${fmt(recibo.neto_pagar)}   (${numToWords(recibo.neto_pagar)} PESOS M.N.)`), pw/2, y+17, { align:'center' });
+  doc.text(`${fmt(recibo.neto_pagar)}   (${numToWords(recibo.neto_pagar)} PESOS M.N.)`, pw/2, y+17, { align:'center' });
   y += 30;
 
   // 6. ACUMULADOS
@@ -2875,16 +2868,16 @@ async function _generarReciboNominaBlob(reciboId) {
 
   // 7. DECLARACIÓN LEGAL
   ck(22);
-  const decl = `El trabajador declara haber recibido la cantidad senalada como neto a pagar, conforme a los Articulos 82, 88 y 132 fraccion VII de la Ley Federal del Trabajo.`;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
-  const dl = doc.splitTextToSize(np(decl), tw);
+  const decl = `El trabajador declara haber recibido la cantidad senalada como neto a pagar, conforme a los Artículos 82, 88 y 132 fracción VII de la Ley Federal del Trabajo.`;
+  doc.setFont('Roboto','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
+  const dl = doc.splitTextToSize(decl, tw);
   doc.text(dl, ml, y); y += dl.length * 4.5 + 8;
 
   // 8. PLACEHOLDER CFDI
   ck(22);
   doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.setLineDash([2,2]);
   doc.rect(ml, y, tw, 14); doc.setLineDash([]);
-  doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(170,170,170);
+  doc.setFont('Roboto','italic'); doc.setFontSize(7.5); doc.setTextColor(170,170,170);
   doc.text('Timbrado CFDI — Proximamente (Art. 99 Fracc. III LISR)', pw/2, y+8, { align:'center' });
   y += 22;
 
@@ -2895,22 +2888,15 @@ async function _generarReciboNominaBlob(reciboId) {
   doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
   doc.line(c1f, y+18, c1f+colW, y+18);
   doc.line(c2f, y+18, c2f+colW, y+18);
-  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.setFont('Roboto','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
   doc.text('EL PATRON / REPRESENTANTE', c1f+colW/2, y+23, {align:'center'});
   doc.text('EL TRABAJADOR',             c2f+colW/2, y+23, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
-  doc.text(np(empresa.nombre || ''), c1f+colW/2, y+28, {align:'center'});
-  doc.text(np(t.nombre || ''),       c2f+colW/2, y+28, {align:'center'});
+  doc.setFont('Roboto','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(empresa.nombre || '', c1f+colW/2, y+28, {align:'center'});
+  doc.text(t.nombre || '',       c2f+colW/2, y+28, {align:'center'});
 
   // 10. PIE DE PÁGINA
-  const totalPags = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPags; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph-11, pw-mr, ph-11);
-    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(160,160,160);
-    doc.text(np(`${folio}  |  Pagina ${i} de ${totalPags}  |  Capital Humano MX  |  Arts. 82, 88, 132 LFT`), pw/2, ph-7, {align:'center'});
-  }
+  _footerFolio(doc, ml, mr, folio, empresa.nombre);
 
   return doc.output('blob');
 }

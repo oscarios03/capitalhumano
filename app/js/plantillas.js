@@ -55,11 +55,14 @@ mediante [FORMA_PAGO], los días [DIAS_PAGO]. El salario se cubre en su
 totalidad por la jornada ordinaria convenida, sin que en ningún caso sea
 inferior al salario mínimo general vigente en la zona de que se trate.
 
-QUINTA. LUGAR Y JORNADA. EL TRABAJADOR prestará sus servicios en [DOMICILIO_SUCURSAL]
-o en el lugar que EL PATRON designe. La jornada ordinaria de trabajo será de
+QUINTA. LUGAR Y JORNADA. ${CLAUSULAS.lugarTrabajo.replace('[DOMICILIO]', '[DOMICILIO_SUCURSAL]')}
+La jornada ordinaria de trabajo será de
 [HORA_INICIO] a [HORA_FIN] horas, con período de descanso para alimentos de
 [DESCANSO_INICIO] a [DESCANSO_FIN] horas, los días [DIAS_SEMANA]. La jornada
-semanal no excederá de 40 horas, conforme a la reforma publicada en el DOF.
+semanal pactada es de [HORAS_SEMANALES] horas, sin exceder el máximo legal de
+[JORNADA_MAX_VIGENTE] horas semanales aplicable en [AÑO], conforme al artículo 59
+de la Ley Federal del Trabajo y al régimen de transición previsto en la reforma
+publicada en el Diario Oficial de la Federación el 1 de mayo de 2026.
 
 SEXTA. DESCANSO SEMANAL. EL TRABAJADOR disfrutará de un día de descanso
 semanal por cada seis de trabajo, preferentemente el [DIA_DESCANSO], con
@@ -92,61 +95,34 @@ d) Pago de horas extraordinarias a [FACTOR_HORAS_EXTRA] veces el salario por hor
 e) Días de descanso adicionales con goce de sueldo: [FESTIVOS_EMPRESA].
 Estas prestaciones no podrán ser inferiores a los mínimos de la LFT.
 
-OCTAVA. INSTRUMENTOS DE TRABAJO. EL PATRON proporcionará a EL TRABAJADOR los
-equipos, herramientas e instrumentos necesarios para el desempeño de sus funciones,
-los cuales son de propiedad exclusiva de EL PATRON. EL TRABAJADOR se obliga a
-darles uso exclusivamente laboral y a devolverlos en buen estado al término de
-la relación, respondiendo por daños causados por dolo, negligencia o descuido.
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
 
-NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. Las partes convienen que EL TRABAJADOR
-participará en los programas de capacitación y adiestramiento que EL PATRON
-determine, conforme a los artículos 153-A al 153-X de la LFT, con la finalidad
-de actualizar sus conocimientos y elevar su productividad y nivel de vida.
+NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
 
-DÉCIMA. OBLIGACIONES DEL TRABAJADOR. EL TRABAJADOR se compromete a cumplir
-con las obligaciones establecidas en el artículo 134 de la LFT, entre ellas:
-ejecutar el trabajo con la intensidad y cuidado apropiados; observar las medidas
-de higiene y seguridad; guardar escrupulosamente los secretos técnicos y comerciales;
-observar buenas costumbres; y acatar las instrucciones del PATRON en lo relativo
-a la ejecución de su trabajo.
+DÉCIMA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
 
-DÉCIMA PRIMERA. DEDUCCIONES DE LEY. EL PATRON queda autorizado para efectuar
-a EL TRABAJADOR las deducciones señaladas en el artículo 110 de la LFT, incluyendo
-cuotas al IMSS, aportaciones al INFONAVIT, créditos del INFONAVIT o del FOVISSSTE,
-y demás descuentos autorizados por escrito por EL TRABAJADOR.
+DÉCIMA PRIMERA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
 
-DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y PROPIEDAD INTELECTUAL. EL TRABAJADOR se
-obliga a guardar absoluta confidencialidad sobre toda la información, procesos,
-metodologías, listados de clientes y secretos industriales o comerciales de EL
-PATRON, durante la vigencia de este contrato y con posterioridad a su terminación.
-La violación a esta cláusula podrá configurar los delitos de revelación de
-secretos previstos en los artículos 210-211 del Código Penal Federal y los
-artículos 82-86 y 213 de la Ley Federal de Protección a la Propiedad Industrial.
-Todas las creaciones y desarrollos realizados con recursos del PATRON son de
-titularidad exclusiva de éste, cediéndose en este acto los derechos patrimoniales
-de autor que pudieran corresponder a EL TRABAJADOR.
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
 
-DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. Son causas de rescisión sin responsabilidad
-para EL PATRON las establecidas en el artículo 47 de la LFT. Son causas sin
-responsabilidad para EL TRABAJADOR las del artículo 51 LFT. En caso de renuncia
-voluntaria, EL TRABAJADOR otorgará un aviso previo de 15 días naturales.
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
 
-DÉCIMA CUARTA. BENEFICIARIOS. EL TRABAJADOR designa como beneficiarios para
-recibir el pago de salarios e indemnizaciones en caso de fallecimiento o
-desaparición, conforme al artículo 25 fracción X de la LFT, a:
+DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA CUARTA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
 Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
 Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
 
-DÉCIMA QUINTA. RECONOCIMIENTO DE ANTIGÜEDAD. Para el cómputo de la antigüedad
-y las prestaciones derivadas, se toma como fecha de inicio el [FECHA_ANTIGUEDAD],
-conforme al artículo 158 de la LFT.
+DÉCIMA QUINTA. RECONOCIMIENTO DE ANTIGÜEDAD. ${CLAUSULAS.antiguedad}
 
-DÉCIMA SEXTA. JURISDICCIÓN. Para la interpretación y cumplimiento del presente
-contrato las partes se someten a la jurisdicción del Tribunal Laboral del Centro
-de Justicia Laboral del Estado de Guanajuato, con sede en León, Guanajuato.
+DÉCIMA QUINTA BIS. TRABAJADORES MENORES DE EDAD. ${CLAUSULAS.menoresEdad}
 
-DÉCIMA SÉPTIMA. SUPLETORIEDAD. En todo lo no previsto en este contrato se
-aplicará la Ley Federal del Trabajo vigente y demás disposiciones aplicables.
+DÉCIMA SEXTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
+
+DÉCIMA SÉPTIMA. SUPLETORIEDAD. ${CLAUSULAS.supletoriedad}
 
 Se firma en dos tantos originales en la ciudad de [CIUDAD], el día [FECHA].
 
@@ -190,8 +166,35 @@ a [HORA_FIN] hrs., descanso [DESCANSO_INICIO]-[DESCANSO_FIN], días [DIAS_SEMANA
 
 QUINTA. DESCANSO. Un día de descanso semanal, preferentemente el [DIA_DESCANSO].
 
-[CLÁUSULAS COMUNES: Prestaciones, Herramientas, Capacitación, Obligaciones,
-Deducciones, Confidencialidad, Rescisión, Beneficiarios, Antigüedad, Jurisdicción]
+SEXTA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162), calculadas proporcionalmente al tiempo laborado dado el carácter
+determinado de este contrato.
+
+SÉPTIMA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+OCTAVA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
+
+NOVENA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA PRIMERA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+DÉCIMA PRIMERA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+
+DÉCIMA SEGUNDA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA TERCERA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA CUARTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el día [FECHA].
 `,
@@ -219,10 +222,7 @@ CUARTA. REMUNERACIÓN POR COMISIÓN. La remuneración se integrará por comision
 conforme a la siguiente tabla:
 [TABLA_COMISIONES]
 
-Para efectos del IMSS e INFONAVIT, el SDI se calculará conforme al promedio
-de comisiones percibidas en los últimos 30 días, con un mínimo equivalente al
-salario mínimo general vigente (Art. 289 LFT). El salario mensual base de
-referencia es $[SALARIO].00 M.N.
+${CLAUSULAS.comisionSDI}
 
 QUINTA. JORNADA. La jornada es autoadministrada dentro del horario de
 [HORA_INICIO] a [HORA_FIN] hrs. EL TRABAJADOR se presentará en instalaciones
@@ -233,8 +233,34 @@ SEXTA. DESCANSO. Un día semanal de descanso, preferentemente el [DIA_DESCANSO].
 ANEXO A — FICHA DE DATOS PERSONALES Y DEL PUESTO
 [DATOS_TRABAJADOR_COMPLETOS]
 
-[CLÁUSULAS COMUNES: Prestaciones, Herramientas, Capacitación, Obligaciones,
-Deducciones, Confidencialidad reforzada, Rescisión, Beneficiarios, Jurisdicción]
+SÉPTIMA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162).
+
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
+
+DÉCIMA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA PRIMERA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA CUARTA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA QUINTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el [FECHA], en dos tantos originales.
 `,
@@ -271,9 +297,34 @@ QUINTA. JORNADA. Jornada de [HORA_INICIO] a [HORA_FIN] hrs., días [DIAS_SEMANA]
 
 SEXTA. DESCANSO. Un día semanal de descanso, el [DIA_DESCANSO].
 
-[CLÁUSULAS COMUNES: Prestaciones proporcionales, Herramientas, Capacitación,
-Obligaciones, Deducciones, Confidencialidad especial por proyecto, Rescisión,
-Beneficiarios, Jurisdicción]
+SÉPTIMA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162), proporcionales al tiempo efectivamente laborado en la obra o proyecto.
+
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+NOVENA. CAPACITACIÓN Y ADIESTRAMIENTO. ${CLAUSULAS.capacitacion}
+
+DÉCIMA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA PRIMERA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA SEGUNDA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+
+DÉCIMA SEGUNDA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+DÉCIMA TERCERA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA CUARTA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA QUINTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el [FECHA], en dos tantos originales.
 `,
@@ -284,22 +335,21 @@ CONTRATO INDIVIDUAL DE TRABAJO POR TEMPORADA
 
 En [CIUDAD], siendo el [FECHA], celebran [RAZÓN SOCIAL] (EL PATRON) y
 el C. [NOMBRE_TRABAJADOR] (EL TRABAJADOR), el presente contrato conforme
-al artículo 42 Bis de la Ley Federal del Trabajo.
+a los artículos 35, 42 fracción VIII y 43 fracción V de la Ley Federal del Trabajo.
 
 PRIMERA. DURACIÓN Y CARÁCTER DISCONTINUO. El presente contrato es por TIEMPO
 INDETERMINADO con prestación de servicios DISCONTINUA, en términos del artículo
-42 Bis LFT. EL TRABAJADOR prestará servicios únicamente durante los períodos
-de temporada. Fuera de ellos la relación queda SUSPENDIDA, no rescindida.
+35 de la Ley Federal del Trabajo. Concluida cada temporada, la relación queda
+SUSPENDIDA —no rescindida— conforme a los artículos 42 fracción VIII y 43
+fracción V de la misma Ley, desde la fecha de conclusión de la temporada hasta
+el inicio de la siguiente.
 
 La naturaleza de temporada se justifica por: [NATURALEZA_TEMPORADA].
 
 Las temporadas pactadas son:
 [TABLA_TEMPORADAS]
 
-SUSPENSIÓN Y CONVOCATORIA: EL PATRON convocará a EL TRABAJADOR con mínimo
-30 días de anticipación al inicio de cada temporada. Si EL TRABAJADOR no se
-presenta en los 15 días siguientes sin causa justificada, se entenderá rescindida
-la relación sin responsabilidad para EL PATRON.
+${CLAUSULAS.temporadaSuspension}
 
 SEGUNDA. OBJETO. Durante cada temporada EL TRABAJADOR desempeñará el cargo de
 [PUESTO] en el área de [DEPARTAMENTO], con las siguientes funciones: [FUNCIONES].
@@ -308,15 +358,44 @@ TERCERA. SALARIO. Salario [PERIODO] de $[SALARIO].00 M.N. durante temporada acti
 Las prestaciones se calculan proporcionalmente al tiempo efectivamente laborado.
 [CONDICIONES_INACTIVIDAD]
 
-CUARTA. LUGAR. Servicios en [DOMICILIO] o el lugar que EL PATRON determine por temporada.
+CUARTA. LUGAR. Servicios en [DOMICILIO]. Si una temporada específica requiere
+prestar el servicio en una ubicación distinta, EL PATRON lo notificará al convocar
+dicha temporada (Art. 25 fracción IV LFT) y cubrirá los gastos de traslado.
 
 QUINTA. JORNADA. Durante temporada activa: [HORA_INICIO] a [HORA_FIN] hrs., días [DIAS_SEMANA].
 
 SEXTA. DESCANSO Y PRESTACIONES PROPORCIONALES. Un día semanal, el [DIA_DESCANSO].
 Todas las prestaciones se calculan proporcional al tiempo laborado en cada año.
 
-[CLÁUSULAS COMUNES: Prestaciones, Herramientas, Obligaciones, Deducciones,
-Confidencialidad, Rescisión, Beneficiarios, Antigüedad acumulada, Jurisdicción]
+SÉPTIMA. PRESTACIONES DE LEY. EL TRABAJADOR tendrá derecho a las prestaciones mínimas
+de la Ley Federal del Trabajo: vacaciones (Art. 76), prima vacacional no menor al
+25% (Art. 80), aguinaldo no menor a 15 días (Art. 87), participación de utilidades
+(Art. 117), afiliación al IMSS, aportaciones al INFONAVIT y prima de antigüedad
+(Art. 162), todas calculadas proporcionalmente al tiempo efectivamente laborado en
+cada ejercicio anual.
+
+OCTAVA. INSTRUMENTOS DE TRABAJO. ${CLAUSULAS.herramientas}
+
+NOVENA. OBLIGACIONES DEL TRABAJADOR. ${CLAUSULAS.obligacionesTrabajador}
+
+DÉCIMA. DEDUCCIONES DE LEY. ${CLAUSULAS.deducciones}
+
+DÉCIMA PRIMERA. CONFIDENCIALIDAD Y SECRETOS INDUSTRIALES.
+${CLAUSULAS.confidencialidad.join('\n')}
+
+
+DÉCIMA PRIMERA BIS. PROPIEDAD INTELECTUAL E INVENCIONES.
+${CLAUSULAS.propiedadIntelectual.join('\n')}
+DÉCIMA SEGUNDA. CAUSAS DE RESCISIÓN. ${CLAUSULAS.rescisionAviso}
+
+DÉCIMA TERCERA. BENEFICIARIOS. ${CLAUSULAS.beneficiariosIntro}
+Beneficiario 1: [BENEFICIARIO1_NOMBRE], [BENEFICIARIO1_PARENTESCO], Tel. [BENEFICIARIO1_TEL]
+Beneficiario 2: [BENEFICIARIO2_NOMBRE], [BENEFICIARIO2_PARENTESCO], Tel. [BENEFICIARIO2_TEL]
+${CLAUSULAS.beneficiariosAdvertencia}
+
+DÉCIMA CUARTA. RECONOCIMIENTO DE ANTIGÜEDAD. ${CLAUSULAS.antiguedad}
+
+DÉCIMA QUINTA. LEY APLICABLE Y AUTORIDAD COMPETENTE. ${CLAUSULAS.jurisdiccion}
 
 Se firma en [CIUDAD] el [FECHA], en dos tantos originales.
 `,
@@ -361,7 +440,7 @@ TESTIGOS:
 [TESTIGO1_NOMBRE] — [TESTIGO1_PUESTO]
 [TESTIGO2_NOMBRE] — [TESTIGO2_PUESTO]
 
-Firman al calce en señal de conocimiento y [ACEPTACION]:
+Firman al calce en señal de conocimiento y [ACEPTACIÓN]:
 
 EL PATRON                    EL TRABAJADOR
 ________________             ________________
@@ -447,16 +526,10 @@ III. PROCESO DISCIPLINARIO PREVIO:
 IV. EVIDENCIA:
 [EVIDENCIA_DETALLADA]
 
-V. DERECHOS DEL TRABAJADOR:
-Conforme al artículo 47 último párrafo de la LFT, el trabajador dispondrá de
-30 días naturales para impugnar la presente rescisión ante el Tribunal Laboral
-competente. En caso de impugnación, el patrón deberá acreditar la causa de
-rescisión.
-
-VI. ACUERDO ECONÓMICO:
+V. ACUERDO ECONÓMICO:
 [ACUERDO_ECONOMICO]
 
-VII. POSICIÓN DEL TRABAJADOR:
+VI. POSICIÓN DEL TRABAJADOR:
 [REACCION_TRABAJADOR]
 
 NOTA: El trabajador se negó a firmar — Se hace constar ante la presencia de

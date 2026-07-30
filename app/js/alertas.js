@@ -17,6 +17,15 @@ const ALERTA_CFG = {
   nomina_por_pagar:      { icono:'', ruta:'nomina',      label:'Nómina por pagar'              },
   nomina_por_generar:    { icono:'', ruta:'nomina',      label:'Nómina por generar'            },
   descuento_liquidado:   { icono:'', ruta:'nomina',      label:'Crédito liquidado'             },
+  // Plazos fatales de la rescisión (migración 41)
+  prescripcion_517:      { icono:'', ruta:'bajas',       label:'Prescripción Art. 517'         },
+  aviso_tribunal_47:     { icono:'', ruta:'bajas',       label:'Aviso al Tribunal'             },
+  vigencias_caducas:     { icono:'', ruta:'empresa',     label:'Valores fiscales sin actualizar'},
+  // Cumplimiento documental (migración 45)
+  rit_no_depositado:       { icono:'', ruta:'empresa',       label:'RIT no depositado'          },
+  rit_deposito_vencido:    { icono:'', ruta:'empresa',       label:'Plazo de depósito del RIT'  },
+  acuse_rit_faltante:      { icono:'', ruta:'empleados',     label:'Acuse del RIT pendiente'    },
+  aviso_privacidad_faltante:{ icono:'', ruta:'empleados',    label:'Aviso de privacidad'        },
   tres_faltas:           { icono:'', ruta:'empleado',    label:'Faltas injustificadas'         },
 };
 
@@ -62,6 +71,22 @@ async function cargarAlertas(empresaId, forzar = false) {
         await _sb.rpc('generar_alertas_nomina', { p_empresa_id: empresaId });
       } catch(e2) {
         console.warn('generar_alertas_nomina no disponible — aplica la migración 22_migration_nomina_programacion.sql:', e2.message);
+      }
+      // Plazos fatales de la rescisión. Va DESPUÉS de generar_alertas, que
+      // borra todas las alertas no resueltas al inicio; ésta sólo borra las
+      // suyas. Tolerante: si falta la migración, no rompe el resto.
+      try {
+        await _sb.rpc('generar_alertas_rescision', { p_empresa_id: empresaId });
+      } catch(e3) {
+        console.warn('generar_alertas_rescision no disponible — aplica las migraciones 40 y 41:', e3.message);
+      }
+      // Cumplimiento documental: depósito del RIT, acuses de entrega y aviso
+      // de privacidad. Mismo criterio que las anteriores: borra sólo sus
+      // propios tipos, así que debe ir después de generar_alertas.
+      try {
+        await _sb.rpc('generar_alertas_cumplimiento', { p_empresa_id: empresaId });
+      } catch(e4) {
+        console.warn('generar_alertas_cumplimiento no disponible — aplica las migraciones 44 y 45:', e4.message);
       }
       _actualizarCache();
     } catch(e) {

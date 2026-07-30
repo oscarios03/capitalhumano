@@ -63,6 +63,16 @@ function switchEmpleadosTab(sub) {
   renderEmpleados();
 }
 
+/**
+ * Etiqueta del salario mínimo por zona para los selectores. Toma el valor
+ * vigente en vez de literales: antes mostraba $315.04 y $419.88, mezcla de 2026
+ * y 2025. Si no está configurado, omite el importe en vez de inventarlo.
+ */
+function _smgEtiqueta(zona) {
+  try { return ` — ${fmt(_smgVigente(zona))}/día`; }
+  catch { return ''; }
+}
+
 async function renderEmpleados() {
   const sub = _empleadosSubvista;
   const segBtn = (id, label) => `
@@ -123,7 +133,13 @@ async function renderTrabajadoresLista() {
     main.innerHTML = `
       <div class="view-header animate-in">
         <div><div class="view-title">Trabajadores</div></div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <!-- Documentos previos al ingreso: no cuelgan de ningún trabajador
+               porque todavía no lo hay. -->
+          <button class="btn-secondary" onclick="showModalSolicitudEmpleo()"
+                  title="Base del expediente y declaración de veracidad (Art. 47 fr. I LFT)">Solicitud de empleo</button>
+          <button class="btn-secondary" onclick="showModalCartaOferta()"
+                  title="Documenta las condiciones antes del ingreso. No sustituye al contrato">Carta oferta</button>
           <button class="btn-secondary" onclick="showModalImportacion()"><svg class="ic"><use href="#i-download"></use></svg> Importación masiva</button>
           <button class="btn-primary" onclick="showModalAltaEmpleado()"><svg class="ic"><use href="#i-plus"></use></svg> Alta de Trabajador</button>
         </div>
@@ -432,8 +448,8 @@ async function showModalTrabajador(id = null) {
           <div class="form-group">
             <label class="form-label" for="n-smg">Zona SMG</label>
             <select id="n-smg" class="form-select">
-              <option value="general" ${v('smg_zone','general')==='general'?'selected':''}>Área General — $315.04/día</option>
-              <option value="frontera" ${v('smg_zone')==='frontera'?'selected':''}>Zona Frontera Norte — $419.88/día</option>
+              <option value="general" ${v('smg_zone','general')==='general'?'selected':''}>Área General${_smgEtiqueta('general')}</option>
+              <option value="frontera" ${v('smg_zone')==='frontera'?'selected':''}>Zona Frontera Norte${_smgEtiqueta('frontera')}</option>
             </select>
           </div>
           <div class="form-group">
@@ -464,13 +480,31 @@ async function showModalTrabajador(id = null) {
           </div>
           <div class="form-group" id="grupo-prueba" style="display:none;">
             <label class="form-label" for="n-prueba">Duración del período a prueba (días)</label>
-            <input id="n-prueba" type="number" class="form-input" min="1" value="${v('periodo_prueba_dias',30)}" onchange="calcularFechaVencimiento()" />
-            <div class="helper-text" id="n-prueba-hint">Máximo 30 días (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.</div>
+            <select id="n-prueba" class="form-select" onchange="calcularFechaVencimiento()">
+              <option value="30" ${Number(v('periodo_prueba_dias',30))!==180?'selected':''}>30 días</option>
+              <option value="180" ${Number(v('periodo_prueba_dias',30))===180?'selected':''}>180 días — sólo dirección, gerencia o labores técnicas especializadas</option>
+            </select>
+            <div class="helper-text" id="n-prueba-hint">El Art. 39-A LFT sólo admite 30 días como regla general. La fecha de vencimiento se calcula automáticamente.</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-capacitacion">Días de capacitación inicial pactados <span style="font-size:.68rem;color:var(--text-muted);">(Art. 39-B LFT, opcional)</span></label>
             <input id="n-capacitacion" type="number" class="form-input" min="0" value="${v('capacitacion_inicial_dias')||''}" placeholder="Ej. 90" />
             <div class="helper-text" id="n-capacitacion-hint">Máximo 90 días (180 en puestos de dirección/técnicos especializados).</div>
+          </div>
+          <div class="form-group span-2">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.85rem;"
+              title="El Cap. XII Bis LFT aplica cuando se presta más del 40% del tiempo en el domicilio de la persona trabajadora (Art. 330-A).">
+              <input type="checkbox" id="n-teletrabajo" ${v('es_teletrabajo')?'checked':''} onchange="_toggleTeletrabajo()"
+                style="width:16px;height:16px;accent-color:var(--gold-primary);" />
+              Modalidad de teletrabajo (Cap. XII Bis LFT)
+            </label>
+            <div class="helper-text">Obliga a proporcionar el equipo, pagar internet y la parte proporcional de electricidad, y respetar el derecho a la desconexión.</div>
+          </div>
+          <div class="form-group" id="grupo-teletrabajo" style="display:none;">
+            <label class="form-label" for="n-pct-remoto">Porcentaje del tiempo fuera del centro de trabajo</label>
+            <input id="n-pct-remoto" type="number" class="form-input" min="0" max="100" step="1"
+              value="${v('pct_tiempo_remoto')||''}" placeholder="Ej. 80" onchange="_avisarUmbralTeletrabajo()" />
+            <div class="helper-text" id="n-pct-remoto-hint">Por encima del 40% aplica el Cap. XII Bis (Art. 330-A). Por debajo, la ley lo considera trabajo ocasional.</div>
           </div>
           <div class="form-group">
             <label class="form-label" for="n-forma-pago">Forma de Pago</label>
@@ -776,6 +810,7 @@ async function showModalTrabajador(id = null) {
 
   onTipoContratoChange();
   _actualizarLimitesPrueba();
+  _toggleTeletrabajo();
   _actualizarPreviewSalario();
   if (trab?.temporadas?.length) trab.temporadas.forEach(t => agregarTemporada(t));
   if (trab?.tabla_comisiones?.length) trab.tabla_comisiones.forEach(c => agregarComision(c));
@@ -810,14 +845,59 @@ function _actualizarLimitesPrueba() {
   const hintPrueba = eid('n-prueba-hint');
   if (hintPrueba) {
     hintPrueba.textContent = esDireccion
-      ? 'Máximo 180 días para puestos de dirección/confianza (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.'
-      : 'Máximo 30 días (Art. 39-A LFT). La fecha de vencimiento se calcula automáticamente.';
+      ? 'Puede pactarse 180 días por tratarse de un puesto de dirección, gerencia o labores técnicas especializadas (Art. 39-A LFT).'
+      : 'El Art. 39-A LFT sólo admite 30 días como regla general. La fecha de vencimiento se calcula automáticamente.';
+  }
+  // La opción de 180 días existe únicamente para los puestos del segundo
+  // párrafo del art. 39-A. Fuera de ellos el excedente sobre 30 días es nulo,
+  // y terminar la relación en ese lapso equivale a un despido injustificado.
+  const selPrueba = eid('n-prueba');
+  if (selPrueba) {
+    const op180 = [...selPrueba.options].find(o => o.value === '180');
+    if (op180) {
+      op180.disabled = !esDireccion;
+      if (!esDireccion && selPrueba.value === '180') selPrueba.value = '30';
+    }
   }
   const hintCap = eid('n-capacitacion-hint');
   if (hintCap) {
     hintCap.textContent = esDireccion
       ? 'Máximo 180 días para puestos de dirección/técnicos especializados (Art. 39-B LFT).'
       : 'Máximo 90 días (180 en puestos de dirección/técnicos especializados) (Art. 39-B LFT).';
+  }
+}
+
+/** Muestra el porcentaje de tiempo remoto sólo cuando hay teletrabajo. */
+function _toggleTeletrabajo() {
+  const on = eid('n-teletrabajo')?.checked || false;
+  const grupo = eid('grupo-teletrabajo');
+  if (grupo) grupo.style.display = on ? '' : 'none';
+  if (on) _avisarUmbralTeletrabajo();
+}
+
+/**
+ * Avisa cuando el porcentaje capturado deja la relación fuera del Cap. XII Bis.
+ *
+ * El art. 330-A fija el umbral en MÁS del 40% y aclara que no es teletrabajo
+ * el que se realiza de forma ocasional o esporádica. Marcar la modalidad con
+ * un 20% no es un detalle: activa obligaciones que la ley no impone y confunde
+ * el régimen que sí aplica.
+ */
+function _avisarUmbralTeletrabajo() {
+  const hint = eid('n-pct-remoto-hint');
+  if (!hint) return;
+  const pct = parseFloat(eid('n-pct-remoto')?.value);
+  if (isNaN(pct)) {
+    hint.textContent = 'Por encima del 40% aplica el Cap. XII Bis (Art. 330-A). Por debajo, la ley lo considera trabajo ocasional.';
+    hint.style.color = '';
+    return;
+  }
+  if (pct > 40) {
+    hint.textContent = `Con ${pct}% aplica el Capítulo XII Bis: hay que firmar el anexo de teletrabajo (Art. 330-B) antes de que empiece.`;
+    hint.style.color = 'var(--gold-primary)';
+  } else {
+    hint.textContent = `Con ${pct}% no se rebasa el 40% del Art. 330-A: la ley lo trata como trabajo ocasional o esporádico, no como teletrabajo.`;
+    hint.style.color = 'var(--amber-warn)';
   }
 }
 
@@ -837,7 +917,52 @@ function _validarPeriodosContrato(esDireccion, pruebaDias, capacitacionDias) {
   if (capacitacionDias && capacitacionDias > maxCapacitacion) {
     return `La capacitación inicial (${capacitacionDias} días) excede el máximo de ${maxCapacitacion} días para este tipo de puesto (Art. 39-B LFT).`;
   }
+  // Art. 39-D LFT: los periodos a prueba y de capacitación inicial son
+  // improrrogables y no pueden aplicarse en forma SIMULTÁNEA al mismo
+  // trabajador. Pactar ambos a la vez es el caso más común de exceso: suma
+  // un lapso de terminación libre mayor al que la ley permite.
+  if (pruebaDias && capacitacionDias) {
+    return 'No pueden pactarse simultáneamente un periodo a prueba y uno de capacitación inicial ' +
+      'para el mismo trabajador: el artículo 39-D de la Ley Federal del Trabajo lo prohíbe expresamente. ' +
+      'Elige uno de los dos y deja el otro vacío.';
+  }
   return null;
+}
+
+/**
+ * Art. 39-D LFT: dentro de una misma empresa no puede aplicarse al mismo
+ * trabajador un periodo a prueba o de capacitación inicial en forma sucesiva
+ * ni en más de una ocasión, "ni tratándose de puestos de trabajo distintos, o
+ * de ascensos, aun cuando concluida la relación de trabajo surja otra con el
+ * mismo patrón". Se busca por CURP porque es lo que identifica a la persona
+ * a través de altas y bajas sucesivas: recontratar a alguien que ya estuvo en
+ * la empresa y volver a sujetarlo a prueba es exactamente el supuesto que la
+ * ley cierra.
+ *
+ * Devuelve un mensaje de advertencia, o null si no hay antecedente.
+ */
+async function _verificarPruebaPrevia(curp, idActual) {
+  if (!curp || !curp.trim()) return null;
+  try {
+    const { data, error } = await window.supabase
+      .from('trabajadores')
+      .select('id, nombre, fecha_ingreso, estado, periodo_prueba_dias, capacitacion_inicial_dias')
+      .eq('empresa_id', CTX.empresa.id)
+      .eq('curp', curp.trim().toUpperCase());
+    if (error || !Array.isArray(data)) return null;
+    const previos = data.filter(t =>
+      t.id !== idActual &&
+      ((t.periodo_prueba_dias || 0) > 0 || (t.capacitacion_inicial_dias || 0) > 0));
+    if (!previos.length) return null;
+    const detalle = previos
+      .map(t => `${t.nombre} (ingreso ${formatDateShort(t.fecha_ingreso)}, ${t.estado || 'sin estado'})`)
+      .join('; ');
+    return 'Esta persona (misma CURP) ya tuvo un periodo a prueba o de capacitación inicial en esta empresa: ' +
+      detalle + '. El artículo 39-D de la Ley Federal del Trabajo prohíbe aplicarlos en forma simultánea o ' +
+      'sucesiva, ni en más de una ocasión, ni tratándose de puestos distintos o de ascensos, aun cuando ' +
+      'concluida la relación de trabajo surja otra con el mismo patrón. Un segundo periodo a prueba sería ' +
+      'nulo, y terminar la relación durante él se consideraría despido injustificado.';
+  } catch { return null; }
 }
 
 function calcularFechaVencimiento() {
@@ -1022,6 +1147,21 @@ function _onPuestoSeleccionado() {
   if (p.tipo_salario) { const ts = eid('n-tipo-salario'); if (ts) { ts.value = p.tipo_salario; if (typeof _toggleNominaConfig === 'function') _toggleNominaConfig(); } }
   if (p.pct_comision) { const pc = eid('n-pct-comision'); if (pc && !pc.value) pc.value = parseFloat(p.pct_comision) * 100; }
   if (p.es_puesto_direccion) { const dir = eid('n-es-direccion'); if (dir) { dir.checked = true; if (typeof _actualizarLimitesPrueba === 'function') _actualizarLimitesPrueba(); } }
+
+  // Jornada del puesto (migración 42): mismo criterio "copiar-no-vincular" —
+  // se copia sólo si el trabajador todavía no tiene esa hora capturada, para
+  // no pisar lo que ya se haya ajustado a mano.
+  setIfEmpty('n-hora-ini', p.hora_inicio);
+  setIfEmpty('n-hora-fin', p.hora_fin);
+  setIfEmpty('n-des-ini', p.hora_descanso_inicio);
+  setIfEmpty('n-des-fin', p.hora_descanso_fin);
+  setSel('n-dia-descanso', p.dia_descanso);
+  if (Array.isArray(p.dias_semana) && p.dias_semana.length) {
+    const checks = document.querySelectorAll('input[name="dias-semana"]');
+    const yaHayAlguno = [...checks].some(cb => cb.checked);
+    if (!yaHayAlguno) checks.forEach(cb => { cb.checked = p.dias_semana.includes(cb.value); });
+  }
+
   if (typeof _actualizarPreviewSalario === 'function') _actualizarPreviewSalario();
 }
 
@@ -1124,6 +1264,24 @@ async function handleGuardarTrabajador(id = '') {
     return;
   }
 
+  // Art. 39-D LFT — antecedente de prueba/capacitación con la misma CURP.
+  // Se advierte con confirmación explícita en vez de bloquear: puede haber
+  // homonimia de CURP mal capturada, o el usuario puede estar corrigiendo un
+  // registro anterior. La decisión debe tomarse a sabiendas.
+  const pactaPeriodo = (parseInt(eid('n-prueba')?.value) || 0) > 0 ||
+                       (parseInt(eid('n-capacitacion')?.value) || 0) > 0;
+  if (pactaPeriodo) {
+    const avisoPrueba = await _verificarPruebaPrevia(eid('n-curp')?.value, id);
+    if (avisoPrueba && typeof showConfirmacion === 'function') {
+      const seguir = await showConfirmacion(
+        avisoPrueba + '\n\n¿Deseas guardar de todas formas?',
+        { titulo: 'Periodo a prueba repetido (Art. 39-D LFT)', textoOk: 'Guardar de todas formas',
+          textoCancelar: 'Cancelar', peligro: true }
+      );
+      if (!seguir) return;
+    }
+  }
+
   const dias_semana       = [...document.querySelectorAll('input[name="dias-semana"]:checked')].map(cb => cb.value);
   const dias_presentacion = [...document.querySelectorAll('input[name="dias-presentacion"]:checked')].map(cb => cb.value);
 
@@ -1167,6 +1325,13 @@ async function handleGuardarTrabajador(id = '') {
     enfermedades_cronicas:  eid('n-enfermedades')?.value.trim() || null,
     fecha_ingreso_reconocida: nv('n-antig'),
     es_puesto_direccion:    esPuestoDireccion,
+    es_teletrabajo:         !!eid('n-teletrabajo')?.checked,
+    // Se guarda sólo si la modalidad está marcada: un porcentaje suelto, sin
+    // teletrabajo declarado, no significa nada y dispararía la alerta del
+    // art. 330-B sin razón.
+    pct_tiempo_remoto:      eid('n-teletrabajo')?.checked
+                              ? (parseFloat(nv('n-pct-remoto')) || null)
+                              : null,
     periodo_prueba_dias:    parseInt(nv('n-prueba')) || 30,
     capacitacion_inicial_dias: parseInt(nv('n-capacitacion')) || null,
     funciones:              eid('n-funciones')?.value.trim() || null,
@@ -1363,6 +1528,7 @@ async function renderPerfilEmpleado(id) {
         <button class="tab-btn" onclick="switchTab(this,'tab-descuentos');renderTabDescuentos('${id}')">Descuentos</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-prestaciones');renderTabPrestaciones('${id}')">Prestaciones</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-resguardos');renderTabResguardos('${id}')">Resguardos</button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-cumplimiento');renderTabCumplimiento('${id}')">Cumplimiento</button>
       </div>
 
       <div id="tab-datos" class="animate-in">
@@ -1473,6 +1639,7 @@ async function renderPerfilEmpleado(id) {
       <div id="tab-descuentos" style="display:none;" class="animate-in"></div>
       <div id="tab-prestaciones" style="display:none;" class="animate-in"></div>
       <div id="tab-resguardos" style="display:none;" class="animate-in"></div>
+      <div id="tab-cumplimiento" style="display:none;" class="animate-in"></div>
     `;
 
     window._perfilActivoId = id;
@@ -1545,7 +1712,10 @@ function _cardCostoYSalida(trab) {
       diasPendientes: 0,
     };
     liq = calcLiquidacion(params);
-    fin = calcFiniquito(params);
+    // Este escenario modela la RENUNCIA (ver comentario de la card): calcFiniquito
+    // exige el motivo porque el Art. 162 fr. III LFT sólo pide 15 años de
+    // antigüedad para la prima en la renuncia, no en despido o rescisión.
+    fin = calcFiniquito({ ...params, motivo: 'renuncia' });
   } catch(e) { console.warn('costo/salida:', e.message); return ''; }
 
   const filaEscenario = (titulo, sub, r, color) => `
@@ -1554,7 +1724,7 @@ function _cardCostoYSalida(trab) {
       <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:8px;">${sub}</div>
       <div style="font-size:1.35rem;font-weight:700;color:${color};">${fmt(r.total)}</div>
       <div style="font-size:.75rem;color:var(--text-muted);margin-top:8px;">
-        ${r.items.filter(i => i.amount > 0).map(i => `${i.name.replace(/\s*\(Art[^)]*\)/,'')}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
+        ${r.items.filter(i => i.amount > 0).map(i => `${i.name}: <strong>${fmt(i.amount)}</strong>`).join(' · ')}
       </div>
     </div>`;
 

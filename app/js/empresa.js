@@ -322,6 +322,45 @@ async function renderEmpresa() {
       </div>
     </div>
 
+    <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
+      <div class="card-header"><span class="card-title">Reglamento Interior de Trabajo</span></div>
+      ${e.rit_depositado && e.rit_fecha_deposito
+        ? `<div class="alert alert-success" style="margin-bottom:16px;">
+             <svg class="ic" style="flex-shrink:0;"><use href="#i-check-circle"></use></svg>
+             <span style="font-size:.82rem;">Depositado el <strong>${formatDateShort(e.rit_fecha_deposito)}</strong>${e.rit_folio_deposito ? ` — folio ${escapeHtml(e.rit_folio_deposito)}` : ''}.
+             Desde esa fecha surte efectos y puede invocarse en las actas.</span>
+           </div>`
+        : `<div class="alert alert-warn" style="margin-bottom:16px;">
+             <svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+             <span style="font-size:.82rem;">Sin registro de depósito. El artículo 425 de la LFT establece que el reglamento
+             <strong>surte efectos a partir de la fecha de su depósito</strong> ante el Centro Federal de Conciliación y
+             Registro Laboral. Mientras tanto, las actas que lo invoquen operan sin sustento normativo.</span>
+           </div>`}
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="rit-dep-firma">Fecha de firma</label>
+          <input id="rit-dep-firma" type="date" class="form-input" value="${e.rit_fecha_firma || ''}" />
+          <div class="helper-text">Art. 424 fr. II: 8 días para depositarlo.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="rit-dep-fecha">Fecha de depósito</label>
+          <input id="rit-dep-fecha" type="date" class="form-input" value="${e.rit_fecha_deposito || ''}" />
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label" for="rit-dep-folio">Folio o acuse del depósito</label>
+          <input id="rit-dep-folio" type="text" class="form-input" value="${escapeHtml(e.rit_folio_deposito) || ''}"
+            placeholder="Folio que asigne el Centro Federal de Conciliación y Registro Laboral" />
+        </div>
+      </div>
+      <div id="rit-dep-msg" role="alert" style="display:none;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="btn-secondary" onclick="showModalRIT()">Generar reglamento</button>
+        <button class="btn-primary" id="rit-dep-btn" onclick="handleGuardarDepositoRIT()">Guardar</button>
+      </div>
+    </div>
+
+    ${_cardDocumentosCumplimiento()}
+
     <div class="view-header animate-in" style="margin-bottom:16px;">
       <div>
         <div class="view-title" style="font-size:1.2rem;">Centros de Trabajo</div>
@@ -808,4 +847,59 @@ async function handleGuardarNotificaciones() {
     msg.textContent = 'Configuración de notificaciones guardada.';
     msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) { msg.textContent = friendlyError(e); msg.className = 'error-msg'; msg.style.display = ''; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DOCUMENTOS DE CUMPLIMIENTO A NIVEL EMPRESA
+//
+//  Los que no dependen de una persona en particular: protocolo de violencia
+//  laboral, política de riesgos psicosociales y actas de las comisiones
+//  mixtas. Cada uno se genera desde su propio modal en cumplimiento.js.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DOCS_EMPRESA_CUMPLIMIENTO = [
+  { label:'Protocolo de violencia laboral y hostigamiento',
+    fundamento:'Art. 132 fr. XXXI LFT',
+    porQue:'Obligatorio, y prerrequisito para poder rescindir por acoso (art. 47 fr. VIII).',
+    accion:'showModalProtocoloViolencia()', boton:'Generar' },
+  { label:'Acta de investigación de violencia laboral',
+    fundamento:'Debido proceso del protocolo',
+    porQue:'Sin audiencia de la persona señalada, la sanción se anula.',
+    accion:'showModalActaInvestigacion()', boton:'Levantar acta' },
+  { label:'Política de prevención de riesgos psicosociales',
+    fundamento:'NOM-035-STPS-2018 y art. 132 fr. XVI-XVIII LFT',
+    porQue:'Debe fijarse visiblemente y difundirse en el centro de trabajo.',
+    accion:'showModalNOM035()', boton:'Generar' },
+  { label:'Comisión de Seguridad e Higiene',
+    fundamento:'Arts. 509 y 510 LFT',
+    porQue:'Punto fijo de inspección. Exige igual número de representantes por parte.',
+    accion:"showModalComisionMixta('sh')", boton:'Integrar' },
+  { label:'Comisión Mixta de Capacitación, Adiestramiento y Productividad',
+    fundamento:'Arts. 153-E y 153-F LFT',
+    porQue:'Es la misma cuya opinión pide el art. 39-A para el período de prueba.',
+    accion:"showModalComisionMixta('cap')", boton:'Integrar' },
+];
+
+function _cardDocumentosCumplimiento() {
+  return `
+    <div class="card animate-in" style="max-width:700px;margin-bottom:32px;">
+      <div class="card-header"><span class="card-title">Documentos de cumplimiento</span></div>
+      <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:16px;">
+        Lo que revisa una inspección de la STPS y lo que se pide en juicio. Genera cada documento, difúndelo
+        y recaba el acuse de cada persona desde la pestaña Cumplimiento de su perfil.
+      </p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Documento</th><th>Fundamento</th><th></th></tr></thead>
+          <tbody>
+            ${DOCS_EMPRESA_CUMPLIMIENTO.map(d => `<tr>
+              <td><strong>${escapeHtml(d.label)}</strong>
+                  <div style="font-size:.75rem;color:var(--text-muted);">${escapeHtml(d.porQue)}</div></td>
+              <td style="font-size:.8rem;color:var(--text-muted);">${escapeHtml(d.fundamento)}</td>
+              <td><button class="btn-secondary btn-sm" onclick="${d.accion}">${escapeHtml(d.boton)}</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }

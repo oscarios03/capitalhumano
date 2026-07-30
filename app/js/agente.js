@@ -43,7 +43,7 @@ const TIPOS_DOCUMENTO = {
   contrato_indeterminado: { label:'Contrato Tiempo Indeterminado', plantilla:'contrato_indeterminado', icono:'', categoria:'contrato',   desc:'Art. 35 LFT — Relación de planta sin fecha de término' },
   contrato_determinado:   { label:'Contrato Tiempo Determinado',   plantilla:'contrato_determinado',   icono:'', categoria:'contrato',   desc:'Art. 37 LFT — Período a prueba (30 o 90 días)' },
   contrato_obra:          { label:'Contrato por Obra o Proyecto',  plantilla:'contrato_obra',          icono:'', categoria:'contrato',   desc:'Art. 36 LFT — Para proyectos con fin determinado' },
-  contrato_temporada:     { label:'Contrato por Temporada',        plantilla:'contrato_temporada',     icono:'', categoria:'contrato',   desc:'Art. 42 Bis LFT — Prestación discontinua' },
+  contrato_temporada:     { label:'Contrato por Temporada',        plantilla:'contrato_temporada',     icono:'', categoria:'contrato',   desc:'Arts. 35 y 42 fr. VIII LFT — Prestación discontinua' },
   contrato_comision:      { label:'Contrato por Comisión',         plantilla:'contrato_comision',      icono:'', categoria:'contrato',   desc:'Arts. 285-289 LFT — Trabajador comisionista' },
   acta_amonestacion:      { label:'Acta de Amonestación',         plantilla:'acta_amonestacion',      icono:'', categoria:'acta',       desc:'Primer aviso disciplinario, sin consecuencia inmediata' },
   acta_formal:            { label:'Acta Administrativa Formal',    plantilla:'acta_formal',            icono:'', categoria:'acta',       desc:'Apercibimiento formal con riesgo de rescisión' },
@@ -321,6 +321,7 @@ function generarPDFDesdeAgente(documento) {
   const trab    = documento._trabajador || {};
   const empresa = documento._empresa    || {};
   const doc     = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+  _registrarFuenteRoboto(doc);
   const ml = 25, mr = 25;
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
@@ -329,28 +330,28 @@ function generarPDFDesdeAgente(documento) {
   // ── Header ──────────────────────────────────────────────────────────────
   doc.setFillColor(15, 20, 40);
   doc.rect(0, 0, pw, 30, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
-  doc.text(np(empresa.nombre || ''), pw/2, 10, { align:'center' });
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
-  doc.text(np([empresa.rfc, empresa.domicilio].filter(Boolean).join('  |  ')), pw/2, 18, { align:'center' });
+  doc.setFont('Roboto','bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+  doc.text(empresa.nombre || '', pw/2, 10, { align:'center' });
+  doc.setFont('Roboto','normal'); doc.setFontSize(7.5); doc.setTextColor(180,185,200);
+  doc.text([empresa.rfc, empresa.domicilio].filter(Boolean).join('  |  '), pw/2, 18, { align:'center' });
   doc.setFillColor(21,128,61);
   doc.rect(ml - 2, 24, pw - ml - mr + 4, 12, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(15, 20, 40);
-  doc.text(np(documento.titulo || ''), pw/2, 31.5, { align:'center' });
+  doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(15, 20, 40);
+  doc.text(documento.titulo || '', pw/2, 31.5, { align:'center' });
   let y = 46;
 
   const checkY = (needed = 22) => {
-    if (y + needed > ph - 16) { doc.addPage(); y = 22; }
+    if (y + needed > ph - 20) { doc.addPage(); y = 22; }
   };
 
   // ── Advertencia legal ────────────────────────────────────────────────────
   if (documento.advertencia_legal) {
     checkY(28);
-    const wl = doc.splitTextToSize(np('NOTA LEGAL: ' + documento.advertencia_legal), tw - 10);
+    const wl = doc.splitTextToSize('NOTA LEGAL: ' + documento.advertencia_legal, tw - 10);
     const wh = wl.length * 5 + 10;
     doc.setFillColor(255, 248, 225); doc.setDrawColor(21,128,61); doc.setLineWidth(0.5);
     doc.roundedRect(ml, y, tw, wh, 2, 2, 'FD');
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(100, 60, 0);
+    doc.setFont('Roboto','normal'); doc.setFontSize(8.5); doc.setTextColor(100, 60, 0);
     doc.text(wl, ml + 5, y + 7);
     y += wh + 8;
   }
@@ -362,20 +363,20 @@ function generarPDFDesdeAgente(documento) {
       // Título dorado izquierdo
       doc.setFillColor(21,128,61);
       doc.rect(ml, y, 2.5, 7, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
+      doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(21,128,61);
       const titulo = sec.numero ? `${sec.numero} — ${(sec.titulo||'').toUpperCase()}` : (sec.titulo||'').toUpperCase();
-      doc.text(np(titulo), ml + 5, y + 5);
+      doc.text(titulo, ml + 5, y + 5);
       y += 11;
     } else if (sec.tipo === 'cierre') {
       doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
       doc.line(ml, y, pw - mr, y);
       y += 6;
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(50, 50, 50);
-      doc.text(np(sec.titulo || ''), ml, y); y += 8;
+      doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(50, 50, 50);
+      doc.text(sec.titulo || '', ml, y); y += 8;
     }
     if (sec.contenido) {
-      doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(40, 40, 40);
-      const lines = doc.splitTextToSize(np(sec.contenido), tw);
+      doc.setFont('Roboto','normal'); doc.setFontSize(9.5); doc.setTextColor(40, 40, 40);
+      const lines = doc.splitTextToSize(sec.contenido, tw);
       lines.forEach(line => {
         checkY(6);
         doc.text(line, ml, y); y += 5.5;
@@ -392,35 +393,27 @@ function generarPDFDesdeAgente(documento) {
   const c1 = ml, c2 = ml + colW + 10;
   doc.line(c1, y+20, c1+colW, y+20);  doc.line(c2, y+20, c2+colW, y+20);
   doc.line(c1, y+50, c1+colW, y+50);  doc.line(c2, y+50, c2+colW, y+50);
-  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
+  doc.setFont('Roboto','bold'); doc.setFontSize(8); doc.setTextColor(30,30,30);
   doc.text('EL PATRON / REPRESENTANTE', c1+colW/2, y+25, {align:'center'});
   doc.text('EL TRABAJADOR',             c2+colW/2, y+25, {align:'center'});
   doc.text('TESTIGO 1',                 c1+colW/2, y+55, {align:'center'});
   doc.text('TESTIGO 2',                 c2+colW/2, y+55, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
-  doc.text(np(empresa.nombre || ''), c1+colW/2, y+30, {align:'center'});
-  if (empresa.representante) doc.text(np(empresa.representante), c1+colW/2, y+34, {align:'center'});
-  doc.text(np(trab.nombre || ''), c2+colW/2, y+30, {align:'center'});
-  if (trab.rfc) doc.text(`RFC: ${np(trab.rfc)}`, c2+colW/2, y+34, {align:'center'});
+  doc.setFont('Roboto','normal'); doc.setFontSize(7.5); doc.setTextColor(80,80,80);
+  doc.text(empresa.nombre || '', c1+colW/2, y+30, {align:'center'});
+  if (empresa.representante) doc.text(empresa.representante, c1+colW/2, y+34, {align:'center'});
+  doc.text(trab.nombre || '', c2+colW/2, y+30, {align:'center'});
+  if (trab.rfc) doc.text(`RFC: ${trab.rfc}`, c2+colW/2, y+34, {align:'center'});
   y += 68;
 
   // ── Notas del agente ────────────────────────────────────────────────────
   if (documento.notas_agente) {
     checkY(20);
-    doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(140,140,140);
-    const nl = doc.splitTextToSize(np('Notas del agente IA: ' + documento.notas_agente), tw);
+    doc.setFont('Roboto','italic'); doc.setFontSize(7.5); doc.setTextColor(140,140,140);
+    const nl = doc.splitTextToSize('Notas del agente IA: ' + documento.notas_agente, tw);
     doc.text(nl, ml, y); y += nl.length * 4.5;
   }
 
-  // ── Footer en todas las páginas ──────────────────────────────────────────
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
-    doc.line(ml, ph - 11, pw - mr, ph - 11);
-    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(160,160,160);
-    doc.text(np(`${documento.folio}  |  Página ${i} de ${total}  |  Capital Humano MX  |  Generado con IA  |  No sustituye asesoría jurídica`), pw/2, ph - 7, { align:'center' });
-  }
+  _footerFolio(doc, ml, mr, documento.folio, empresa.nombre, 'Generado con IA');
 
   doc.save(`${(documento.folio || 'documento-ia').replace(/\s+/g,'-')}.pdf`);
 }

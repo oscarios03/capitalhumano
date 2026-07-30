@@ -4,12 +4,11 @@
  */
 
 // ─── CONSTANTES LFT 2026 ──────────────────────────────────────────────────────
-// Valores de respaldo: se usan solo si config_valores (migración 15) no está
-// disponible todavía. La fuente de verdad vive en la tabla config_valores;
-// consultar con getConfigValor('salario_minimo_general', SMG_GENERAL), etc.
-const SMG_GENERAL      = 315.04;
-const SMG_FRONTERA     = 419.88;
-const UMA_DIARIA_FALLBACK = 113.14;
+// El salario mínimo y la UMA caducan cada año y viven en vigencias.js, que
+// LANZA ErrorVigencia si el año en curso no está configurado. Aquí sólo quedan
+// las constantes que no dependen del ejercicio fiscal.
+//   Salario mínimo → _smgVigente('general' | 'frontera')
+//   UMA diaria     → _umaVigente()
 const AGUINALDO_DAYS   = 15;
 const PRIMA_VAC_PCT    = 0.25;
 const PRIMA_ANTIG_DAYS = 12;
@@ -25,44 +24,158 @@ const VACATION_TABLE = [
   { from:35, to:39, days:32 },
 ];
 
+// ─── ART. 47 LFT — TEXTO LITERAL DE LAS FRACCIONES ───────────────────────────
+// Transcripción del texto consolidado publicado por la Cámara de Diputados
+// (LFT, última reforma DOF 14-05-2026). El aviso de rescisión debe reproducir
+// la fracción invocada: citar mal una fracción en un documento que se exhibe en
+// juicio tumba la rescisión, así que estos textos NO se parafrasean.
+const ART47_FRACCIONES = {
+  'I': 'Engañarlo el trabajador o en su caso, el sindicato que lo hubiese propuesto o recomendado con certificados falsos o referencias en los que se atribuyan al trabajador capacidad, aptitudes o facultades de que carezca. Esta causa de rescisión dejará de tener efecto después de treinta días de prestar sus servicios el trabajador;',
+  'II': 'Incurrir el trabajador, durante sus labores, en faltas de probidad u honradez, en actos de violencia, amagos, injurias o malos tratamientos en contra del patrón, sus familiares o del personal directivo o administrativo de la empresa o establecimiento, o en contra de clientes y proveedores del patrón, salvo que medie provocación o que obre en defensa propia;',
+  'III': 'Cometer el trabajador contra alguno de sus compañeros, cualquiera de los actos enumerados en la fracción anterior, si como consecuencia de ellos se altera la disciplina del lugar en que se desempeña el trabajo;',
+  'IV': 'Cometer el trabajador, fuera del servicio, contra el patrón, sus familiares o personal directivo administrativo, alguno de los actos a que se refiere la fracción II, si son de tal manera graves que hagan imposible el cumplimiento de la relación de trabajo;',
+  'V': 'Ocasionar el trabajador, intencionalmente, perjuicios materiales durante el desempeño de las labores o con motivo de ellas, en los edificios, obras, maquinaria, instrumentos, materias primas y demás objetos relacionados con el trabajo;',
+  'VI': 'Ocasionar el trabajador los perjuicios de que habla la fracción anterior siempre que sean graves, sin dolo, pero con negligencia tal, que ella sea la causa única del perjuicio;',
+  'VII': 'Comprometer el trabajador, por su imprudencia o descuido inexcusable, la seguridad del establecimiento o de las personas que se encuentren en él;',
+  'VIII': 'Cometer el trabajador actos inmorales o de hostigamiento y/o acoso sexual contra cualquier persona en el establecimiento o lugar de trabajo;',
+  'IX': 'Revelar el trabajador los secretos de fabricación o dar a conocer asuntos de carácter reservado, con perjuicio de la empresa;',
+  'X': 'Tener el trabajador más de tres faltas de asistencia en un período de treinta días, sin permiso del patrón o sin causa justificada;',
+  'XI': 'Desobedecer el trabajador al patrón o a sus representantes, sin causa justificada, siempre que se trate del trabajo contratado;',
+  'XII': 'Negarse el trabajador a adoptar las medidas preventivas o a seguir los procedimientos indicados para evitar accidentes o enfermedades;',
+  'XIII': 'Concurrir el trabajador a sus labores en estado de embriaguez o bajo la influencia de algún narcótico o droga enervante, salvo que, en este último caso, exista prescripción médica. Antes de iniciar su servicio, el trabajador deberá poner el hecho en conocimiento del patrón y presentar la prescripción suscrita por el médico;',
+  'XIV': 'La sentencia ejecutoriada que imponga al trabajador una pena de prisión, que le impida el cumplimiento de la relación de trabajo;',
+  'XIV Bis': 'La falta de documentos que exijan las leyes y reglamentos, necesarios para la prestación del servicio cuando sea imputable al trabajador y que exceda del periodo a que se refiere la fracción IV del artículo 43; y',
+  'XV': 'Las análogas a las establecidas en las fracciones anteriores, de igual manera graves y de consecuencias semejantes en lo que al trabajo se refiere.',
+};
+
+/** Texto literal de una fracción del art. 47, o null si no existe. */
+function textoFraccionArt47(fraccion) {
+  return ART47_FRACCIONES[String(fraccion || '').trim().toUpperCase().replace(/\s+BIS$/, ' Bis')] || null;
+}
+
+// Catálogo de faltas. `fraccion` es la del art. 47 que sustenta la RESCISIÓN;
+// las faltas que sólo admiten amonestación se apoyan en el art. 134 y en el
+// Reglamento Interior de Trabajo, y por eso llevan `fraccion: null`.
+// Toda entrada con severidad 'rescisoria' debe tener fracción del art. 47.
 const FALTAS_CATALOG = [
-  { value:'impuntualidad', label:'Impuntualidad reiterada',
-    causal:'Art. 134 Fracc. II LFT — Obligación de desempeñar el servicio con la intensidad, cuidado y esmero apropiados / Reglamento Interior de Trabajo',
+  { value:'impuntualidad', label:'Impuntualidad reiterada', fraccion:null,
+    causal:'Art. 134 Fracc. IV LFT — Obligación de observar el horario de trabajo / Reglamento Interior de Trabajo',
     severity:['amonestacion','formal'] },
-  { value:'desobediencia', label:'Desobediencia / Negativa a cumplir instrucciones',
-    causal:'Art. 134 Fracc. II LFT — Obligación de obedecer al patrón y a sus representantes en todo lo concerniente al trabajo',
+  { value:'desobediencia', label:'Desobediencia / Negativa a cumplir instrucciones', fraccion:'XI',
+    causal:'Art. 47 Fracc. XI LFT — Desobedecer al patrón o a sus representantes, sin causa justificada, siempre que se trate del trabajo contratado',
     severity:['amonestacion','formal','rescisoria'] },
-  { value:'medidas', label:'Negativa a adoptar medidas de seguridad e higiene',
-    causal:'Art. 47 Fracc. VII LFT — Negativa a adoptar las medidas preventivas o procedimientos indicados para evitar accidentes o enfermedades',
+  { value:'medidas', label:'Negativa a adoptar medidas de seguridad e higiene', fraccion:'XII',
+    causal:'Art. 47 Fracc. XII LFT — Negarse a adoptar las medidas preventivas o a seguir los procedimientos indicados para evitar accidentes o enfermedades',
     severity:['amonestacion','formal','rescisoria'] },
-  { value:'asistencia', label:'Falta de asistencia injustificada',
-    causal:'Art. 47 Fracc. X LFT — Más de tres faltas de asistencia en un período de treinta días sin permiso del patrón ni causa justificada',
+  { value:'asistencia', label:'Falta de asistencia injustificada', fraccion:'X',
+    causal:'Art. 47 Fracc. X LFT — Más de tres faltas de asistencia en un período de treinta días, sin permiso del patrón o sin causa justificada',
     severity:['formal','rescisoria'] },
-  { value:'danos', label:'Daño intencional a bienes de la empresa',
-    causal:'Art. 47 Fracc. IV LFT — Daño intencional al edificio, obras, maquinaria, instrumentos, materias primas y demás objetos de la empresa',
+  { value:'danos', label:'Daño intencional a bienes de la empresa', fraccion:'V',
+    causal:'Art. 47 Fracc. V LFT — Ocasionar intencionalmente perjuicios materiales en edificios, obras, maquinaria, instrumentos, materias primas y demás objetos relacionados con el trabajo',
     severity:['formal','rescisoria'] },
-  { value:'negligencia', label:'Daño grave por negligencia o imprudencia',
-    causal:'Art. 47 Fracc. V LFT — Perjuicio material causado directamente por negligencia grave e inexcusable del trabajador',
+  { value:'negligencia', label:'Daño grave por negligencia (sin dolo)', fraccion:'VI',
+    causal:'Art. 47 Fracc. VI LFT — Ocasionar los mismos perjuicios, graves, sin dolo, pero con negligencia tal que sea la causa única del perjuicio',
     severity:['formal','rescisoria'] },
-  { value:'embriaguez', label:'Presentarse bajo efectos de alcohol o drogas',
-    causal:'Art. 47 Fracc. VIII LFT — Presentarse al trabajo en estado de embriaguez o bajo la influencia de algún narcótico o droga enervante',
+  { value:'seguridad_establecimiento', label:'Comprometer la seguridad del establecimiento o de las personas', fraccion:'VII',
+    causal:'Art. 47 Fracc. VII LFT — Comprometer, por imprudencia o descuido inexcusable, la seguridad del establecimiento o de las personas que se encuentren en él',
     severity:['formal','rescisoria'] },
-  { value:'violencia', label:'Violencia / Agresión física o verbal',
-    causal:'Art. 47 Fracc. III LFT — Actos de violencia, amagos, injurias o malos tratamientos contra el patrón, compañeros o clientes',
+  { value:'embriaguez', label:'Presentarse bajo efectos de alcohol o drogas', fraccion:'XIII',
+    causal:'Art. 47 Fracc. XIII LFT — Concurrir a sus labores en estado de embriaguez o bajo la influencia de algún narcótico o droga enervante, salvo prescripción médica avisada previamente',
     severity:['formal','rescisoria'] },
-  { value:'robo', label:'Robo / Fraude / Deshonestidad',
-    causal:'Art. 47 Fracc. II LFT — Faltas de probidad u honradez en el desempeño de sus funciones',
+  { value:'violencia', label:'Violencia o injurias contra el patrón, jefes, clientes o proveedores', fraccion:'II',
+    causal:'Art. 47 Fracc. II LFT — Faltas de probidad u honradez, actos de violencia, amagos, injurias o malos tratamientos contra el patrón, sus familiares, el personal directivo o administrativo, o contra clientes y proveedores, salvo provocación o defensa propia',
+    severity:['formal','rescisoria'] },
+  { value:'violencia_companeros', label:'Violencia o injurias contra compañeros de trabajo', fraccion:'III',
+    causal:'Art. 47 Fracc. III LFT — Cometer contra algún compañero los actos de la fracción II, si como consecuencia se altera la disciplina del lugar de trabajo',
+    severity:['formal','rescisoria'] },
+  { value:'violencia_fuera', label:'Actos graves fuera del servicio contra el patrón o jefes', fraccion:'IV',
+    causal:'Art. 47 Fracc. IV LFT — Cometer fuera del servicio, contra el patrón, sus familiares o personal directivo administrativo, los actos de la fracción II, si son de tal gravedad que hagan imposible el cumplimiento de la relación de trabajo',
     severity:['rescisoria'] },
-  { value:'secretos', label:'Revelación de información confidencial',
-    causal:'Art. 47 Fracc. VII LFT — Revelar los secretos técnicos, comerciales o de fabricación de los que tenga conocimiento con motivo de su trabajo',
+  { value:'robo', label:'Robo / Fraude / Faltas de probidad u honradez', fraccion:'II',
+    causal:'Art. 47 Fracc. II LFT — Incurrir durante sus labores en faltas de probidad u honradez',
     severity:['rescisoria'] },
-  { value:'acoso', label:'Acoso laboral o sexual',
-    causal:'Art. 47 Fracc. XI Bis LFT — Hostigamiento o acoso sexual contra cualquier persona en el lugar de trabajo',
+  { value:'secretos', label:'Revelación de secretos o asuntos reservados', fraccion:'IX',
+    causal:'Art. 47 Fracc. IX LFT — Revelar los secretos de fabricación o dar a conocer asuntos de carácter reservado, con perjuicio de la empresa',
     severity:['rescisoria'] },
-  { value:'otra', label:'Otra falta (especificar en descripción)',
+  { value:'acoso', label:'Actos inmorales, hostigamiento o acoso sexual', fraccion:'VIII',
+    causal:'Art. 47 Fracc. VIII LFT — Cometer actos inmorales o de hostigamiento y/o acoso sexual contra cualquier persona en el establecimiento o lugar de trabajo',
+    severity:['rescisoria'] },
+  { value:'certificados_falsos', label:'Engaño con certificados o referencias falsas', fraccion:'I',
+    causal:'Art. 47 Fracc. I LFT — Engañar al patrón con certificados falsos o referencias que atribuyan capacidades de que se carece. Caduca a los treinta días de prestar servicios',
+    severity:['rescisoria'] },
+  { value:'prision', label:'Sentencia ejecutoriada de pena de prisión', fraccion:'XIV',
+    causal:'Art. 47 Fracc. XIV LFT — Sentencia ejecutoriada que imponga pena de prisión que impida el cumplimiento de la relación de trabajo',
+    severity:['rescisoria'] },
+  { value:'falta_documentos', label:'Falta de documentos exigidos por ley para prestar el servicio', fraccion:'XIV Bis',
+    causal:'Art. 47 Fracc. XIV Bis LFT — Falta de documentos que exijan las leyes y reglamentos, imputable al trabajador, que exceda del periodo del art. 43 fracc. IV',
+    severity:['rescisoria'] },
+  { value:'analoga', label:'Causa análoga de igual gravedad (fundamentar en la descripción)', fraccion:'XV',
+    causal:'Art. 47 Fracc. XV LFT — Causas análogas a las anteriores, de igual manera graves y de consecuencias semejantes en lo que al trabajo se refiere',
+    severity:['rescisoria'] },
+  { value:'otra', label:'Otra falta disciplinaria (especificar en descripción)', fraccion:null,
     causal:'Reglamento Interior de Trabajo / Art. 134 LFT — Obligaciones generales del trabajador',
-    severity:['amonestacion','formal','rescisoria'] },
+    severity:['amonestacion','formal'] },
 ];
+
+// ─── JORNADA — RÉGIMEN DE TRANSICIÓN 2026-2030 ───────────────────────────────
+// Decreto de reducción de la jornada laboral, DOF 01-05-2026. El máximo semanal
+// lo fija el art. 59 LFT (el 61 regula la jornada DIARIA: 8 diurna, 7 nocturna,
+// 7.5 mixta). El texto consolidado del art. 59 ya dice 40 horas, pero el
+// Transitorio Segundo escalona su entrada en vigor a partir del 1 de enero de
+// cada año; el Cuarto hace lo propio con la jornada extraordinaria del art. 66.
+//
+// Importa pactar el máximo vigente y no la meta legislativa: por los arts. 31,
+// 56 y 57 LFT y el principio de irreversibilidad, lo pactado por encima del
+// mínimo legal se vuelve condición adquirida. Un contrato que hoy fije 40 horas
+// no podrá volver a 48, y las 8 horas de diferencia se vuelven tiempo
+// extraordinario pagado al doble.
+const JORNADA_SEMANAL_MAX   = { 2026: 48, 2027: 46, 2028: 44, 2029: 42, 2030: 40 };
+const HORAS_EXTRA_MAX_SEMANA = { 2026: 9,  2027: 9,  2028: 10, 2029: 11, 2030: 12 };
+
+/** Jornada semanal máxima aplicable al año dado (Transitorio Segundo). */
+function jornadaMaximaVigente(anio = new Date().getFullYear()) {
+  if (anio >= 2030) return 40;
+  return JORNADA_SEMANAL_MAX[anio] ?? 48;
+}
+
+/** Tope semanal de horas extraordinarias del año dado (Transitorio Cuarto). */
+function horasExtraMaxVigente(anio = new Date().getFullYear()) {
+  if (anio >= 2030) return 12;
+  return HORAS_EXTRA_MAX_SEMANA[anio] ?? 9;
+}
+
+/**
+ * Horas semanales que resultan del horario capturado. Descuenta el descanso
+ * intermedio sólo si está definido, y cuenta únicamente los días laborables
+ * pactados.
+ * @returns {number|null} null si el horario está incompleto o es inconsistente
+ */
+function horasSemanalesPactadas({ horaInicio, horaFin, horaDescansoInicio, horaDescansoFin, diasSemana }) {
+  const min = (hhmm) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+    if (!m) return null;
+    const h = +m[1], mm = +m[2];
+    return (h >= 0 && h <= 23 && mm >= 0 && mm <= 59) ? h * 60 + mm : null;
+  };
+  const ini = min(horaInicio), fin = min(horaFin);
+  if (ini === null || fin === null) return null;
+
+  // Jornada que cruza la medianoche (turno nocturno)
+  let bruto = fin - ini;
+  if (bruto <= 0) bruto += 24 * 60;
+
+  const dIni = min(horaDescansoInicio), dFin = min(horaDescansoFin);
+  let descanso = 0;
+  if (dIni !== null && dFin !== null) {
+    descanso = dFin - dIni;
+    if (descanso < 0) descanso += 24 * 60;
+    if (descanso >= bruto) return null;
+  }
+
+  const dias = Array.isArray(diasSemana) ? diasSemana.length : 0;
+  if (!dias) return null;
+  return parseFloat((((bruto - descanso) / 60) * dias).toFixed(2));
+}
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio',
                'julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -170,7 +283,8 @@ const CEAV_PATRONAL_1SM = 0.03150;   // SBC de exactamente 1 salario mínimo
 function _ceavPatronalPct(sbcDiario, umaDiaria, smgDiario) {
   // Con SBC ≤ 1 SM aplica la cuota mínima sin progresión (el SBC nunca puede
   // ser menor al SM, pero se tolera por datos capturados a mano).
-  if (sbcDiario <= (smgDiario || SMG_GENERAL) * 1.005) return CEAV_PATRONAL_1SM;
+  // smgDiario siempre llega validado desde _smgVigente(); sin respaldo local.
+  if (sbcDiario <= smgDiario * 1.005) return CEAV_PATRONAL_1SM;
   const enUMA = sbcDiario / umaDiaria;
   return (CEAV_PATRONAL_2026.find(r => enUMA <= r.hastaUMA) || CEAV_PATRONAL_2026.at(-1)).pct;
 }
@@ -202,7 +316,7 @@ function calcIMSSPatronal(sbcDiario, diasCotiz, umaDiaria, primaRiesgoPct, smgZo
   const base      = Math.min(Math.max(0, sbcDiario || 0), 25 * umaDiaria); // tope 25 UMA (Art. 28 LSS)
   const excedente = Math.max(0, base - 3 * umaDiaria);
   const primaRT   = Math.max(0, parseFloat(primaRiesgoPct) || 0.54355) / 100;
-  const smgDiario = typeof _smgVigente === 'function' ? _smgVigente(smgZone) : SMG_GENERAL;
+  const smgDiario = _smgVigente(smgZone);
 
   const d = {
     cuotaFija:     umaDiaria * 0.2040,
@@ -240,7 +354,7 @@ function calcIMSSPatronal(sbcDiario, diasCotiz, umaDiaria, primaRiesgoPct, smgZo
 function costoTotalEmpleado(trab, emp) {
   const e     = emp || (typeof CTX !== 'undefined' && CTX?.empresa) || {};
   const prest = prestacionesEmpresa(e);
-  const uma   = typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK;
+  const uma   = _umaVigente();
 
   const daily    = calcSalarioDiario(parseFloat(trab.salario_mensual) || 0, trab.periodo_salario || 'mensual');
   const salMens  = daily * 30;
@@ -330,17 +444,8 @@ function esFestivoEmpresa(fechaISO, prest) {
   );
 }
 
-/** Salario mínimo vigente (config_valores, migración 15) con respaldo local. */
-function _smgVigente(zona) {
-  const clave = zona === 'frontera' ? 'salario_minimo_frontera' : 'salario_minimo_general';
-  const fallback = zona === 'frontera' ? SMG_FRONTERA : SMG_GENERAL;
-  return typeof getConfigValor === 'function' ? getConfigValor(clave, fallback) : fallback;
-}
-
-/** UMA diaria vigente (config_valores, migración 15) con respaldo local. */
-function _umaVigente() {
-  return typeof getConfigValor === 'function' ? getConfigValor('uma_diaria', UMA_DIARIA_FALLBACK) : UMA_DIARIA_FALLBACK;
-}
+// _smgVigente() y _umaVigente() viven ahora en vigencias.js: validan que el
+// valor corresponda al ejercicio en curso y lanzan ErrorVigencia si caducó.
 
 // ─── PRIMA DOMINICAL Y PAGO DE DÍA FESTIVO (Arts. 71, 74-75 LFT) ─────────────
 /**
@@ -580,6 +685,23 @@ function calcLiquidacion(p) {
   const sdi    = calcSDI(daily, entitlement, prest.primaVacPct, prest.aguinaldoDias);
   const sdiCap = Math.min(sdi, 2 * smg);
 
+  // Periodo de devengo de cada concepto, para que el recibo lo cite (no basta
+  // con el importe: el trabajador debe poder verificar a qué lapso corresponde).
+  const aniversario = new Date(p.startDate);
+  aniversario.setFullYear(aniversario.getFullYear() + completed);
+  const inicioAno = new Date(p.endDate.getFullYear(), 0, 1);
+  const inicioAguinaldo = p.startDate > inicioAno ? p.startDate : inicioAno;
+  const periodoRelacion  = `${formatDateShort(p.startDate)} – ${formatDateShort(p.endDate)}`;
+  const periodoVacActual = `${formatDateShort(aniversario)} – ${formatDateShort(p.endDate)}`;
+  const periodoAguinaldo = `${formatDateShort(inicioAguinaldo)} – ${formatDateShort(p.endDate)}`;
+
+  // Trato fiscal: Art. 93 fr. XIII LISR exenta hasta 90 UMA por año de
+  // servicio los pagos por indemnización, prima de antigüedad y retiro; el
+  // resto de las prestaciones es ingreso ordinario sujeto a la retención
+  // normal de nómina, no a ese tope.
+  const EXENTO  = 'Exento hasta el tope (Art. 93 fr. XIII LISR)';
+  const GRAVADO = 'Gravado — retención ordinaria de nómina';
+
   // Vacaciones: proporcionales del año en curso + devengadas pendientes
   const propVac = propVacDays(p.startDate, p.endDate, prest.vacDiasExtra);
   const vacPend = p.vacacionesPendientes || 0;
@@ -602,10 +724,13 @@ function calcLiquidacion(p) {
   // Desglose de vacaciones (puede ser 1 o 2 filas)
   const itemsVac = vacPend > 0
     ? [
-        { name:'Vacaciones devengadas (años anteriores)', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi },
-        { name:'Vacaciones proporcionales (año en curso)', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi },
+        { name:'Vacaciones devengadas (años anteriores)', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi,
+          fundamento:'Art. 76 LFT', periodo:`Ejercicios anteriores al ${formatDateShort(aniversario)}`, tratoFiscal: GRAVADO },
+        { name:'Vacaciones proporcionales (año en curso)', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi,
+          fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
       ]
-    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac }];
+    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac,
+         fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO }];
 
   const salarioIngresado = p.salario || p.monthlySalary;
 
@@ -619,25 +744,25 @@ function calcLiquidacion(p) {
     salario: salarioIngresado, periodoSalario: p.periodoSalario || 'mensual',
     ic, veintePorAnio, pa, vac, pv, ag, sp,
     items:[
-      { name:'Indemnización constitucional (Art. 50 fr. I LFT)',
+      { name:'Indemnización constitucional',
         calc:`${INDEM_CONST_DAYS} días × ${fmt(sdi)} SDI`,
-        amount: ic },
-      { name:'20 días por año (Art. 50 fr. II LFT)',
+        amount: ic, fundamento:'Art. 50 fracc. I LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
+      { name:'20 días por año',
         calc:`${frac.toFixed(2)} años × ${DIAS_20_POR_ANIO} días × ${fmt(sdi)} SDI`,
-        amount: veintePorAnio },
-      { name:'Prima de antigüedad (Art. 162 LFT)',
+        amount: veintePorAnio, fundamento:'Art. 50 fracc. II LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
+      { name:'Prima de antigüedad',
         calc:`${frac.toFixed(2)} años × ${PRIMA_ANTIG_DAYS} días × ${fmt(sdiCap)} (tope 2×SMG = ${fmt(2*smg)})`,
-        amount: pa },
+        amount: pa, fundamento:'Art. 162 LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
       ...itemsVac,
-      { name:'Prima vacacional (Art. 80 LFT)',
+      { name:'Prima vacacional',
         calc:`${fmt(vac)} × ${(prest.primaVacPct*100).toFixed(0)}%`,
-        amount: pv },
-      { name:'Aguinaldo proporcional (Art. 87 LFT)',
+        amount: pv, fundamento:'Art. 80 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
+      { name:'Aguinaldo proporcional',
         calc: p.aguinaldoPagado ? 'Ya pagado este año' : `${diasAg} días (${p.endDate.getFullYear()}) × ${fmt(sdi)} ÷ 365`,
-        amount: ag },
+        amount: ag, fundamento:'Art. 87 LFT', periodo: p.aguinaldoPagado ? 'Ya cubierto' : periodoAguinaldo, tratoFiscal: GRAVADO },
       { name:'Salarios pendientes de pago',
         calc:`${p.diasPendientes||0} días × ${fmt(daily)}`,
-        amount: sp },
+        amount: sp, fundamento:'Arts. 82 y 88 LFT', periodo:'Días previos a la baja no cubiertos en nómina', tratoFiscal: GRAVADO },
     ],
     total
   };
@@ -653,7 +778,36 @@ function calcFiniquito(p) {
   const entitlement = vacDaysForYear(completed + 1, prest.vacDiasExtra);
   const sdi    = calcSDI(daily, entitlement, prest.primaVacPct, prest.aguinaldoDias);
   const sdiCap = Math.min(sdi, 2 * smg);
-  const hasAntig = completed >= 15 || p.tieneAntig;
+
+  // Art. 162 fr. III LFT: la antigüedad mínima de 15 años para la prima de
+  // antigüedad SÓLO aplica cuando el trabajador se separa VOLUNTARIAMENTE
+  // (renuncia). En despido o rescisión —justificada o no— la ley la concede
+  // "independientemente de la justificación o injustificación del despido",
+  // sin mínimo de años. calcFiniquito se usa tanto para renuncia como para
+  // rescisión justificada (bajas.js): sin este parámetro, ambas compartían el
+  // mismo mínimo de 15 años, negando la prima en una rescisión justificada
+  // con menos antigüedad salvo que alguien marcara manualmente la casilla
+  // "voluntaria" — un derecho tratado como si fuera opcional cuando la ley lo
+  // hace obligatorio.
+  if (!['renuncia', 'justificada', 'injustificada'].includes(p.motivo)) {
+    throw new Error(
+      'calcFiniquito requiere indicar el motivo de la baja (renuncia, justificada o ' +
+      'injustificada): el Art. 162 fr. III LFT exige 15 años de antigüedad para la prima ' +
+      'SÓLO en la renuncia; en despido o rescisión procede sin importar los años de servicio.'
+    );
+  }
+  const hasAntig = p.motivo === 'renuncia' ? (completed >= 15 || p.tieneAntig) : true;
+
+  // Periodo de devengo de cada concepto (ver nota en calcLiquidacion).
+  const aniversario = new Date(p.startDate);
+  aniversario.setFullYear(aniversario.getFullYear() + completed);
+  const inicioAno = new Date(p.endDate.getFullYear(), 0, 1);
+  const inicioAguinaldo = p.startDate > inicioAno ? p.startDate : inicioAno;
+  const periodoRelacion  = `${formatDateShort(p.startDate)} – ${formatDateShort(p.endDate)}`;
+  const periodoVacActual = `${formatDateShort(aniversario)} – ${formatDateShort(p.endDate)}`;
+  const periodoAguinaldo = `${formatDateShort(inicioAguinaldo)} – ${formatDateShort(p.endDate)}`;
+  const EXENTO  = 'Exento hasta el tope (Art. 93 fr. XIII LISR)';
+  const GRAVADO = 'Gravado — retención ordinaria de nómina';
 
   // Vacaciones: proporcionales del año en curso + devengadas pendientes
   const propVac  = propVacDays(p.startDate, p.endDate, prest.vacDiasExtra);
@@ -672,25 +826,15 @@ function calcFiniquito(p) {
   const sp = (p.diasPendientes || 0) * daily;
   const total = vac + pv + ag + pa + sp;
 
-  const itemsVac = vacPend > 0
-    ? [
-        { name:'Vacaciones devengadas (años anteriores)', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi },
-        { name:'Vacaciones proporcionales (año en curso)', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi },
-      ]
-    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac }];
-
   const itemsVacFin = vacPend > 0
     ? [
-        { name:'Vacaciones de años anteriores (Art. 76 LFT)',
-          calc:`${vacPend} días × ${fmt(sdi)}`,
-          amount: vacPend * sdi },
-        { name:'Vacaciones proporcionales año en curso (Art. 76 LFT)',
-          calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`,
-          amount: propVac * sdi },
+        { name:'Vacaciones de años anteriores', calc:`${vacPend} días × ${fmt(sdi)}`, amount: vacPend * sdi,
+          fundamento:'Art. 76 LFT', periodo:`Ejercicios anteriores al ${formatDateShort(aniversario)}`, tratoFiscal: GRAVADO },
+        { name:'Vacaciones proporcionales año en curso', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: propVac * sdi,
+          fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
       ]
-    : [{ name:'Vacaciones proporcionales (Art. 76 LFT)',
-         calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`,
-         amount: vac }];
+    : [{ name:'Vacaciones proporcionales', calc:`${propVac.toFixed(1)} días × ${fmt(sdi)}`, amount: vac,
+         fundamento:'Art. 76 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO }];
 
   const diasLaborados = daysBetween(p.startDate, p.endDate);
   const diasEnAnio    = diasEnAnoCalendario(p.startDate, p.endDate);
@@ -703,20 +847,20 @@ function calcFiniquito(p) {
     pa, vac, pv, ag, sp,
     items:[
       ...itemsVacFin,
-      { name:'Prima vacacional (Art. 80 LFT)',
+      { name:'Prima vacacional',
         calc:`${fmt(vac)} × ${(prest.primaVacPct*100).toFixed(0)}%`,
-        amount: pv },
-      { name:'Aguinaldo proporcional (Art. 87 LFT)',
+        amount: pv, fundamento:'Art. 80 LFT', periodo: periodoVacActual, tratoFiscal: GRAVADO },
+      { name:'Aguinaldo proporcional',
         calc: p.aguinaldoPagado ? 'Ya pagado este año' : `${diasAg} días (${p.endDate.getFullYear()}) × ${fmt(sdi)} ÷ 365`,
-        amount: ag },
-      { name:'Prima de antigüedad (Art. 162 LFT)',
+        amount: ag, fundamento:'Art. 87 LFT', periodo: p.aguinaldoPagado ? 'Ya cubierto' : periodoAguinaldo, tratoFiscal: GRAVADO },
+      { name:'Prima de antigüedad',
         calc: hasAntig
           ? `${frac.toFixed(2)} años × ${PRIMA_ANTIG_DAYS} días × ${fmt(sdiCap)} (tope 2×SMG = ${fmt(2*smg)})`
           : 'No aplica (antigüedad menor a 15 años)',
-        amount: pa },
+        amount: pa, fundamento:'Art. 162 LFT', periodo: periodoRelacion, tratoFiscal: EXENTO },
       { name:'Salarios pendientes de pago',
         calc:`${p.diasPendientes||0} días × ${fmt(daily)}`,
-        amount: sp },
+        amount: sp, fundamento:'Arts. 82 y 88 LFT', periodo:'Días previos a la baja no cubiertos en nómina', tratoFiscal: GRAVADO },
     ],
     total
   };
@@ -867,7 +1011,7 @@ function calcularSBC(trabajador, montoVariableIntegrable = 0, prest) {
   const p = prest || prestacionesEmpresa();
   const daily  = calcSalarioDiario(trabajador.salario_mensual, trabajador.periodo_salario || 'mensual');
   const factor = calcularFactorIntegracion(trabajador, p);
-  const uma    = typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK;
+  const uma    = _umaVigente();
   const piso   = _smgVigente(trabajador.smg_zone);
   const tope   = 25 * uma; // Art. 28 LSS
 

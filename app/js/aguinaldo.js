@@ -29,7 +29,7 @@ async function renderAguinaldo() {
 
     // Exención de ISR: 30 UMA (Art. 93 fr. XIV LISR); el excedente se grava
     // con el procedimiento del Art. 174 RLISR (tasa efectiva, ver nomina.js)
-    const uma       = typeof _umaVigente === 'function' ? _umaVigente() : 117.31;
+    const uma       = _umaVigente();
     const exencionAg = 30 * uma;
 
     const rows = (trabajadores || []).map(t => {
