@@ -1055,7 +1055,12 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   const tw = pw - ml - mr;
 
   const isLiq  = result.type === 'liquidacion';
-  const tipo   = isLiq ? 'LIQUIDACION' : 'FINIQUITO';
+  // Gratificación por terminación (migración 38): va en su propio bloque, no
+  // mezclada con las prestaciones de ley, para que quede claro qué se paga por
+  // obligación y qué por acuerdo. Si no hay, el recibo sale idéntico al de antes.
+  const grat       = Math.max(0, parseFloat(result.gratificacion) || 0);
+  const totalPagar = result.totalPagar ?? result.total;
+  const tipo   = isLiq ? 'LIQUIDACION' : (grat > 0 ? 'FINIQUITO Y GRATIFICACION' : 'FINIQUITO');
   const folio  = `${isLiq ? 'LIQ' : 'FIN'}-${Date.now().toString().slice(-6)}`;
   let y        = 0;
 
@@ -1166,11 +1171,19 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   // ══════════════════════════════════════════════════════════════════════
   // 4. TABLA DE CONCEPTOS
   // ══════════════════════════════════════════════════════════════════════
+  if (grat > 0) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(50,50,50);
+    doc.text('I. PRESTACIONES DE LEY', ml, y); y += 5;
+  }
+
   doc.autoTable({
     startY: y, margin: { left:ml, right:mr },
     head: [['Concepto', 'Calculo', 'Importe']],
     body: result.items.map(item => [np(item.name), np(item.calc), fmt(item.amount)]),
-    foot: [['', 'TOTAL', fmt(result.total)]],
+    foot: [['', grat > 0 ? 'SUBTOTAL PRESTACIONES DE LEY' : 'TOTAL', fmt(result.total)]],
+    // Solo en la última página: si la tabla se parte, repetir el total en cada
+    // hoja hace parecer que hay dos sumas distintas.
+    showFoot: 'lastPage',
     styles:      { fontSize:9, cellPadding:3.5, textColor:[40,40,40] },
     headStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:8.5 },
     footStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:11 },
@@ -1190,10 +1203,75 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   });
   y = doc.lastAutoTable.finalY + 12;
 
+  // ── 4-bis. GRATIFICACIÓN POR TERMINACIÓN (bloque separado) ─────────────
+  if (grat > 0) {
+    ck(46);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(50,50,50);
+    doc.text('II. GRATIFICACION POR TERMINACION (POR ACUERDO DE LAS PARTES)', ml, y); y += 5;
+
+    const calcGrat = result.gratificacionDias
+      ? `${result.gratificacionDias} dias x ${fmt(result.gratificacionBase === 'sdi' ? result.sdi : result.daily)} (${result.gratificacionBase === 'sdi' ? 'SDI' : 'salario diario'})`
+      : 'Monto acordado entre las partes';
+
+    doc.autoTable({
+      startY: y, margin: { left:ml, right:mr },
+      head: [['Concepto', 'Calculo', 'Importe']],
+      body: [['Gratificacion por terminacion de la relacion laboral', np(calcGrat), fmt(grat)]],
+      foot: [['', 'TOTAL A PAGAR (I + II)', fmt(totalPagar)]],
+      styles:      { fontSize:9, cellPadding:3.5, textColor:[40,40,40] },
+      headStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:8.5 },
+      footStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:11 },
+      columnStyles:{
+        0:{ cellWidth:76, fontStyle:'bold' },
+        1:{ cellWidth:66, textColor:[100,100,100], fontSize:8.2 },
+        2:{ cellWidth:38, halign:'right', fontStyle:'bold' },
+      },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable.finalY + 6;
+
+    const notaGrat = 'Esta gratificacion se otorga por libre voluntad del Patron, por encima de las prestaciones que la Ley Federal del Trabajo establece. No constituye prestacion de ley, no modifica la naturaleza de la terminacion ni crea derecho adquirido alguno para casos futuros.';
+    const ngLines = doc.splitTextToSize(np(notaGrat), tw);
+    ck(ngLines.length * 4.4 + 6);
+    doc.setFont('helvetica','italic'); doc.setFontSize(7.8); doc.setTextColor(110,110,110);
+    doc.text(ngLines, ml, y);
+    y += ngLines.length * 4.4 + 10;
+  }
+
+  // ── 4-ter. DESGLOSE FISCAL ESTIMADO (cuando el módulo lo calculó) ──────
+  if (result.fiscal && result.fiscal.conceptos?.length) {
+    ck(50);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(50,50,50);
+    doc.text('DESGLOSE FISCAL ESTIMADO (ISR)', ml, y); y += 5;
+
+    doc.autoTable({
+      startY: y, margin: { left:ml, right:mr },
+      head: [['Concepto', 'Importe', 'Exento', 'Gravado', 'ISR est.']],
+      body: result.fiscal.conceptos.map(c => [np(c.name), fmt(c.monto), fmt(c.exento), fmt(c.gravado), fmt(c.isr)]),
+      foot: [['NETO ESTIMADO A RECIBIR', fmt(result.fiscal.bruto), fmt(result.fiscal.exentoTotal),
+              fmt(result.fiscal.gravadoTotal), fmt(result.fiscal.neto)]],
+      styles:      { fontSize:8, cellPadding:2.8, textColor:[40,40,40] },
+      headStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:7.5 },
+      footStyles:  { fillColor:[240,240,245], textColor:[20,20,20], fontStyle:'bold', fontSize:8 },
+      alternateRowStyles: { fillColor:[248,248,252] },
+      columnStyles:{ 0:{ cellWidth:64 }, 1:{ halign:'right' }, 2:{ halign:'right' },
+                     3:{ halign:'right' }, 4:{ halign:'right' } },
+      theme: 'grid',
+    });
+    y = doc.lastAutoTable.finalY + 6;
+
+    const notaISR = `Estimacion informativa: exencion de 90 UMA por ano de servicio sobre indemnizaciones, prima de antiguedad y gratificacion (Art. 93 fr. XIII LISR, ${result.fiscal.aniosServicio} ano(s) reconocido(s)); 30 UMA de aguinaldo y 15 UMA de prima vacacional (fr. XIV). El calculo definitivo y su timbrado los determina el contador de la empresa.`;
+    const niLines = doc.splitTextToSize(np(notaISR), tw);
+    ck(niLines.length * 4.4 + 6);
+    doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(110,110,110);
+    doc.text(niLines, ml, y);
+    y += niLines.length * 4.4 + 10;
+  }
+
   // ══════════════════════════════════════════════════════════════════════
-  // 5. RECUADRO ISR (solo liquidación)
+  // 5. RECUADRO ISR (solo liquidación sin desglose fiscal calculado)
   // ══════════════════════════════════════════════════════════════════════
-  if (isLiq) {
+  if (isLiq && !result.fiscal) {
     const montoExento = 90 * result.smg * Math.max(result.completed, 1);
     const isrTxt = `NOTA FISCAL — ART. 93 LISR: Los pagos por concepto de liquidacion pueden estar exentos de ISR hasta por un monto equivalente a 90 veces el SMG por ano de servicio. Para esta relacion laboral la exencion estimada es de ${fmt(montoExento)} (${result.completed} anos × 90 dias × ${fmt(result.smg)} SMG). El excedente, si lo hubiere, esta sujeto a retencion de ISR. Consulte a su contador para el calculo definitivo antes de efectuar el pago.`;
     ck(28);
@@ -1212,11 +1290,13 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   ck(36);
   const ciudad    = empresa.ciudad || '[CIUDAD]';
   const fechaBaja = npDate(trab.fecha_baja);
-  const totalFmt  = fmt(result.total);
-  const totalLetr = numToWords(result.total);
+  const totalFmt  = fmt(totalPagar);
+  const totalLetr = numToWords(totalPagar);
 
   let declTxt;
-  if (isLiq) {
+  if (grat > 0 && !isLiq) {
+    declTxt = `En la Ciudad de ${np(ciudad)}, a ${fechaBaja}, el C. ${np(trab.nombre)}, con RFC ${np(trab.rfc||'N/A')}, declara haber recibido de ${np(empresa.nombre)} la cantidad total de ${np(totalFmt)} (${np(totalLetr)} PESOS 00/100 M.N.), integrada por ${np(fmt(result.total))} por concepto de FINIQUITO en los terminos de los Articulos 76, 80, 87 y 162 de la Ley Federal del Trabajo, y ${np(fmt(grat))} por concepto de GRATIFICACION otorgada por acuerdo de las partes, en virtud de la terminacion de la relacion laboral ocurrida el dia ${fechaBaja}. Manifiesta que con dicho pago queda completamente liquidado y no tiene reclamacion adicional alguna en contra del Patron por ningun concepto derivado de la relacion laboral que queda extinguida en todos sus efectos.`;
+  } else if (isLiq) {
     declTxt = `En la Ciudad de ${np(ciudad)}, a ${fechaBaja}, el C. ${np(trab.nombre)}, con RFC ${np(trab.rfc||'N/A')}, declara haber recibido de ${np(empresa.nombre)} la cantidad total de ${np(totalFmt)} (${np(totalLetr)} PESOS 00/100 M.N.) por concepto de LIQUIDACION, en los terminos de los Articulos 50, 76, 80, 87 y 162 de la Ley Federal del Trabajo, manifestando que con dicho pago no tiene reclamacion adicional alguna en contra del Patron por concepto de salarios, prestaciones, indemnizaciones o cualquier otro concepto derivado de la relacion laboral que existio entre las partes, la cual queda extinguida en todos sus efectos a partir de la fecha indicada.`;
   } else {
     declTxt = `En la Ciudad de ${np(ciudad)}, a ${fechaBaja}, el C. ${np(trab.nombre)}, con RFC ${np(trab.rfc||'N/A')}, declara haber recibido de ${np(empresa.nombre)} la cantidad total de ${np(totalFmt)} (${np(totalLetr)} PESOS 00/100 M.N.) por concepto de FINIQUITO, en los terminos de los Articulos 76, 80, 87 y 162 de la Ley Federal del Trabajo, en virtud de la terminacion de la relacion laboral ocurrida el dia ${fechaBaja}, manifestando que con dicho pago queda completamente liquidado y no tiene reclamacion adicional alguna en contra del Patron por ningun concepto derivado de la relacion laboral que queda extinguida en todos sus efectos.`;
@@ -1268,6 +1348,137 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   }
 
   doc.save(`recibo-${isLiq ? 'liquidacion' : 'finiquito'}-${np(trab.nombre||'').replace(/\s+/g,'-').toLowerCase()}.pdf`);
+}
+
+// ─── HOJA DE PROPUESTA DE SALIDA (documento interno) ─────────────────────────
+/**
+ * Comparativo de escenarios para negociar una salida. NO es un documento que
+ * se entregue al trabajador para firmar: es la hoja de trabajo del patrón, y
+ * así viene rotulada en el encabezado y en el pie de todas las páginas.
+ *
+ * @param {Object} empresa
+ * @param {Object} trab       Trabajador + fecha_baja estimada
+ * @param {Object} propuesta  Retorno de calcPropuestaBaja()
+ * @param {Object} [sucursal]
+ */
+function generatePropuestaBajaPDF(empresa, trab, propuesta, sucursal = null) {
+  empresa = resolveUbicacion(empresa, sucursal);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'letter' });
+  const ml = 15, mr = 15;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const tw = pw - ml - mr;
+
+  const fin = propuesta.finiquito;
+  const liq = propuesta.liquidacionRef;
+  const baseLabel = propuesta.baseDias === 'sdi' ? 'SDI' : 'salario diario';
+  const modoLabel = propuesta.modo === 'incluye'
+    ? 'los dias propuestos son el paquete total'
+    : 'los dias propuestos se suman al finiquito de ley';
+
+  let y = pdfHeader(doc, 'PROPUESTA DE TERMINACION LABORAL', 'Documento interno de trabajo', ml, mr);
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(40,40,40);
+  doc.text(np(empresa.nombre || ''), ml, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120,120,120);
+  doc.text(np([empresa.rfc, empresa.ciudad].filter(Boolean).join('  |  ')), pw - mr, y, { align:'right' });
+  y += 8;
+
+  // Banda de advertencia — que nadie confunda esto con una oferta firmada.
+  // Sin guiones largos ni signos fuera de WinAnsi: jsPDF con helvetica los
+  // dibuja en blanco (por eso todo el texto pasa además por np()).
+  const aviso = 'DOCUMENTO INTERNO DE TRABAJO - NO ES OFERTA FORMAL NI GENERA OBLIGACION ALGUNA. Uso exclusivo del patron para evaluar escenarios de negociacion. No entregar ni exhibir al trabajador como propuesta en firme.';
+  const avLines = doc.splitTextToSize(np(aviso), tw - 10);
+  const avH = avLines.length * 4.6 + 8;
+  doc.setFillColor(255, 243, 205); doc.setDrawColor(180, 120, 0); doc.setLineWidth(0.5);
+  doc.roundedRect(ml, y, tw, avH, 2, 2, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(120, 70, 0);
+  doc.text(avLines, ml + 5, y + 6);
+  y += avH + 8;
+
+  // Datos de la relación laboral
+  doc.autoTable({
+    startY: y, margin: { left:ml, right:mr },
+    body: [
+      ['Trabajador',        np(trab.nombre),            'Puesto',            np(trab.puesto || 'N/A')],
+      ['Fecha de ingreso',  npDate(trab.fecha_ingreso), 'Fecha de baja estimada', npDate(trab.fecha_baja)],
+      ['Antiguedad',        `${fin.completed} ano(s) (${fin.frac.toFixed(2)} fraccion)`,
+       'Salario diario',    fmt(fin.daily)],
+      ['SDI',               fmt(fin.sdi),               'Base de los dias',  `${baseLabel} = ${fmt(propuesta.base)}`],
+      ['Criterio',          np(modoLabel),              'Elaborada el',      npDate(new Date())],
+    ],
+    styles:      { fontSize:8, cellPadding:2.6, textColor:[50,50,50] },
+    alternateRowStyles: { fillColor:[248,248,252] },
+    columnStyles:{ 0:{ fontStyle:'bold', cellWidth:38 }, 1:{ cellWidth:82 },
+                   2:{ fontStyle:'bold', cellWidth:44 }, 3:{ cellWidth:82 } },
+    theme: 'grid',
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // Escenarios
+  const filas = propuesta.escenarios.map(e => ([
+    np(e.etiqueta) + (e.insuficiente ? ' (NO cubre el minimo de ley)' : ''),
+    e.dias ? `${e.dias} x ${fmt(e.base)}` : '-',
+    fmt(e.finiquito),
+    fmt(e.gratificacion),
+    fmt(e.total),
+    e.isr  != null ? fmt(e.isr)  : '-',
+    e.neto != null ? fmt(e.neto) : '-',
+    e.pctVsLiquidacion != null ? `${(e.pctVsLiquidacion * 100).toFixed(0)}%` : '-',
+  ]));
+  filas.push(['Liquidacion completa (referencia Arts. 48 y 50 LFT)', '-', '-', '-',
+              fmt(liq.total), '-', '-', '100%']);
+
+  doc.autoTable({
+    startY: y, margin: { left:ml, right:mr },
+    head: [['Escenario', 'Dias x base', 'Finiquito de ley', 'Gratificacion',
+            'Total bruto', 'ISR est.', 'Neto est.', 'vs liq.']],
+    body: filas,
+    styles:      { fontSize:8, cellPadding:3, textColor:[40,40,40] },
+    headStyles:  { fillColor:[15,36,56], textColor:[21,128,61], fontStyle:'bold', fontSize:7.5 },
+    alternateRowStyles: { fillColor:[248,248,252] },
+    columnStyles:{ 0:{ cellWidth:66, fontStyle:'bold' }, 1:{ cellWidth:32 },
+                   2:{ halign:'right' }, 3:{ halign:'right' }, 4:{ halign:'right', fontStyle:'bold' },
+                   5:{ halign:'right' }, 6:{ halign:'right' }, 7:{ halign:'right' } },
+    theme: 'grid',
+    didParseCell: (data) => {
+      // Último renglón = referencia de liquidación completa
+      if (data.section === 'body' && data.row.index === filas.length - 1) {
+        data.cell.styles.fillColor = [255, 248, 225];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    },
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  const notas = [
+    `El finiquito de ley (${fmt(fin.total)}) es el piso irrenunciable: se debe cualquiera que sea la causa de la baja y cualquiera que sea el documento que se firme.`,
+    'La gratificacion es una liberalidad del patron; no es prestacion de ley ni crea derecho adquirido.',
+    `La liquidacion completa (${fmt(liq.total)}) es la referencia de lo que costaria si el asunto se litiga y no hay reinstalacion (90 dias + 20 dias por ano + prima de antiguedad).`,
+    'El ISR mostrado es una estimacion (exencion de 90 UMA por ano de servicio, Art. 93 fr. XIII LISR). El calculo definitivo lo confirma el contador.',
+  ];
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+  for (const n of notas) {
+    const lines = doc.splitTextToSize(np('- ' + n), tw);
+    if (y + lines.length * 4.4 > ph - 18) { doc.addPage(); y = 20; }
+    doc.text(lines, ml, y);
+    y += lines.length * 4.4 + 2;
+  }
+
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
+    doc.line(ml, ph - 11, pw - mr, ph - 11);
+    doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(160,120,0);
+    doc.text(
+      np(`DOCUMENTO INTERNO - NO ES OFERTA FORMAL  |  Pagina ${i} de ${total}  |  Capital Humano MX  |  No sustituye asesoria juridica`),
+      pw/2, ph - 7, { align:'center' }
+    );
+  }
+
+  doc.save(`propuesta-salida-${np(trab.nombre||'').replace(/\s+/g,'-').toLowerCase()}.pdf`);
 }
 
 // ─── ACTA ADMINISTRATIVA ──────────────────────────────────────────────────────

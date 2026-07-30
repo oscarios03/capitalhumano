@@ -169,6 +169,47 @@ const db = {
     return data || [];
   },
 
+  // ─── Propuestas de baja (migración 38) ────────────────────────────────────
+  // Borrador de negociación de un trabajador TODAVÍA ACTIVO. Solo puede haber
+  // uno en estado 'borrador' por trabajador (índice único parcial en la BD).
+
+  async getPropuestaBaja(trabajadorId) {
+    if (!trabajadorId) return null;
+    const { data, error } = await _q().from('propuestas_baja')
+      .select('*').eq('trabajador_id', trabajadorId).eq('estado', 'borrador').maybeSingle();
+    if (error) throw error;
+    return data || null;
+  },
+
+  async guardarPropuestaBaja(datos, empresaId) {
+    const existente = await this.getPropuestaBaja(datos.trabajador_id);
+    if (existente) {
+      const { data, error } = await _q().from('propuestas_baja')
+        .update(datos).eq('id', existente.id).select().single();
+      if (error) throw error;
+      return data;
+    }
+    const { data, error } = await _q().from('propuestas_baja')
+      .insert({ ...datos, empresa_id: empresaId }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async marcarPropuestaAplicada(id, bajaId) {
+    if (!id) return null;
+    const { data, error } = await _q().from('propuestas_baja')
+      .update({ estado: 'aplicada', baja_id: bajaId || null }).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async descartarPropuestaBaja(id) {
+    if (!id) return null;
+    const { error } = await _q().from('propuestas_baja')
+      .update({ estado: 'descartada' }).eq('id', id);
+    if (error) throw error;
+  },
+
   // ─── Sucursales ───────────────────────────────────────────────────────────
   async getSucursales(soloActivas = false) {
     let q = _q().from('sucursales').select('*').order('tipo').order('nombre');

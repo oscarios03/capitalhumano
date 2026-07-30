@@ -722,6 +722,97 @@ function calcFiniquito(p) {
   };
 }
 
+// ─── PROPUESTA DE BAJA NEGOCIADA ──────────────────────────────────────────────
+/**
+ * Escenarios de una salida negociada.
+ *
+ * La plataforma calcula DOS cosas distintas y no las mezcla:
+ *   · El PISO IRRENUNCIABLE — es literalmente calcFiniquito(): vacaciones
+ *     proporcionales y devengadas, prima vacacional, aguinaldo proporcional,
+ *     salarios pendientes y (si `tieneAntig`) la prima de antigüedad. No se
+ *     negocia: se debe aunque el papel diga renuncia.
+ *   · La GRATIFICACIÓN por terminación — los días que se ofrecen encima. Es
+ *     una liberalidad del patrón, no una prestación de ley.
+ *
+ * calcLiquidacion() se calcula también, pero solo como REFERENCIA: es el costo
+ * si el asunto termina en juicio (90 días + 20 días/año + prima de antigüedad).
+ * Sirve para que el usuario vea contra qué está negociando.
+ *
+ * @param {Object}   p                       Mismos parámetros que calcFiniquito()
+ * @param {'sdi'|'diario'}   [p.baseDias='sdi']  Base de los días negociados
+ * @param {'suma'|'incluye'} [p.modo='suma']     'suma': la gratificación se agrega
+ *        al finiquito. 'incluye': los N días son el paquete TOTAL y la
+ *        gratificación es la diferencia contra el finiquito.
+ * @param {number[]} [p.diasEscenarios]       Default 15/30/45/60/75/90
+ * @param {number}   [p.diasManual]           Días capturados a mano (escenario extra)
+ * @param {number}   [p.montoManual]          Gratificación capturada como importe
+ * @returns {{finiquito:Object, liquidacionRef:Object, base:number,
+ *            baseDias:string, modo:string, escenarios:Array}}
+ */
+function calcPropuestaBaja(p) {
+  const baseDias = p.baseDias === 'diario' ? 'diario' : 'sdi';
+  const modo     = p.modo === 'incluye' ? 'incluye' : 'suma';
+
+  const finiquito      = calcFiniquito(p);
+  const liquidacionRef = calcLiquidacion(p);
+  const base = baseDias === 'diario' ? finiquito.daily : finiquito.sdi;
+
+  const fiscalDe = (grat) => (typeof calcFiscalBaja === 'function'
+    ? calcFiscalBaja(finiquito, { gratificacion: grat })
+    : null);
+
+  const armar = (dias, etiqueta, gratFija) => {
+    // Con monto capturado a mano no hay días: la gratificación es el importe.
+    const montoDias = gratFija != null ? gratFija : (dias || 0) * base;
+
+    let gratificacion, total, insuficiente = false;
+    if (modo === 'incluye' && gratFija == null) {
+      total         = montoDias;
+      gratificacion = Math.max(0, total - finiquito.total);
+      insuficiente  = total < finiquito.total;
+    } else {
+      gratificacion = montoDias;
+      total         = finiquito.total + gratificacion;
+    }
+
+    const fiscal = fiscalDe(gratificacion);
+    return {
+      dias: gratFija != null ? null : (dias || 0),
+      etiqueta,
+      base, baseDias, modo,
+      montoDias:     parseFloat(montoDias.toFixed(2)),
+      finiquito:     parseFloat(finiquito.total.toFixed(2)),
+      gratificacion: parseFloat(gratificacion.toFixed(2)),
+      total:         parseFloat(total.toFixed(2)),
+      // En modo 'incluye' con días insuficientes el paquete NO cubre el mínimo
+      // de ley: la UI debe marcarlo, no dejarlo pasar como una opción válida.
+      insuficiente,
+      faltante: insuficiente ? parseFloat((finiquito.total - total).toFixed(2)) : 0,
+      isr:  fiscal ? fiscal.isr  : null,
+      neto: fiscal ? fiscal.neto : null,
+      fiscal,
+      pctVsLiquidacion: liquidacionRef.total > 0
+        ? parseFloat((total / liquidacionRef.total).toFixed(4)) : null,
+    };
+  };
+
+  const dias = Array.isArray(p.diasEscenarios) && p.diasEscenarios.length
+    ? p.diasEscenarios : [15, 30, 45, 60, 75, 90];
+
+  const escenarios = [
+    armar(0, 'Solo lo irrenunciable'),
+    ...dias.map(d => armar(d, `${d} días`)),
+  ];
+
+  // Los días capturados a mano solo se agregan si no repiten un escenario fijo.
+  if (p.diasManual > 0 && !dias.includes(p.diasManual)) {
+    escenarios.push(armar(p.diasManual, `${p.diasManual} días (captura manual)`));
+  }
+  if (p.montoManual > 0) escenarios.push(armar(null, 'Monto capturado a mano', parseFloat(p.montoManual)));
+
+  return { finiquito, liquidacionRef, base, baseDias, modo, escenarios };
+}
+
 // ─── SBC — SALARIO BASE DE COTIZACIÓN (Art. 27-28 LSS) ───────────────────────
 /**
  * Factor de integración MÍNIMO legal por año de antigüedad (Art. 27 LSS):

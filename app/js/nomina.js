@@ -140,6 +140,154 @@ function calcISRArt174(montoGravado, salarioMensualOrdinario) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  ISR DE LA TERMINACIÓN LABORAL (finiquito / liquidación / gratificación)
+// ═══════════════════════════════════════════════════════════════════════════
+// Exenciones en UMA. Las de aguinaldo y prima vacacional ya se usaban sueltas
+// en aguinaldo.js y vacaciones; aquí quedan nombradas para el cálculo de baja.
+const EXENCION_SEPARACION_UMA = 90;  // Art. 93 fr. XIII LISR — POR AÑO de servicio
+const EXENCION_AGUINALDO_UMA  = 30;  // Art. 93 fr. XIV LISR
+const EXENCION_PRIMA_VAC_UMA  = 15;  // Art. 93 fr. XIV LISR
+
+/**
+ * Años de servicio para la exención del Art. 93 fr. XIII LISR: toda fracción
+ * mayor a seis meses cuenta como año completo, y el mínimo es un año.
+ * @param {number} frac  Antigüedad en años con decimales (result.frac)
+ */
+function aniosServicioFiscales(frac) {
+  const f = Math.max(0, parseFloat(frac) || 0);
+  return Math.max(1, Math.floor(f) + ((f % 1) > 0.5 ? 1 : 0));
+}
+
+/**
+ * ISR de una percepción por SEPARACIÓN (indemnización, prima de antigüedad,
+ * gratificación por terminación) — procedimiento del último párrafo del
+ * Art. 96 LISR. Ojo: NO es el Art. 174 RLISR que se usa para aguinaldo y PTU;
+ * a las percepciones por separación les aplica su propio procedimiento:
+ *   I.  Del total se separa una cantidad igual al último sueldo mensual
+ *       ordinario y a esa parte se le aplica la tarifa del Art. 96.
+ *   II. Al remanente se le aplica la TASA que resultó de dividir el impuesto
+ *       del último sueldo mensual ordinario entre ese mismo sueldo.
+ * @param {number} montoGravado                Percepción GRAVADA (ya sin exención)
+ * @param {number} ultimoSueldoMensualOrdinario
+ * @returns {{isr:number, tasa:number}}
+ */
+function calcISRSeparacion(montoGravado, ultimoSueldoMensualOrdinario) {
+  const gravado = Math.max(0, parseFloat(montoGravado) || 0);
+  const sueldo  = Math.max(0, parseFloat(ultimoSueldoMensualOrdinario) || 0);
+  if (gravado <= 0) return { isr: 0, tasa: 0 };
+  if (sueldo <= 0)  return { isr: parseFloat(_isrMensualBruto(gravado).toFixed(2)), tasa: 0 };
+
+  const parte1 = Math.min(gravado, sueldo);
+  const isr1   = _isrMensualBruto(parte1);
+  const tasa   = _isrMensualBruto(sueldo) / sueldo;
+  const isr2   = Math.max(0, gravado - parte1) * tasa;
+
+  return { isr: parseFloat((isr1 + isr2).toFixed(2)), tasa };
+}
+
+/**
+ * Neto ESTIMADO de una baja: aplica a cada concepto su exención y su
+ * procedimiento de retención. Es una estimación para negociar — el cálculo
+ * fiscal definitivo lo confirma el contador (mismo criterio que la leyenda de
+ * "monto bruto antes de retenciones" que ya mostraba el módulo de bajas).
+ *
+ * Tratamiento por concepto:
+ *   · Indemnizaciones, prima de antigüedad y gratificación → una sola bolsa
+ *     "separación", exenta hasta 90 UMA POR AÑO de servicio (Art. 93 fr. XIII
+ *     LISR) y el excedente por el Art. 96 último párrafo.
+ *   · Aguinaldo proporcional → exento 30 UMA, excedente por Art. 174 RLISR.
+ *   · Prima vacacional → exenta 15 UMA, excedente por Art. 174 RLISR.
+ *   · Vacaciones (proporcionales y devengadas) → gravadas al 100%.
+ *   · Salarios pendientes → salario ordinario: tarifa de su periodicidad.
+ *
+ * @param {Object} result         Retorno de calcFiniquito() o calcLiquidacion()
+ * @param {Object} [opts]
+ * @param {number} [opts.gratificacion=0]  Gratificación por terminación pactada
+ * @param {number} [opts.aniosServicio]    Default: derivado de result.frac
+ * @param {number} [opts.salarioMensualOrdinario] Default: result.daily × 30
+ * @param {number} [opts.uma]              Default: _umaVigente()
+ * @returns {{bruto:number, exentoTotal:number, gravadoTotal:number,
+ *            isr:number, neto:number, uma:number, aniosServicio:number,
+ *            conceptos:Array}}
+ */
+function calcFiscalBaja(result, opts = {}) {
+  const uma = opts.uma || (typeof _umaVigente === 'function' ? _umaVigente() : UMA_DIARIA_FALLBACK);
+  const anios  = opts.aniosServicio || aniosServicioFiscales(result?.frac);
+  const sueldo = opts.salarioMensualOrdinario || ((result?.daily || 0) * 30);
+  const gratificacion = Math.max(0, parseFloat(opts.gratificacion) || 0);
+  const n = (v) => Math.max(0, parseFloat(v) || 0);
+
+  const conceptos = [];
+  const push = (name, monto, exento, isr, procedimiento) => {
+    if (monto <= 0) return;
+    conceptos.push({
+      name,
+      monto:   parseFloat(monto.toFixed(2)),
+      exento:  parseFloat(exento.toFixed(2)),
+      gravado: parseFloat((monto - exento).toFixed(2)),
+      isr:     parseFloat(isr.toFixed(2)),
+      procedimiento,
+    });
+  };
+
+  // 1. Bolsa de separación: indemnización + 20 días/año + prima de antigüedad
+  //    + gratificación. La exención de 90 UMA/año es UNA sola para el conjunto.
+  const separacion = n(result?.ic) + n(result?.veintePorAnio) + n(result?.pa) + gratificacion;
+  if (separacion > 0) {
+    const topeExento = EXENCION_SEPARACION_UMA * uma * anios;
+    const exento     = Math.min(separacion, topeExento);
+    const { isr }    = calcISRSeparacion(separacion - exento, sueldo);
+    push('Indemnizaciones, prima de antigüedad y gratificación', separacion, exento, isr,
+         `Exento ${EXENCION_SEPARACION_UMA} UMA × ${anios} año${anios !== 1 ? 's' : ''} (Art. 93 fr. XIII LISR); excedente por Art. 96 LISR`);
+  }
+
+  // 2. Aguinaldo proporcional — 30 UMA exentas, excedente por Art. 174 RLISR
+  const ag = n(result?.ag);
+  if (ag > 0) {
+    const exento = Math.min(ag, EXENCION_AGUINALDO_UMA * uma);
+    push('Aguinaldo proporcional', ag, exento, calcISRArt174(ag - exento, sueldo).isr,
+         `Exento ${EXENCION_AGUINALDO_UMA} UMA (Art. 93 fr. XIV LISR); excedente por Art. 174 RLISR`);
+  }
+
+  // 3. Prima vacacional — 15 UMA exentas
+  const pv = n(result?.pv);
+  if (pv > 0) {
+    const exento = Math.min(pv, EXENCION_PRIMA_VAC_UMA * uma);
+    push('Prima vacacional', pv, exento, calcISRArt174(pv - exento, sueldo).isr,
+         `Exento ${EXENCION_PRIMA_VAC_UMA} UMA (Art. 93 fr. XIV LISR); excedente por Art. 174 RLISR`);
+  }
+
+  // 4. Vacaciones — gravadas al 100% (no tienen exención propia)
+  const vac = n(result?.vac);
+  if (vac > 0) {
+    push('Vacaciones proporcionales y devengadas', vac, 0, calcISRArt174(vac, sueldo).isr,
+         'Gravadas al 100%; retención por Art. 174 RLISR');
+  }
+
+  // 5. Salarios pendientes — salario ordinario, tarifa de su periodicidad
+  const sp = n(result?.sp);
+  if (sp > 0) {
+    const periodo = result?.periodoSalario || 'mensual';
+    push('Salarios pendientes de pago', sp, 0, calcISR(sp, periodo).isrNeto,
+         `Salario ordinario — tarifa ${periodo} (Art. 96 LISR)`);
+  }
+
+  const suma = (k) => parseFloat(conceptos.reduce((a, c) => a + c[k], 0).toFixed(2));
+  const bruto = suma('monto');
+  const isr   = suma('isr');
+
+  return {
+    uma, aniosServicio: anios,
+    conceptos,
+    bruto,
+    exentoTotal:  suma('exento'),
+    gravadoTotal: suma('gravado'),
+    isr,
+    neto: parseFloat((bruto - isr).toFixed(2)),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  ESTADO DEL MÓDULO
 // ═══════════════════════════════════════════════════════════════════════════
 let _N = {
