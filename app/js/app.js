@@ -332,9 +332,8 @@ async function renderDashboard() {
   const _gen = _navGen;
   try {
     // Cargar todo en paralelo
-    const [kpis, recientes, alertas, nominaPendiente] = await Promise.all([
+    const [kpis, alertas, nominaPendiente] = await Promise.all([
       db.getKPIs(),
-      db.getIncidenciasRecientes(),
       cargarAlertas(CTX.empresa.id).catch(e => { console.warn('alertas:', e.message); return []; }),
       db.getNominaPendiente(CTX.empresa.id).catch(() => null),
       cargarConfigValores().catch(e => { console.warn('config_valores:', e.message); return {}; }),
@@ -435,29 +434,6 @@ async function renderDashboard() {
           </span>
         </div>
         ${renderContratosPorVencer(alertas)}
-      </div>
-
-      <!-- Incidencias recientes -->
-      <div class="card animate-in" style="margin-top:16px;">
-        <div class="card-header">
-          <span class="card-title" style="display:inline-flex;align-items:center;gap:8px;">
-            <svg class="ic" style="color:var(--text-muted);"><use href="#i-file"></use></svg> Incidencias recientes de asistencia
-          </span>
-          <button class="btn-secondary btn-sm" onclick="navigate('asistencia')">Ver todas</button>
-        </div>
-        ${recientes.length === 0
-          ? `<div class="empty-state"><div class="empty-state-icon"><svg class="ic"><use href="#i-check-circle"></use></svg></div><div class="empty-state-title">Sin incidencias registradas</div></div>`
-          : `<div class="table-wrap"><table class="data-table">
-              <thead><tr><th>Trabajador</th><th>Tipo</th><th>Fecha</th><th>Justificada</th></tr></thead>
-              <tbody>${recientes.map(r => `
-                <tr>
-                  <td><strong>${escapeHtml(r.trabajadores?.nombre) || '—'}</strong></td>
-                  <td><span class="badge ${r.tipo==='falta'?'badge-falta':'badge-retardo'}">${r.tipo==='falta'?'Falta':'Retardo'}</span></td>
-                  <td>${formatDateShort(r.fecha)}</td>
-                  <td>${r.justificada ? '<span style="color:var(--green-ok)">✓ Sí</span>' : '<span style="color:var(--red-warn)">✗ No</span>'}</td>
-                </tr>`).join('')}
-              </tbody></table></div>`
-        }
       </div>
 
       <!-- Accesos rápidos -->

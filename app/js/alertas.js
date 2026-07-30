@@ -17,6 +17,7 @@ const ALERTA_CFG = {
   nomina_por_pagar:      { icono:'', ruta:'nomina',      label:'Nómina por pagar'              },
   nomina_por_generar:    { icono:'', ruta:'nomina',      label:'Nómina por generar'            },
   descuento_liquidado:   { icono:'', ruta:'nomina',      label:'Crédito liquidado'             },
+  tres_faltas:           { icono:'', ruta:'empleado',    label:'Faltas injustificadas'         },
 };
 
 const PRIORIDAD_CFG = {

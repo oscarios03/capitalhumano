@@ -101,18 +101,55 @@ const db = {
     if (error) throw error;
   },
 
-  /** Retorna faltas injustificadas en los últimos 30 días por trabajador */
-  async getFaltasRecientes30Dias(trabajadorId) {
-    const hace30 = new Date();
-    hace30.setDate(hace30.getDate() - 30);
+  /**
+   * Causal de rescisión por faltas injustificadas (Art. 47 Fracc. X LFT):
+   * 3 o más inasistencias dentro de un periodo de 30 días naturales.
+   * El aviso solo debe mostrarse mientras el derecho del patrón a rescindir
+   * sin responsabilidad siga vigente — Art. 517 Fracc. I LFT le da 30 días
+   * naturales contados a partir de la 3ra inasistencia (fecha en que se
+   * conoce la causa) para ejercerlo; pasado ese plazo, prescribe.
+   * Devuelve null si no hay causal vigente, o { faltas, fechaTercera,
+   * fechaLimite, diasRestantes } si sí la hay.
+   */
+  async getCausalFaltas47X(trabajadorId) {
+    // tipo='falta' es, por definición desde la migración 36, la falta
+    // INJUSTIFICADA (la justificada tiene su propio tipo 'falta_justif') —
+    // mismo criterio que usan asistencia.js y el resto del motor de alertas.
     const { data, error } = await _q().from('asistencia')
-      .select('*')
+      .select('id, fecha')
       .eq('trabajador_id', trabajadorId)
       .eq('tipo', 'falta')
-      .eq('justificada', false)
-      .gte('fecha', hace30.toISOString().split('T')[0]);
+      .order('fecha');
     if (error) throw error;
-    return data || [];
+    const faltas = data || [];
+    if (faltas.length < 3) return null;
+
+    // Ventana de 3 faltas más reciente que cabe dentro de 30 días naturales
+    // (de la 1ra a la 3ra de ese grupo) — puede haber varias, se usa la última.
+    let idxTercera = -1;
+    for (let i = 2; i < faltas.length; i++) {
+      const d1 = new Date(faltas[i - 2].fecha + 'T00:00:00');
+      const d3 = new Date(faltas[i].fecha + 'T00:00:00');
+      const dias = Math.round((d3 - d1) / 86400000);
+      if (dias <= 30) idxTercera = i;
+    }
+    if (idxTercera === -1) return null;
+
+    const fechaTercera = new Date(faltas[idxTercera].fecha + 'T00:00:00');
+    const fechaLimite = new Date(fechaTercera);
+    fechaLimite.setDate(fechaLimite.getDate() + 30);
+
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    if (fechaLimite < hoy) return null; // prescribió el derecho a rescindir
+
+    return {
+      // Solo las faltas de la ventana causal (de la 1ra a la 3ra de ese grupo)
+      // — no todo el historial, que puede incluir faltas fuera de los 30 días.
+      faltas: faltas.slice(idxTercera - 2, idxTercera + 1),
+      fechaTercera,
+      fechaLimite,
+      diasRestantes: Math.ceil((fechaLimite - hoy) / 86400000),
+    };
   },
 
   // Actas
