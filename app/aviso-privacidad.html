@@ -25,11 +25,16 @@
       font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600;
       margin: 28px 0 10px; color: var(--text-primary);
     }
+    .legal-wrap h3 { font-size: .95rem; font-weight: 600; margin: 18px 0 8px; color: var(--text-primary); }
     .legal-wrap p, .legal-wrap li { font-size: .92rem; line-height: 1.7; color: var(--text-secondary); margin-bottom: 10px; }
     .legal-wrap ul { padding-left: 22px; margin-bottom: 12px; }
     .legal-volver { display: inline-block; margin-bottom: 28px; font-size: .85rem; }
     .legal-pendiente { background: rgba(217,138,43,.10); border: 1px solid rgba(217,138,43,.30);
-      border-radius: 10px; padding: 12px 16px; font-size: .85rem; color: #a9752a; margin-bottom: 24px; }
+      border-radius: 10px; padding: 14px 16px; font-size: .85rem; color: #a9752a; margin-bottom: 24px; }
+    .legal-tabla { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: .86rem; }
+    .legal-tabla th, .legal-tabla td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+    .legal-tabla th { background: var(--bg-surface); font-weight: 600; color: var(--text-primary); }
+    .legal-tabla td { color: var(--text-secondary); }
   </style>
 </head>
 <body>
@@ -41,38 +46,240 @@
 
   <a class="legal-volver" href="index.html">← Volver al inicio</a>
 
-  <h1>Aviso de Privacidad</h1>
-  <div class="legal-fecha">Última actualización: julio de 2026</div>
+  <h1>Aviso de Privacidad Integral</h1>
+  <div class="legal-fecha">Versión 2026-07 · Última actualización: julio de 2026</div>
+
+  <div class="legal-pendiente">
+    <strong>Documento en revisión legal.</strong> Este texto es una plantilla preparada
+    con base en la legislación mexicana vigente y debe ser validada por un abogado
+    especialista en protección de datos antes de considerarse definitiva. Los campos
+    entre corchetes deben completarse con los datos reales del responsable.
+  </div>
 
   <h2>1. Identidad y domicilio del responsable</h2>
-  <p><strong>[RAZÓN SOCIAL O NOMBRE DEL RESPONSABLE]</strong>, con domicilio en <strong>[DOMICILIO COMPLETO]</strong>, León, Guanajuato, México (en adelante "Capital Humano MX"), es el responsable del tratamiento de los datos personales que nos proporciones, en términos de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).</p>
+  <p><strong>[RAZÓN SOCIAL O NOMBRE DEL RESPONSABLE]</strong>, con domicilio en
+  <strong>[DOMICILIO COMPLETO]</strong>, León, Guanajuato, México (en adelante
+  "Capital Humano MX" o "la Plataforma"), es responsable del tratamiento de los datos
+  personales que se describen en este aviso.</p>
 
-  <h2>2. Datos personales que recabamos</h2>
+  <h2>2. Marco legal aplicable</h2>
+  <p>El tratamiento se rige por la <strong>Ley Federal de Protección de Datos Personales
+  en Posesión de los Particulares</strong> publicada en el Diario Oficial de la Federación
+  el 20 de marzo de 2025 y vigente desde el 21 de marzo de 2025, que abrogó la ley de la
+  misma materia de 2010, así como por la normativa que de ella derive.</p>
+  <p>La autoridad competente en materia de protección de datos personales en posesión de
+  particulares es la <strong>Secretaría Anticorrupción y Buen Gobierno</strong>, que asumió
+  las atribuciones que correspondían al extinto Instituto Nacional de Transparencia, Acceso
+  a la Información y Protección de Datos Personales (INAI).</p>
+
+  <h2>3. Doble carácter: responsable y encargado</h2>
+  <p>Es indispensable distinguir dos tratamientos distintos que ocurren en la Plataforma:</p>
+
+  <h3>3.1 Somos RESPONSABLES respecto de los datos de nuestros usuarios</h3>
+  <p>Son los datos de la persona que contrata y usa la Plataforma: el contacto de la empresa
+  cliente. Respecto de estos datos decidimos las finalidades y los medios del tratamiento, y
+  respondemos directamente ante el titular.</p>
+
+  <h3>3.2 Somos ENCARGADOS respecto de los datos de los trabajadores de nuestros clientes</h3>
+  <p>Los datos de los trabajadores que la empresa cliente captura en la Plataforma se tratan
+  <strong>por cuenta y bajo instrucciones de esa empresa</strong>, que es la responsable frente
+  a sus propios trabajadores. Capital Humano MX no usa esos datos para finalidades propias, no
+  los transfiere a terceros salvo a los encargados listados en la sección 6, y los devuelve o
+  suprime al terminar el servicio conforme a la cláusula de encargo de los
+  <a href="terminos.html">Términos y Condiciones</a>.</p>
+  <p>En consecuencia, un trabajador que desee ejercer sus derechos sobre sus datos debe
+  dirigirse a <strong>su patrón</strong> (la empresa que lo registró en la Plataforma), no a
+  Capital Humano MX. Si recibimos una solicitud de este tipo, la canalizaremos al responsable
+  correspondiente.</p>
+
+  <h2>4. Datos personales que recabamos</h2>
+  <table class="legal-tabla">
+    <thead>
+      <tr><th>Categoría</th><th>Datos</th><th>Nuestro carácter</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Datos de cuenta</td>
+        <td>Nombre completo, correo electrónico, contraseña (almacenada cifrada, nunca en claro)</td>
+        <td>Responsable</td>
+      </tr>
+      <tr>
+        <td>Datos de la empresa cliente</td>
+        <td>Razón social, RFC, domicilio fiscal, representante legal</td>
+        <td>Responsable</td>
+      </tr>
+      <tr>
+        <td>Datos de identificación de trabajadores</td>
+        <td>Nombre, CURP, RFC, NSS, domicilio, tipo y número de identificación oficial, edad, estado civil, nacionalidad</td>
+        <td>Encargado</td>
+      </tr>
+      <tr>
+        <td>Datos laborales y patrimoniales de trabajadores</td>
+        <td>Puesto, funciones, salario, prestaciones, descuentos, préstamos, asistencia, vacaciones, actas administrativas, bajas y finiquitos</td>
+        <td>Encargado</td>
+      </tr>
+      <tr>
+        <td><strong>Datos sensibles de trabajadores</strong></td>
+        <td><strong>Datos de salud</strong> derivados del registro de incapacidades médicas (folio IMSS, tipo de incapacidad, periodo y días). También pueden incorporarse documentos de salud al expediente digital si el patrón los carga.</td>
+        <td>Encargado</td>
+      </tr>
+      <tr>
+        <td>Datos de terceros</td>
+        <td>Nombre, parentesco y teléfono de los beneficiarios designados por el trabajador</td>
+        <td>Encargado</td>
+      </tr>
+      <tr>
+        <td>Datos de navegación y marketing</td>
+        <td>Identificadores de campaña (UTM), páginas visitadas, eventos de conversión, dirección IP y agente de usuario</td>
+        <td>Responsable</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Los datos sensibles reciben un tratamiento reforzado: acceso restringido por rol, aislamiento
+  por empresa, almacenamiento en repositorio privado con acceso mediante enlaces firmados de
+  vigencia limitada, y registro de auditoría de cada alta y baja de documento del expediente.</p>
+
+  <h2>5. Finalidades del tratamiento</h2>
+  <h3>5.1 Finalidades primarias (necesarias para prestar el servicio)</h3>
   <ul>
-    <li><strong>Datos de cuenta:</strong> nombre completo, correo electrónico y contraseña (almacenada de forma cifrada).</li>
-    <li><strong>Datos de la empresa:</strong> razón social, RFC, domicilio fiscal, representante legal.</li>
-    <li><strong>Datos de trabajadores que tú registras:</strong> como usuario de la plataforma capturas datos de tus trabajadores (identificación, laborales, salariales, de seguridad social y, en su caso, de salud). Respecto de esos datos actuamos como <em>encargado</em> del tratamiento; tú eres el responsable frente a tus trabajadores.</li>
-    <li><strong>Datos de navegación y marketing:</strong> identificadores de campaña (UTM), páginas visitadas y eventos de conversión.</li>
+    <li>Crear, autenticar y administrar tu cuenta y la de los usuarios de tu empresa.</li>
+    <li>Prestar las funciones de la Plataforma: nómina, contratos, control de asistencia,
+        prestaciones, expediente digital y generación de documentos laborales.</li>
+    <li>Generar documentos laborales con apoyo de inteligencia artificial, cuando lo solicites
+        expresamente desde el módulo Agente IA.</li>
+    <li>Cobrar la suscripción y emitir los comprobantes correspondientes.</li>
+    <li>Brindar soporte técnico y atender reportes de errores.</li>
+    <li>Cumplir obligaciones legales y atender requerimientos de autoridad competente.</li>
   </ul>
 
-  <h2>3. Finalidades del tratamiento</h2>
-  <p>Finalidades primarias: crear y administrar tu cuenta; prestar las funciones de la plataforma (nómina, contratos, asistencia, cumplimiento legal); emitir comprobantes de pago del servicio; brindar soporte.</p>
-  <p>Finalidades secundarias: enviarte comunicaciones sobre novedades del producto y medir la efectividad de nuestras campañas publicitarias. Puedes oponerte a estas finalidades escribiendo al correo de contacto indicado abajo.</p>
+  <h3>5.2 Finalidades secundarias (no necesarias; puedes oponerte)</h3>
+  <ul>
+    <li>Enviarte comunicaciones sobre novedades y mejoras del producto.</li>
+    <li>Medir la efectividad de nuestras campañas publicitarias y construir públicos de
+        remarketing.</li>
+  </ul>
+  <p>Puedes oponerte a las finalidades secundarias en cualquier momento escribiendo a
+  <strong>[CORREO DE CONTACTO]</strong>, sin que ello afecte la prestación del servicio.</p>
 
-  <h2>4. Transferencias y encargados</h2>
-  <p>Utilizamos proveedores de infraestructura y servicios que tratan datos por cuenta nuestra: alojamiento de base de datos y autenticación (Supabase), procesamiento de pagos (Stripe) y herramientas de medición publicitaria (Google, Meta). No vendemos ni cedemos tus datos personales a terceros para fines distintos de los aquí descritos.</p>
+  <h2>6. Transferencias y encargados</h2>
+  <p>No vendemos ni comercializamos datos personales. Utilizamos los siguientes proveedores,
+  que tratan datos por cuenta nuestra y están sujetos a obligaciones de confidencialidad y
+  seguridad:</p>
+  <table class="legal-tabla">
+    <thead>
+      <tr><th>Proveedor</th><th>Finalidad</th><th>Datos involucrados</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Supabase</td>
+        <td>Alojamiento de base de datos, autenticación y almacenamiento de archivos</td>
+        <td>Todos los datos de la Plataforma</td>
+      </tr>
+      <tr>
+        <td>Stripe</td>
+        <td>Procesamiento de pagos de la suscripción</td>
+        <td>Correo electrónico y datos de facturación del usuario. <strong>Los datos de trabajadores nunca se envían a Stripe.</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Anthropic</strong></td>
+        <td>Generación de documentos laborales mediante el modelo Claude, únicamente cuando el usuario lo solicita desde el módulo Agente IA</td>
+        <td>Datos de la empresa y del trabajador estrictamente necesarios para redactar el documento solicitado. El contenido enviado se limita según el tipo de documento; por ejemplo, en actas administrativas no se envían NSS, domicilio, identificación oficial ni datos de beneficiarios.</td>
+      </tr>
+      <tr>
+        <td>Google y Meta</td>
+        <td>Medición publicitaria y atribución de campañas</td>
+        <td>Eventos de conversión y correo electrónico en forma cifrada (hash SHA-256). <strong>Nunca datos de trabajadores.</strong> Solo se activan si aceptas las cookies de medición.</td>
+      </tr>
+      <tr>
+        <td>Proveedor de correo transaccional</td>
+        <td>Envío de notificaciones y alertas por correo, si tu empresa activa esa función</td>
+        <td>Correo electrónico del destinatario y contenido de la alerta</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Algunos de estos proveedores tratan la información en servidores ubicados fuera de México.
+  Al utilizar la Plataforma consientes esa transferencia internacional en los términos aquí
+  descritos.</p>
 
-  <h2>5. Derechos ARCO</h2>
-  <p>Puedes ejercer tus derechos de Acceso, Rectificación, Cancelación y Oposición, así como revocar tu consentimiento, enviando una solicitud al correo <strong>[CORREO DE CONTACTO]</strong> con tu nombre completo, la descripción de tu solicitud y un documento que acredite tu identidad. Responderemos en los plazos que marca la LFPDPPP.</p>
+  <h2>7. Derechos ARCO y revocación del consentimiento</h2>
+  <p>Como titular tienes derecho a <strong>A</strong>cceder a tus datos, <strong>R</strong>ectificarlos
+  cuando sean inexactos, <strong>C</strong>ancelarlos cuando consideres que no son necesarios, y
+  <strong>O</strong>ponerte a su tratamiento para finalidades específicas. También puedes revocar
+  el consentimiento que nos hayas otorgado.</p>
+  <p>Para ejercerlos, envía una solicitud a <strong>[CORREO DE CONTACTO]</strong> que incluya:</p>
+  <ul>
+    <li>Tu nombre completo y un medio para comunicarte la respuesta.</li>
+    <li>Copia de una identificación oficial que acredite tu identidad (o del representante legal,
+        acompañada del documento que acredite la representación).</li>
+    <li>Descripción clara de los datos sobre los que buscas ejercer el derecho y de qué derecho
+        se trata.</li>
+    <li>Tratándose de rectificación, la corrección solicitada y la documentación que la sustente.</li>
+  </ul>
+  <p>Responderemos dentro de los plazos que marca la ley y, de resultar procedente, haremos
+  efectivo el derecho en el plazo legal correspondiente. Si consideras que tu derecho no fue
+  debidamente atendido, puedes acudir ante la <strong>Secretaría Anticorrupción y Buen
+  Gobierno</strong>.</p>
+  <p><strong>Trabajadores:</strong> si tus datos están en la Plataforma porque tu patrón los
+  registró, tu solicitud debe dirigirse a él, que es el responsable del tratamiento (ver
+  sección 3.2).</p>
 
-  <h2>6. Conservación y seguridad</h2>
-  <p>Conservamos los datos mientras tu cuenta esté activa y durante los plazos de conservación documental que exige la legislación fiscal y laboral aplicable. Aplicamos medidas de seguridad administrativas, técnicas y físicas: cifrado en tránsito, control de acceso por roles y aislamiento de datos por empresa.</p>
+  <h2>8. Conservación y supresión</h2>
+  <p>Los plazos de conservación responden a dos obligaciones que conviven: la de no conservar
+  datos más allá de lo necesario, y la del patrón de conservar documentación laboral durante los
+  plazos que fijan la legislación laboral y fiscal.</p>
+  <table class="legal-tabla">
+    <thead>
+      <tr><th>Tipo de dato</th><th>Plazo de conservación</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Datos de cuenta del usuario</td><td>Mientras la cuenta esté activa y hasta 12 meses después de su cancelación</td></tr>
+      <tr><td>Documentación laboral (contratos, recibos, actas, bajas, finiquitos)</td><td>Durante el plazo de conservación documental que la legislación laboral y fiscal impone al patrón, contado desde la terminación de la relación de trabajo</td></tr>
+      <tr><td>Registros de asistencia y nómina</td><td>Igual que el punto anterior</td></tr>
+      <tr><td>Documentos del expediente digital, incluidos los de salud</td><td>Mientras el patrón los mantenga y hasta que solicite su supresión, sin exceder el plazo legal de conservación aplicable</td></tr>
+      <tr><td>Registros de consentimiento y bitácora de auditoría</td><td>Mientras subsista la relación contractual y por el plazo en que puedan ser exigibles responsabilidades</td></tr>
+      <tr><td>Datos de navegación y marketing</td><td>26 meses o hasta que revoques tu consentimiento de cookies, lo que ocurra primero</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Exportación y borrado de cuenta.</strong> Puedes solicitar en cualquier momento a
+  <strong>[CORREO DE CONTACTO]</strong> la exportación de la información de tu empresa en formato
+  legible por máquina, y la eliminación de tu cuenta. Al eliminarla, los datos se suprimen o
+  anonimizan salvo aquellos que debamos conservar por obligación legal, que quedan bloqueados —
+  sin uso posible — hasta que venza el plazo correspondiente.</p>
 
-  <h2>7. Cambios al aviso</h2>
-  <p>Cualquier cambio a este aviso se publicará en esta misma página, indicando la fecha de última actualización.</p>
+  <h2>9. Medidas de seguridad</h2>
+  <p>Aplicamos medidas administrativas, técnicas y físicas para proteger los datos contra pérdida,
+  uso indebido, alteración o acceso no autorizado. Entre ellas:</p>
+  <ul>
+    <li>Cifrado de la información en tránsito (HTTPS obligatorio) y en reposo.</li>
+    <li>Aislamiento estricto de los datos por empresa, aplicado en la base de datos y no solo en
+        la interfaz.</li>
+    <li>Control de acceso por roles.</li>
+    <li>Repositorio de documentos privado, con acceso mediante enlaces firmados de vigencia
+        limitada y validación del tipo y tamaño de archivo.</li>
+    <li>Bitácora de auditoría de los eventos sensibles (bajas de trabajadores, alta y eliminación
+        de documentos del expediente, cambios de rol).</li>
+    <li>Límites de uso y registro de consumo en los servicios de inteligencia artificial.</li>
+  </ul>
+  <p>Ninguna medida de seguridad es infalible. En caso de una vulneración que afecte de forma
+  significativa tus derechos patrimoniales o morales, te lo informaremos sin dilación para que
+  puedas tomar las medidas correspondientes.</p>
 
-  <h2>8. Contacto</h2>
-  <p>Para cualquier duda sobre este aviso o el tratamiento de tus datos: <strong>[CORREO DE CONTACTO]</strong>.</p>
+  <h2>10. Cookies y tecnologías de rastreo</h2>
+  <p>La Plataforma usa almacenamiento local del navegador para mantener tu sesión iniciada y
+  recordar tus preferencias; estas son técnicamente necesarias y no requieren consentimiento.</p>
+  <p>Adicionalmente, en las páginas públicas usamos cookies y píxeles de medición de Google y
+  Meta con fines publicitarios. <strong>Estos no se activan hasta que los aceptas</strong> en el
+  banner de consentimiento. Puedes cambiar tu decisión en cualquier momento borrando los datos
+  del sitio en tu navegador o escribiendo a <strong>[CORREO DE CONTACTO]</strong>.</p>
+
+  <h2>11. Cambios al aviso</h2>
+  <p>Cualquier modificación a este aviso se publicará en esta misma página con su número de
+  versión y fecha. Si el cambio es sustancial te lo notificaremos por correo electrónico o
+  dentro de la Plataforma antes de que surta efectos.</p>
+
+  <h2>12. Contacto</h2>
+  <p>Para cualquier duda sobre este aviso, sobre el tratamiento de tus datos o para ejercer tus
+  derechos: <strong>[CORREO DE CONTACTO]</strong>.</p>
 </div>
 </body>
 </html>

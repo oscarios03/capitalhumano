@@ -117,7 +117,12 @@ Deno.serve(async (req: Request) => {
     p_dispositivo:   dispositivo || null,
   });
 
-  if (error) return json({ error: error.message }, 500);
+  // Mismo criterio que checador-kiosco: mensaje genérico al cliente (aquí un
+  // agente local de un tercero), detalle completo solo en el log del servidor.
+  if (error) {
+    console.error('checador-webhook: registrar_checada falló:', error.code, error.message);
+    return json({ error: 'No se pudo registrar el checado.' }, 500);
+  }
 
   await supabase
     .from('integraciones_checador')

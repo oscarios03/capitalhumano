@@ -574,7 +574,7 @@ async function guardarFilaAsistencia(trabId) {
         .update({ ultima_fecha_vacaciones: datos.fecha }).eq('id', trabId);
     }
     if (btn) { btn.textContent = '✓ Listo'; setTimeout(()=>{ if(btn){btn.textContent='Guardar';btn.disabled=false;} },1500); }
-    await _verificarRiesgoArt47(trabId);
+    localStorage.removeItem('alertas_last_gen'); // fuerza recalcular alertas (incl. Art. 47) en el próximo dashboard
   } catch(e) {
     btnRestaurar(btn);
     alert('Error: ' + e.message);
@@ -596,10 +596,8 @@ async function guardarDiaCompleto() {
     }
     await _upsertAsistencia(batch);
     if (msg) { msg.textContent = `${batch.length} registros guardados correctamente`; msg.className = 'alert alert-success'; }
-    // Verificar riesgos Art. 47
-    for (const d of batch.filter(x => x.tipo === 'falta')) {
-      await _verificarRiesgoArt47(d.trabajador_id);
-    }
+    // Fuerza recalcular alertas (incl. Art. 47 — faltas injustificadas) en el próximo dashboard
+    if (batch.some(d => d.tipo === 'falta')) localStorage.removeItem('alertas_last_gen');
   } catch(e) {
     if (msg) { msg.textContent = 'Error: ' + e.message; msg.className = 'alert alert-danger'; }
   }
@@ -633,40 +631,14 @@ async function _upsertAsistencia(datos) {
   }
 }
 
-// ── Verificar Art. 47 y crear alerta si aplica ───────────────────────────────
-async function _verificarRiesgoArt47(trabId) {
-  const hace30 = new Date();
-  hace30.setDate(hace30.getDate() - 30);
-  const { data } = await window.supabase
-    .from('asistencia')
-    .select('id', { count:'exact', head: false })
-    .eq('trabajador_id', trabId)
-    .eq('tipo', 'falta')
-    .gte('fecha', hace30.toISOString().split('T')[0]);
-
-  const count = data?.length || 0;
-  if (count >= 3) {
-    // Crear alerta crítica
-    const { error: errAlerta } = await window.supabase.from('alertas').upsert({
-      empresa_id:      CTX.empresa.id,
-      trabajador_id:   trabId,
-      tipo:            'tres_faltas',
-      titulo:          '3+ faltas injustificadas — Art. 47 Fr. X LFT',
-      descripcion:     `El trabajador acumula ${count} faltas injustificadas en los últimos 30 días.`,
-      prioridad:       'critica',
-      fecha_limite:    new Date().toISOString().split('T')[0],
-      articulo_lft:    'Art. 47 Fracc. X LFT',
-      accion_sugerida: 'Generar acta rescisoria de inmediato',
-      resuelta:        false,
-    }, { onConflict: 'empresa_id,trabajador_id,tipo' });
-    if (errAlerta) {
-      console.error('No se pudo crear la alerta Art. 47 (3+ faltas) para el trabajador', trabId, ':', errAlerta.message);
-    }
-
-    // Invalidar caché de alertas
-    localStorage.removeItem('alertas_last_gen');
-  }
-}
+// Nota: la alerta de "3+ faltas injustificadas en 30 días" (Art. 47 Fracc. X
+// LFT) ya NO se genera aquí en el cliente — se movió a generar_alertas()
+// (migración 38) para que la ventana de 30 días naturales se cuente
+// correctamente a partir de la 3ra inasistencia y se recalcule junto con el
+// resto de las alertas legales (antes, el DELETE de generar_alertas() borraba
+// esta alerta en cada regeneración y solo volvía a crearse al capturar una
+// falta nueva). Guardar una falta aquí solo invalida el caché de alertas
+// (ver guardarFilaAsistencia/guardarDiaCompleto) para forzar el recálculo.
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  TAB 2 — INCIDENCIAS Y ALERTAS

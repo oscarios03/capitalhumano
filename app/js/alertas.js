@@ -26,6 +26,7 @@ const ALERTA_CFG = {
   rit_deposito_vencido:    { icono:'', ruta:'empresa',       label:'Plazo de depósito del RIT'  },
   acuse_rit_faltante:      { icono:'', ruta:'empleados',     label:'Acuse del RIT pendiente'    },
   aviso_privacidad_faltante:{ icono:'', ruta:'empleados',    label:'Aviso de privacidad'        },
+  tres_faltas:           { icono:'', ruta:'empleado',    label:'Faltas injustificadas'         },
 };
 
 const PRIORIDAD_CFG = {
