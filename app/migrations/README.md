@@ -47,6 +47,7 @@ correr una migración dos veces no rompe nada.
 | 07 | `07_migration_alertas.sql` | Tabla `alertas` + función `generar_alertas()` |
 | 10 | `10_migration_email_notifications.sql` | `email_queue` + trigger `encolar_notificacion_alerta()` + columnas en `empresas` |
 | 16 | `16_migration_alertas_contratos.sql` | **Supersede** `generar_alertas()` (agrega capacitación inicial y nómina por pagar) |
+| 48 | `48_migration_alertas_faltas.sql` | **Supersede** `generar_alertas()`: mueve la alerta de "3+ faltas injustificadas en 30 días" (Art. 47 Fracc. X LFT) del cliente (asistencia.js) al servidor, contando la ventana desde la 3ra inasistencia (antes se recalculaba mal en cada regeneración). Nota: este archivo se numeró originalmente `38`, igual que `38_migration_bajas_documentadas.sql`; se renumeró a 48 para no colisionar — no depende de ninguna migración 39-47 ni es referenciado por ellas |
 
 ### 📁 Expediente, PTU, resguardos y multiempresa
 | # | Archivo | Qué hace |
@@ -89,7 +90,7 @@ funciones; para tablas, gana la primera `CREATE` y las posteriores agregan colum
 |--------|-------------|----------------------|
 | función `get_or_create_matriz()` | 00, 01 | **01** |
 | función `registrar_checada()` | 13, 15 | **15** |
-| función `generar_alertas()` | 07, 16 | **16** |
+| función `generar_alertas()` | 07, 16, **48** | **48** |
 | función `handle_new_user()` | 00, 21, **33** | **33** ⚠️ |
 | función `setup_empresa()` | 21 | **21** |
 | función `zz_perfiles_bloquear_cambio_empresa()` | auditoría, **33** | **33** |
