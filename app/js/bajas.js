@@ -1153,16 +1153,17 @@ function showResumenBaja(trab, result, tipo, empresa, trabajadorPdf, sucursal = 
                 </tr>`).join('')}
               ${grat > 0 ? `
               <tr>
-                <td colspan="2" style="font-weight:700;">Subtotal prestaciones de ley</td>
+                <td colspan="3" style="font-weight:700;">Subtotal prestaciones de ley</td>
                 <td style="text-align:right;font-weight:700;">${fmtMx(result.total)}</td>
               </tr>
               <tr>
                 <td><strong>Gratificación por terminación</strong><br><span style="font-size:.75rem;color:var(--text-muted);">Por acuerdo de las partes — no es prestación de ley</span></td>
+                <td></td>
                 <td style="color:var(--text-muted);font-size:.82rem;">${result.gratificacionDias ? `${result.gratificacionDias} días × ${result.gratificacionBase === 'sdi' ? 'SDI' : 'salario diario'}` : 'Monto acordado'}</td>
                 <td style="text-align:right;font-weight:700;color:var(--green-ok);">${fmtMx(grat)}</td>
               </tr>` : ''}
               <tr style="background:var(--gold-dim);">
-                <td colspan="2" style="font-weight:700;font-size:1rem;">TOTAL</td>
+                <td colspan="3" style="font-weight:700;font-size:1rem;">TOTAL</td>
                 <td style="text-align:right;font-weight:700;font-size:1rem;color:var(--gold-primary);">${fmtMx(totalPagar)}</td>
               </tr>
             </tbody>
