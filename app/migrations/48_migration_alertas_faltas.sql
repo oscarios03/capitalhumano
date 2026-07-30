@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migración 38 — Alerta de faltas injustificadas dentro de las Alertas Legales
+-- Migración 48 — Alerta de faltas injustificadas dentro de las Alertas Legales
 -- ============================================================================
 -- Ejecutar en: Supabase Dashboard → SQL Editor → New Query
 --

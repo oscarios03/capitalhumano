@@ -633,7 +633,7 @@ async function _upsertAsistencia(datos) {
 
 // Nota: la alerta de "3+ faltas injustificadas en 30 días" (Art. 47 Fracc. X
 // LFT) ya NO se genera aquí en el cliente — se movió a generar_alertas()
-// (migración 38) para que la ventana de 30 días naturales se cuente
+// (migración 48) para que la ventana de 30 días naturales se cuente
 // correctamente a partir de la 3ra inasistencia y se recalcule junto con el
 // resto de las alertas legales (antes, el DELETE de generar_alertas() borraba
 // esta alerta en cada regeneración y solo volvía a crearse al capturar una
