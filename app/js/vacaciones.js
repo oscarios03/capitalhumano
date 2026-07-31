@@ -16,7 +16,7 @@ async function renderVacaciones() {
     const main = document.getElementById('main-view');
     const [trabRes, solRes] = await Promise.all([
       _sbV().from('trabajadores')
-        .select('id,nombre,fecha_ingreso,salario_mensual,periodo_salario,estado')
+        .select('id,nombre,fecha_ingreso,salario_mensual,periodo_salario,estado,dias_semana')
         .eq('empresa_id', CTX.empresa.id)
         .eq('estado', 'activo')
         .order('nombre'),
@@ -120,7 +120,7 @@ function _renderVACSolicitudes(c) {
 }
 
 function _renderVACNueva(c) {
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = isoLocal(new Date());
   c.innerHTML = `
     <div class="card animate-in" style="max-width:600px;">
       <div class="card-header"><span class="card-title">+ Nueva solicitud</span></div>
@@ -163,20 +163,51 @@ function _renderVACNueva(c) {
   `;
 }
 
+/**
+ * Saldo de vacaciones del CICLO en curso de un trabajador.
+ *
+ * Dos criterios que estaban mal y que aquí quedan unificados con el resto del
+ * sistema (calcularFactorIntegracion, propVacDays, la constancia del Art. 81):
+ *
+ *  · Los días que corresponden son los del año de servicio EN CURSO
+ *    (cumplidos + 1), no los del último aniversario ya cumplido. Quien lleva
+ *    2 años cumplidos está en su 3er año y le tocan 16 días, no 14.
+ *  · Los días gozados se cuentan sobre el año ANIVERSARIO, no sobre el año
+ *    calendario: el derecho del Art. 76 LFT nace en cada aniversario de
+ *    ingreso, así que mezclar ambos dejaba saldos que no cuadraban en enero.
+ */
+function _saldoVacaciones(trabajadorId, fechaIngreso, solicitudes, hoy = new Date()) {
+  const ingreso = new Date(String(fechaIngreso).slice(0, 10) + 'T00:00:00');
+  if (isNaN(ingreso)) return null;
+
+  const cumplidos = fullYears(ingreso, hoy);
+  const ganados   = vacDaysForYear(cumplidos + 1, prestacionesEmpresa().vacDiasExtra);
+
+  // Ciclo vigente: [ingreso + cumplidos años, ingreso + cumplidos+1 años - 1 día]
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const cicloIni = new Date(ingreso); cicloIni.setFullYear(ingreso.getFullYear() + cumplidos);
+  const cicloFin = new Date(ingreso); cicloFin.setFullYear(ingreso.getFullYear() + cumplidos + 1); cicloFin.setDate(cicloFin.getDate() - 1);
+  const desde = iso(cicloIni), hasta = iso(cicloFin);
+
+  const usados = (solicitudes || [])
+    .filter(s => s.trabajador_id === trabajadorId && s.estado === 'aprobada' && s.tipo === 'vacacion'
+              && String(s.fecha_inicio).slice(0,10) >= desde && String(s.fecha_inicio).slice(0,10) <= hasta)
+    .reduce((a, s) => a + (s.dias || 0), 0);
+
+  return { cumplidos, anioEnCurso: cumplidos + 1, ganados, usados, saldo: ganados - usados, desde, hasta };
+}
+
 function _vacCalcSaldo() {
   const sel = document.getElementById('vac-trab');
   const opt = sel?.options[sel.selectedIndex];
   const info = document.getElementById('vac-saldo-info');
   if (!opt?.value || !info) return;
-  const ingreso = new Date(opt.dataset.ingreso + 'T00:00:00');
-  const hoy = new Date();
-  const anios = fullYears ? fullYears(ingreso, hoy) : Math.floor((hoy - ingreso) / (365.25*86400000));
-  const ganados = vacDaysForYear(anios, prestacionesEmpresa().vacDiasExtra);
-  const usados = _VAC.solicitudes
-    .filter(s => s.trabajador_id === opt.value && s.estado === 'aprobada' && s.tipo === 'vacacion' && new Date(s.fecha_inicio).getFullYear() === hoy.getFullYear())
-    .reduce((a,s) => a + (s.dias||0), 0);
-  const saldo = ganados - usados;
-  info.innerHTML = `Antigüedad: <strong>${anios} año${anios!==1?'s':''}</strong> · Días ganados este año: <strong>${ganados}</strong> · Usados: <strong>${usados}</strong> · <strong style="color:${saldo<0?'var(--red-warn)':'var(--green-ok)'}">Saldo: ${saldo} días</strong>`;
+  const s = _saldoVacaciones(opt.value, opt.dataset.ingreso, _VAC.solicitudes);
+  if (!s) { info.innerHTML = ''; return; }
+  info.innerHTML = `Antigüedad: <strong>${s.cumplidos} año${s.cumplidos!==1?'s':''}</strong> `
+    + `(cursa el ${s.anioEnCurso}º) · Días del ciclo ${formatDateShort(s.desde)} – ${formatDateShort(s.hasta)}: `
+    + `<strong>${s.ganados}</strong> · Usados: <strong>${s.usados}</strong> · `
+    + `<strong style="color:${s.saldo<0?'var(--red-warn)':'var(--green-ok)'}">Saldo: ${s.saldo} días</strong>`;
 }
 
 function _vacCalcDias() {
@@ -188,10 +219,10 @@ function _vacCalcDias() {
   const d1 = new Date(ini + 'T00:00:00');
   const d2 = new Date(fin + 'T00:00:00');
   if (d2 < d1) { wrap.innerHTML = ''; return; }
-  // Contar días hábiles L-V
-  let diasHab = 0;
-  const cur = new Date(d1);
-  while (cur <= d2) { const dw = cur.getDay(); if (dw >= 1 && dw <= 5) diasHab++; cur.setDate(cur.getDate()+1); }
+  // Días laborables SEGÚN EL HORARIO del trabajador, no un lunes-viernes fijo:
+  // a quien descansa martes se le consumían días de vacaciones en su descanso.
+  const _trabSel = _VAC.trabajadores.find(x => x.id === document.getElementById('vac-trab')?.value);
+  const diasHab = contarDiasLaborables(d1, d2, _trabSel);
 
   let prima = 0;
   const primaPct = prestacionesEmpresa().primaVacPct;
@@ -222,9 +253,7 @@ async function guardarVAC() {
   if (!trabId || !ini || !fin) { err.textContent = 'Selecciona trabajador, fecha inicio y fecha fin.'; err.style.display=''; return; }
   const d1 = new Date(ini+'T00:00:00'), d2 = new Date(fin+'T00:00:00');
   if (d2 < d1) { err.textContent = 'La fecha fin debe ser igual o mayor a la fecha inicio.'; err.style.display=''; return; }
-  let dias = 0;
-  const cur = new Date(d1);
-  while (cur <= d2) { const dw = cur.getDay(); if (dw>=1&&dw<=5) dias++; cur.setDate(cur.getDate()+1); }
+  const dias = contarDiasLaborables(d1, d2, _VAC.trabajadores.find(x => x.id === trabId));
   let prima = 0;
   if (tipo === 'vacacion') {
     const sel = document.getElementById('vac-trab');
@@ -282,20 +311,20 @@ async function _sincronizarAsistenciaVAC(s) {
   const tipoAsist = VAC_TIPO_TO_ASIST[s.tipo];
   if (!tipoAsist) return;
   const rows = [];
+  const _laborables = diasLaborablesDe(_VAC.trabajadores.find(x => x.id === s.trabajador_id));
   const cur = new Date(s.fecha_inicio + 'T00:00:00');
   const fin = new Date(s.fecha_fin + 'T00:00:00');
   while (cur <= fin) {
-    // Solo días hábiles L-V: mismo criterio con que se cuenta y aprueba la
-    // solicitud (_vacCalcDias/guardarVAC). Si se marcaran también sábado y
-    // domingo, el upsert (onConflict trabajador_id,fecha) sobrescribiría el
-    // descanso semanal — en un permiso SIN goce eso descontaría días de más
-    // en nómina y vulneraría el 7º día pagado (Arts. 69-73 LFT).
-    const dw = cur.getDay();
-    if (dw >= 1 && dw <= 5) {
+    // Solo días LABORABLES del trabajador: mismo criterio con que se cuenta y
+    // aprueba la solicitud (_vacCalcDias/guardarVAC). Si se marcaran también
+    // sus días de descanso, el upsert (onConflict trabajador_id,fecha)
+    // sobrescribiría el descanso semanal — en un permiso SIN goce eso
+    // descontaría días de más y vulneraría el 7º día pagado (Arts. 69-73 LFT).
+    if (_laborables.has(cur.getDay())) {
       rows.push({
         trabajador_id: s.trabajador_id,
         empresa_id:    s.empresa_id,
-        fecha:         cur.toISOString().split('T')[0],
+        fecha:         isoLocal(cur),
         tipo:          tipoAsist,
         observaciones: 'Generado automáticamente al aprobar solicitud de vacaciones/permiso',
       });
@@ -350,7 +379,7 @@ async function generarConstanciaVacaciones(solicitudId) {
 
     const vigenciaIni = new Date(ingreso); vigenciaIni.setFullYear(ingreso.getFullYear() + ciclosCumplidos);
     const vigenciaFin = new Date(ingreso); vigenciaFin.setFullYear(ingreso.getFullYear() + ciclosCumplidos + 1); vigenciaFin.setDate(vigenciaFin.getDate() - 1);
-    const iso = d => d.toISOString().split('T')[0];
+    const iso = isoLocal;
 
     const diasCorresponden = vacDaysForYear(antiguedadAnios, prest.vacDiasExtra);
 
@@ -383,39 +412,33 @@ async function eliminarVAC(id) {
 }
 
 function _renderVACSaldos(c) {
-  const hoy = new Date();
   const vacExtra = prestacionesEmpresa().vacDiasExtra;
-  const rows = _VAC.trabajadores.map(t => {
-    const ingreso = new Date(t.fecha_ingreso + 'T00:00:00');
-    const anios   = typeof fullYears === 'function' ? fullYears(ingreso, hoy) : Math.floor((hoy - ingreso) / (365.25*86400000));
-    const ganados = vacDaysForYear(anios, vacExtra);
-    const usados  = _VAC.solicitudes
-      .filter(s => s.trabajador_id === t.id && s.estado === 'aprobada' && s.tipo === 'vacacion' && new Date(s.fecha_inicio).getFullYear() === hoy.getFullYear())
-      .reduce((a,s) => a + (s.dias||0), 0);
-    const saldo = ganados - usados;
-    return { ...t, anios, ganados, usados, saldo };
-  });
+  const rows = _VAC.trabajadores
+    .map(t => ({ ...t, s: _saldoVacaciones(t.id, t.fecha_ingreso, _VAC.solicitudes) }))
+    .filter(r => r.s);
 
   c.innerHTML = `
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Trabajador</th><th>Ingreso</th><th>Antigüedad</th><th>Días ganados</th><th>Días usados</th><th>Saldo</th></tr></thead>
+        <thead><tr><th>Trabajador</th><th>Ingreso</th><th>Antigüedad</th><th>Ciclo vigente</th><th>Días del ciclo</th><th>Días usados</th><th>Saldo</th></tr></thead>
         <tbody>
           ${rows.map(r => `
             <tr>
               <td><strong>${escapeHtml(r.nombre)}</strong></td>
               <td>${formatDateShort(r.fecha_ingreso)}</td>
-              <td>${r.anios} año${r.anios!==1?'s':''}</td>
-              <td>${r.ganados}</td>
-              <td>${r.usados}</td>
-              <td><strong style="color:${r.saldo<0?'var(--red-warn)':r.saldo===0?'var(--text-muted)':'var(--green-ok)'}">${r.saldo}</strong></td>
+              <td>${r.s.cumplidos} año${r.s.cumplidos!==1?'s':''} <span style="color:var(--text-muted);font-size:.78rem;">(cursa el ${r.s.anioEnCurso}º)</span></td>
+              <td style="font-size:.8rem;color:var(--text-muted);">${formatDateShort(r.s.desde)} – ${formatDateShort(r.s.hasta)}</td>
+              <td>${r.s.ganados}</td>
+              <td>${r.s.usados}</td>
+              <td><strong style="color:${r.s.saldo<0?'var(--red-warn)':r.s.saldo===0?'var(--text-muted)':'var(--green-ok)'}">${r.s.saldo}</strong></td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>
     <div style="margin-top:10px;font-size:.78rem;color:var(--text-muted);">
-      * Días ganados calculados según Art. 76 LFT 2023${vacExtra > 0 ? ' + ' + vacExtra + ' día(s) adicionales otorgados por la empresa' : ''}. Días usados corresponden al año en curso.
+      * Días del Art. 76 LFT que corresponden al año de servicio <strong>en curso</strong>${vacExtra > 0 ? ' + ' + vacExtra + ' día(s) adicionales otorgados por la empresa' : ''}.
+      El derecho nace en cada aniversario de ingreso, por eso el ciclo y los días usados se miden por aniversario y no por año calendario.
     </div>
   `;
 }

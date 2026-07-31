@@ -75,8 +75,10 @@ async function generarReciboNominaBlob(reciboId) {
   if (t.puesto)     { doc.text(`Puesto: ${t.puesto}`,          ml+3, yi); yi+=4; }
   if (t.departamento){ doc.text(`Área: ${t.departamento}`,     ml+3, yi); }
 
-  // Columna derecha — datos del período
-  const daily = calcSalarioDiario(t.salario_mensual||0, t.periodo_salario||'mensual');
+  // Columna derecha — datos del período. El salario diario sale del propio
+  // recibo: recalcularlo con el salario vigente hacía que "N días × salario"
+  // dejara de multiplicar al salario_base guardado tras un aumento.
+  const daily = salarioDiarioDelRecibo(recibo, calcSalarioDiario(t.salario_mensual||0, t.periodo_salario||'mensual'));
   const c2    = pw/2 + 3;
   let yj = y+8;
   doc.setFont('Roboto','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
@@ -129,7 +131,7 @@ async function generarReciboNominaBlob(reciboId) {
   if (parseFloat(recibo.monto_permiso_sin||0) > 0)
     dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} días`, `-${fmt(recibo.monto_permiso_sin)}`]);
   if (parseFloat(recibo.cuota_imss||0) > 0)
-    dedRows.push(['Cuota IMSS obrero', `2.25% sobre base`, `-${fmt(recibo.cuota_imss)}`]);
+    dedRows.push(['Cuota IMSS obrero', _detalleIMSSObrero(recibo), `-${fmt(recibo.cuota_imss)}`]);
   if (parseFloat(recibo.isr_retenido||0) > 0)
     dedRows.push(['ISR retenido', 'Art. 96 LISR 2026', `-${fmt(recibo.isr_retenido)}`]);
   if (parseFloat(recibo.fondo_ahorro_obrero||0) > 0)
@@ -170,7 +172,7 @@ async function generarReciboNominaBlob(reciboId) {
   doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text('NETO A PAGAR', pw/2, y+7, { align:'center' });
   doc.setFontSize(16); doc.setTextColor(21,128,61);
-  doc.text(`${fmt(recibo.neto_pagar)}   (${numToWords(recibo.neto_pagar)} PESOS M.N.)`, pw/2, y+17, { align:'center' });
+  doc.text(`${fmt(recibo.neto_pagar)}   (${montoEnLetras(recibo.neto_pagar)})`, pw/2, y+17, { align:'center' });
   y += 30;
 
   // ── 6. ACUMULADOS AÑO ────────────────────────────────────────────────────
@@ -879,7 +881,7 @@ async function generateContratoIndeterminado(data) {
   _p(state, data.funciones, { indent: 4, color:[70,70,70] });
 
   _h(state, 4, 'Salario (Art. 82-88 LFT)');
-  _p(state, `EL PATRON pagara a EL TRABAJADOR un salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${numToWords(data.salario)} PESOS 00/100 M.N.) mediante ${data.formaPago}${data.diasPago ? ', los días '+data.diasPago : ''}. El salario cubre la jornada ordinaria y no será inferior al salario mínimo vigente.`);
+  _p(state, `EL PATRON pagara a EL TRABAJADOR un salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${montoEnLetras(data.salario)}) mediante ${data.formaPago}${data.diasPago ? ', los días '+data.diasPago : ''}. El salario cubre la jornada ordinaria y no será inferior al salario mínimo vigente.`);
 
   _h(state, 5, 'Lugar y Jornada de Trabajo');
   _p(state, `${_textoLugarTrabajo(data.domicilioSucursal || data.domicilioFiscal)} La jornada ordinaria será de ${data.horaInicio} a ${data.horaFin} horas, con descanso de ${data.horaDescansoInicio} a ${data.horaDescansoFin} horas, los días ${data.diasSemana.join(', ')}. ${_textoJornada(data)}`);
@@ -912,7 +914,7 @@ async function generateContratoDeterminado(data) {
   _p(state, `EL TRABAJADOR se obliga a prestar sus servicios como ${data.puesto}${data.departamento ? ' en el area de '+data.departamento : ''}, durante la vigencia del contrato. Funciones: ${data.funciones}.`);
 
   _h(state, 3, 'Salario');
-  _p(state, `EL PATRON pagara un salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${numToWords(data.salario)} PESOS 00/100 M.N.) mediante ${data.formaPago}${data.diasPago ? ', los días '+data.diasPago : ''}.`);
+  _p(state, `EL PATRON pagara un salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${montoEnLetras(data.salario)}) mediante ${data.formaPago}${data.diasPago ? ', los días '+data.diasPago : ''}.`);
 
   _h(state, 4, 'Lugar y Jornada');
   _p(state, `EL TRABAJADOR prestara servicios en ${data.domicilioSucursal || data.domicilioFiscal}. Jornada de ${data.horaInicio} a ${data.horaFin} horas, con descanso de ${data.horaDescansoInicio} a ${data.horaDescansoFin} horas, días ${data.diasSemana.join(', ')}.`);
@@ -939,7 +941,7 @@ async function generateContratoObra(data) {
   _p(state, `EL TRABAJADOR desempenara el cargo de ${data.puesto} participando exclusivamente en el proyecto descrito. Funciones: ${data.funciones}.`);
 
   _h(state, 3, 'Salario');
-  _p(state, `Salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${numToWords(data.salario)} PESOS 00/100 M.N.) mediante ${data.formaPago}${data.diasPago ? ', días '+data.diasPago : ''}.`);
+  _p(state, `Salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${montoEnLetras(data.salario)}) mediante ${data.formaPago}${data.diasPago ? ', días '+data.diasPago : ''}.`);
 
   _h(state, 4, 'Lugar de Prestación del Servicio');
   _p(state, `EL TRABAJADOR prestara servicios en el lugar de ejecución de la obra, inicialmente en ${data.domicilioSucursal || data.domicilioFiscal}, o en la ubicación que requieran los trabajos, previo aviso de EL PATRON.`);
@@ -987,7 +989,7 @@ async function generateContratoTemporada(data) {
   _p(state, `Durante cada temporada EL TRABAJADOR se desempenara como ${data.puesto}${data.departamento ? ' en el area de '+data.departamento : ''}. Funciones: ${data.funciones}.`);
 
   _h(state, 3, 'Salario');
-  _p(state, `Salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${numToWords(data.salario)} PESOS 00/100 M.N.) mediante ${data.formaPago}, pagadero unicamente durante temporada activa. Las prestaciones se calculan proporcionalmente al tiempo efectivamente laborado en cada ejercicio anual.`);
+  _p(state, `Salario ${data.periodoSalario} de $${Number(data.salario).toFixed(2)} M.N. (${montoEnLetras(data.salario)}) mediante ${data.formaPago}, pagadero unicamente durante temporada activa. Las prestaciones se calculan proporcionalmente al tiempo efectivamente laborado en cada ejercicio anual.`);
 
   _h(state, 4, 'Lugar de Prestación de Servicios (Art. 25 fracc. IV LFT)');
   _p(state, `EL TRABAJADOR prestara servicios en ${data.domicilioSucursal || data.domicilioFiscal}. Si una temporada especifica requiere prestar el servicio en una ubicación distinta, EL PATRON lo notificara al convocar dicha temporada (Art. 25 fracc. IV LFT) y cubrira los gastos de traslado que se originen.`);
@@ -1135,7 +1137,7 @@ function generateContratoPDF(empresa, trab, sucursal = null, opts = {}) {
   const _perFrec  = _perSal === 'quincenal' ? 'de forma quincenal' : _perSal === 'semanal' ? 'de forma semanal' : 'de forma mensual';
   const _salDiarioC = (typeof calcSalarioDiario === 'function' ? calcSalarioDiario(trab.salario_mensual, _perSal) : trab.salario_mensual / 30);
   const _formaPagoC = (trab.forma_pago === 'efectivo') ? 'en efectivo' : 'mediante deposito bancario';
-  parrafo('QUINTA. — SALARIO:', `EL TRABAJADOR percibirá un salario ${_perAdj} de $${trab.salario_mensual.toFixed(2)} M.N. (${numToWords(trab.salario_mensual)} PESOS 00/100 M.N.), equivalente a un salario diario de $${_salDiarioC.toFixed(2)} M.N. (Art. 89 LFT), que será pagado ${_perFrec} ${_formaPagoC}, conforme a los artículos 82, 88 y 89 de la Ley Federal del Trabajo.`);
+  parrafo('QUINTA. — SALARIO:', `EL TRABAJADOR percibirá un salario ${_perAdj} de $${trab.salario_mensual.toFixed(2)} M.N. (${montoEnLetras(trab.salario_mensual)}), equivalente a un salario diario de $${_salDiarioC.toFixed(2)} M.N. (Art. 89 LFT), que será pagado ${_perFrec} ${_formaPagoC}, conforme a los artículos 82, 88 y 89 de la Ley Federal del Trabajo.`);
 
   const prG = prestacionesEmpresa(empresa);
   parrafo('SEXTA. — PRESTACIONES DE LEY:', `EL TRABAJADOR tendrá derecho a: a) Vacaciones conforme al Art. 76 LFT${prG.vacDiasExtra > 0 ? ` mas ${prG.vacDiasExtra} día(s) adicionales otorgados por EL PATRON` : ''}; b) Prima vacacional del ${(prG.primaVacPct*100).toFixed(0)}% (Art. 80 LFT${prG.primaVacPct > 0.25 ? ', superior al mínimo de ley' : ''}); c) Aguinaldo de ${prG.aguinaldoDias} días de salario (Art. 87 LFT${prG.aguinaldoDias > 15 ? ', superior al mínimo de ley' : ''}); d) Seguridad social (IMSS); e) INFONAVIT conforme a la Ley; f) Prima de antiguedad (Art. 162 LFT).`);
@@ -2049,21 +2051,17 @@ function generateRecibo(empresa, trab, result, sucursal = null) {
   const ciudad    = empresa.ciudad || '[CIUDAD]';
   const fechaBaja = npDate(trab.fecha_baja);
   const totalFmt  = fmt(totalPagar);
-  // Redondear primero a centavos evita que el error de punto flotante empuje
-  // valores como 99.995 a un "100/100" de tres dígitos.
-  const totalRedondeado = Math.round(totalPagar * 100) / 100;
-  const totalEntero = Math.floor(totalRedondeado + 1e-9);
-  const centavosNum = Math.round((totalRedondeado - totalEntero) * 100);
-  const centavos  = String(centavosNum === 100 ? 0 : centavosNum).padStart(2, '0');
-  const totalLetr = numToWords(centavosNum === 100 ? totalEntero + 1 : totalEntero);
+  // Importe en letra con centavos (montoEnLetras ya redondea antes de partir,
+  // para que un 99.995 no produzca un "100/100" de tres dígitos).
+  const totalLetras = montoEnLetras(totalPagar);
 
   // No se citan los Arts. 50, 76, 80, 87 y 162 aquí (ver comentario arriba):
   // cada concepto ya trae su fundamento en la tabla, y repetirlos en la
   // declaración sugeriría indebidamente que TODOS aplican a este recibo aunque
   // sea un finiquito sin indemnización constitucional (Art. 50).
   const declTxt1 = grat > 0
-    ? `En la Ciudad de ${ciudad}, a ${fechaBaja}, el C. ${trab.nombre}, con RFC ${trab.rfc||'N/A'}, declara haber recibido de ${empresa.nombre} la cantidad total de ${totalFmt} (${totalLetr} PESOS ${centavos}/100 M.N.), integrada por ${fmt(result.total)} por concepto de ${isLiq ? 'liquidación' : 'finiquito'} y ${fmt(grat)} por concepto de gratificación otorgada por acuerdo de las partes, correspondientes a las prestaciones y conceptos generados durante la relación de trabajo que concluyo el ${fechaBaja}.`
-    : `En la Ciudad de ${ciudad}, a ${fechaBaja}, el C. ${trab.nombre}, con RFC ${trab.rfc||'N/A'}, declara haber recibido de ${empresa.nombre} la cantidad de ${totalFmt} (${totalLetr} PESOS ${centavos}/100 M.N.) por los conceptos desglosados en el presente recibo, correspondientes a las prestaciones generadas durante la relación de trabajo que concluyo el ${fechaBaja}.`;
+    ? `En la Ciudad de ${ciudad}, a ${fechaBaja}, el C. ${trab.nombre}, con RFC ${trab.rfc||'N/A'}, declara haber recibido de ${empresa.nombre} la cantidad total de ${totalFmt} (${totalLetras}), integrada por ${fmt(result.total)} por concepto de ${isLiq ? 'liquidación' : 'finiquito'} y ${fmt(grat)} por concepto de gratificación otorgada por acuerdo de las partes, correspondientes a las prestaciones y conceptos generados durante la relación de trabajo que concluyo el ${fechaBaja}.`
+    : `En la Ciudad de ${ciudad}, a ${fechaBaja}, el C. ${trab.nombre}, con RFC ${trab.rfc||'N/A'}, declara haber recibido de ${empresa.nombre} la cantidad de ${totalFmt} (${totalLetras}) por los conceptos desglosados en el presente recibo, correspondientes a las prestaciones generadas durante la relación de trabajo que concluyo el ${fechaBaja}.`;
   const declTxt2 = `El presente documento acredita el pago de los conceptos que en el se detallan. No constituye renuncia de derechos, la cual seria nula en términos del artículo 5o. fracción XIII de la Ley Federal del Trabajo.`;
 
   doc.setFont('Roboto','normal'); doc.setFontSize(9.5); doc.setTextColor(30,30,30);

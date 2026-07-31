@@ -2,12 +2,23 @@
  * Capital Humano MX — Módulo Incapacidades IMSS
  */
 
+// `subsidio` es el porcentaje que paga el IMSS, no lo que recibe el trabajador.
+// Cuidado con dos casos que antes estaban al revés:
+//   · Riesgo de trabajo: el IMSS paga desde el PRIMER día (Art. 58 fr. I LSS),
+//     así que el patrón no repone nada — hacerlo pagaba dos veces lo mismo.
+//   · Paternidad: NO es incapacidad y el IMSS no paga nada. Son 5 días
+//     laborables con goce a cargo del PATRÓN (Art. 132 fr. XXVII Bis LFT).
 const INC_TIPOS = {
-  enfermedad_general: { label: 'Enfermedad general',  subsidio: 60,  maxDias: 52*7, nota: 'IMSS cubre 60% desde el 4° día; los primeros 3 días los cubre el patrón al 100%.' },
-  maternidad:         { label: 'Maternidad',           subsidio: 100, maxDias: 84,   nota: 'IMSS paga 100% del SDI durante 84 días (42 antes + 42 después del parto).' },
-  paternidad:         { label: 'Paternidad',           subsidio: 100, maxDias: 5,    nota: 'IMSS paga 100% del SDI durante 5 días hábiles.' },
-  riesgo_trabajo:     { label: 'Riesgo de trabajo',    subsidio: 100, maxDias: null, nota: 'IMSS paga 100% del SDI; el patrón cubre los primeros 3 días.' },
-  recaida:            { label: 'Recaída',              subsidio: 60,  maxDias: null, nota: 'Mismas reglas que enfermedad general.' },
+  enfermedad_general: { label: 'Enfermedad general',  subsidio: 60,  maxDias: 52*7, aCargoPatron: 'primeros3',
+    nota: 'IMSS paga 60% del SBC a partir del 4° día (Art. 96 LSS). Los 3 primeros días no los cubre el IMSS ni los obliga la LFT (la relación queda suspendida, Art. 42 fr. II): se pagan solo si la empresa los otorga como prestación (configurable en Mi Empresa).' },
+  maternidad:         { label: 'Maternidad',           subsidio: 100, maxDias: 84,  aCargoPatron: 'no',
+    nota: 'IMSS paga 100% del SBC durante 84 días (42 antes + 42 después del parto, Art. 101 LSS). El patrón no paga salario en ese periodo.' },
+  paternidad:         { label: 'Paternidad',           subsidio: 0,   maxDias: 5,   aCargoPatron: 'todo',
+    nota: 'NO es incapacidad del IMSS: son 5 días laborables de permiso CON GOCE a cargo del patrón (Art. 132 fr. XXVII Bis LFT). No se descuentan del salario.' },
+  riesgo_trabajo:     { label: 'Riesgo de trabajo',    subsidio: 100, maxDias: null, aCargoPatron: 'no',
+    nota: 'IMSS paga 100% del salario desde el PRIMER día (Art. 58 fr. I LSS). El patrón no cubre los 3 primeros días: eso aplica a enfermedad general, no a riesgo de trabajo.' },
+  recaida:            { label: 'Recaída',              subsidio: 60,  maxDias: null, aCargoPatron: 'primeros3',
+    nota: 'Mismas reglas que enfermedad general: IMSS 60% desde el 4° día.' },
 };
 
 let _INC = { tab: 1, trabajadores: [], incapacidades: [] };
@@ -96,7 +107,7 @@ function _renderINCLista(c) {
 function _renderINCNueva(c) {
   const hoy = new Date().toISOString().split('T')[0];
   const tiposOpts = Object.entries(INC_TIPOS).map(([v,t]) =>
-    `<option value="${v}">${t.label} — subsidio ${t.subsidio}%</option>`).join('');
+    `<option value="${v}">${t.label} — ${t.subsidio > 0 ? `IMSS ${t.subsidio}%` : 'a cargo del patrón'}</option>`).join('');
   c.innerHTML = `
     <div class="card animate-in" style="max-width:600px;">
       <div class="card-header"><span class="card-title">+ Nueva incapacidad</span></div>

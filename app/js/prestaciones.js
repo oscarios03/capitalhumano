@@ -184,7 +184,7 @@ async function _suspenderPrestacion(id, trabajadorId) {
  */
 async function costoMensualPrestaciones(empresaId) {
   const [{ data: trabs }, { data: extra }] = await Promise.all([
-    window.supabase.from('trabajadores').select('salario_mensual, periodo_salario, vales_despensa, fondo_ahorro_activo, fondo_ahorro_pct').eq('empresa_id', empresaId).eq('estado', 'activo'),
+    window.supabase.from('trabajadores').select('id, salario_mensual, periodo_salario, vales_despensa, fondo_ahorro_activo, fondo_ahorro_pct').eq('empresa_id', empresaId).eq('estado', 'activo'),
     window.supabase.from('prestaciones_trabajador').select('tipo, modalidad, valor, trabajador_id').eq('empresa_id', empresaId).eq('activo', true),
   ]);
 
@@ -196,8 +196,15 @@ async function costoMensualPrestaciones(empresaId) {
       total += daily * 30 * parseFloat(t.fondo_ahorro_pct || 0.13);
     }
   }
+  // Normalizar a mensual con la periodicidad REAL de cada trabajador: el x2
+  // fijo asumia que todos cobran quincenal, asi que subestimaba a los
+  // semanales (deberia ser ~4.34) y duplicaba a los mensuales.
+  const periodoDe = {};
+  for (const t of (trabs || [])) periodoDe[t.id] = t.periodo_salario || 'mensual';
+  const aMensual = { semanal: 30 / 7, quincenal: 30 / 15, mensual: 1 };
   for (const p of (extra || [])) {
-    if (p.modalidad === 'monto_fijo_periodo') total += parseFloat(p.valor || 0) * 2; // aprox. quincenal → mensual
+    if (p.modalidad !== 'monto_fijo_periodo') continue;
+    total += parseFloat(p.valor || 0) * (aMensual[periodoDe[p.trabajador_id]] ?? 1);
   }
   return parseFloat(total.toFixed(2));
 }

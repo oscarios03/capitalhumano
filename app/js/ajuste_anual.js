@@ -26,8 +26,7 @@ const _sbAA = () => window.supabase;
 /** ISR del ejercicio con la tarifa anual del Art. 152 LISR. */
 function calcISRAnual(baseAnual) {
   if (!(baseAnual > 0)) return 0;
-  const b = ISR_ANUAL_2026.find(x => baseAnual >= x.limInf && baseAnual <= x.limSup)
-            || ISR_ANUAL_2026[ISR_ANUAL_2026.length - 1];
+  const b = _tramoISR(ISR_ANUAL_2026, baseAnual);
   return parseFloat((b.cuota + (baseAnual - b.limInf) * b.pct).toFixed(2));
 }
 
@@ -52,10 +51,21 @@ async function calcularAjusteAnual(anio) {
   const ids = (periodos || []).map(p => p.id);
   if (!ids.length) return [];
 
-  const { data: recibos, error: errR } = await _sbAA()
-    .from('recibos_nomina')
-    .select('trabajador_id, total_percepciones, isr_retenido, subsidio_empleo, trabajadores(nombre, fecha_ingreso, fecha_baja, estado)')
-    .in('periodo_id', ids);
+  // percepciones_gravadas viene de la migración 49. Sin ella no hay forma de
+  // saber qué parte del ejercicio fue exenta, así que se degrada a las
+  // percepciones totales y se avisa: el resultado sobreestima el impuesto.
+  const COLS = 'trabajador_id, total_percepciones, percepciones_gravadas, isr_retenido, subsidio_empleo, trabajadores(nombre, fecha_ingreso, fecha_baja, estado)';
+  let { data: recibos, error: errR } = await _sbAA()
+    .from('recibos_nomina').select(COLS).in('periodo_id', ids);
+  let sinDesglose = false;
+  if (errR && /percepciones_gravadas/i.test(errR.message || '')) {
+    sinDesglose = true;
+    console.warn('Falta la migración 49: el ajuste anual usará las percepciones totales como base y sobreestimará el ISR del ejercicio.');
+    ({ data: recibos, error: errR } = await _sbAA()
+      .from('recibos_nomina')
+      .select(COLS.replace('percepciones_gravadas, ', ''))
+      .in('periodo_id', ids));
+  }
   if (errR) throw errR;
 
   const map = {};
@@ -64,32 +74,48 @@ async function calcularAjusteAnual(anio) {
     if (!map[r.trabajador_id]) map[r.trabajador_id] = {
       id: r.trabajador_id, nombre: t.nombre || '—',
       fechaIngreso: t.fecha_ingreso, fechaBaja: t.fecha_baja, estado: t.estado,
-      base: 0, isrRetenido: 0, subsidio: 0, recibos: 0,
+      base: 0, ingresoTotal: 0, isrRetenido: 0, subsidio: 0, recibos: 0, sinDesglose,
     };
     const f = map[r.trabajador_id];
-    f.base        += parseFloat(r.total_percepciones || 0);
-    f.isrRetenido += parseFloat(r.isr_retenido || 0);
-    f.subsidio    += parseFloat(r.subsidio_empleo || 0);
+    const percTotal = parseFloat(r.total_percepciones || 0);
+    // Base del impuesto anual: SOLO lo gravado. Acumular total_percepciones
+    // metía los exentos del Art. 93 (aguinaldo hasta 30 UMA, prima vacacional,
+    // vales, tiempo extra dentro del límite) en la tarifa del Art. 152 y
+    // cobraba en diciembre un impuesto que el trabajador no debía.
+    f.base         += r.percepciones_gravadas != null
+      ? parseFloat(r.percepciones_gravadas) : percTotal;
+    f.ingresoTotal += percTotal;
+    f.isrRetenido  += parseFloat(r.isr_retenido || 0);
+    f.subsidio     += parseFloat(r.subsidio_empleo || 0);
     f.recibos++;
   }
 
   return Object.values(map).map(f => {
-    // Exclusiones del Art. 97
+    // Exclusiones del Art. 97, penúltimo párrafo. El límite de $400,000 se mide
+    // sobre los INGRESOS del ejercicio (no sobre la base gravable).
     let motivo = null;
-    if (f.base > AJUSTE_LIMITE_ART97) motivo = `Ingresos anuales superiores a ${fmt(AJUSTE_LIMITE_ART97)}`;
-    else if (f.fechaIngreso && f.fechaIngreso >= `${anio}-01-01`) motivo = 'Inició labores durante el ejercicio';
-    else if (f.fechaBaja && f.fechaBaja <= `${anio}-12-31` && f.fechaBaja >= `${anio}-01-01`) motivo = 'Dejó de prestar servicios durante el ejercicio';
+    if (f.ingresoTotal > AJUSTE_LIMITE_ART97) motivo = `Ingresos anuales superiores a ${fmt(AJUSTE_LIMITE_ART97)}`;
+    // "con posterioridad al 1 de enero": quien inició EL 1 de enero sí se ajusta.
+    else if (f.fechaIngreso && f.fechaIngreso > `${anio}-01-01`) motivo = 'Inició labores durante el ejercicio';
+    // "antes del 1 de diciembre": una baja de diciembre SÍ se ajusta.
+    else if (f.fechaBaja && f.fechaBaja >= `${anio}-01-01` && f.fechaBaja < `${anio}-12-01`) motivo = 'Dejó de prestar servicios antes del 1 de diciembre';
     else if (_AA.excluidos.has(f.id)) motivo = 'Presenta declaración anual por su cuenta';
 
-    const base       = parseFloat(f.base.toFixed(2));
-    const isrAnual   = calcISRAnual(base);
+    const base        = parseFloat(f.base.toFixed(2));
+    const ingresoTotal = parseFloat(f.ingresoTotal.toFixed(2));
+    const isrAnual    = calcISRAnual(base);
     const isrRetenido = parseFloat(f.isrRetenido.toFixed(2));
+    const subsidio    = parseFloat(f.subsidio.toFixed(2));
+    // El subsidio al empleo acreditado en el año reduce el impuesto del
+    // ejercicio; `isr_retenido` ya viene NETO de él, así que compararlo contra
+    // un ISR anual bruto lo cobraba dos veces. Se computaba y se exportaba al
+    // Excel, pero nunca se restaba.
+    const isrAnualNeto = parseFloat(Math.max(0, isrAnual - subsidio).toFixed(2));
     // Diferencia > 0 = falta retener (a cargo); < 0 = se retuvo de más (a favor)
-    const diferencia = parseFloat((isrAnual - isrRetenido).toFixed(2));
+    const diferencia = parseFloat((isrAnualNeto - isrRetenido).toFixed(2));
 
     return {
-      ...f, base, isrAnual, isrRetenido,
-      subsidio: parseFloat(f.subsidio.toFixed(2)),
+      ...f, base, ingresoTotal, isrAnual, isrAnualNeto, isrRetenido, subsidio,
       diferencia, aplica: !motivo, motivoExclusion: motivo,
     };
   }).sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -132,9 +158,11 @@ async function renderAjusteAnual(el) {
         </div>
       </div>
       <p style="font-size:.85rem;color:var(--text-muted);margin-top:10px;">
-        Compara el ISR del ejercicio (tarifa anual, Art. 152) contra lo retenido en el año.
+        Compara el ISR del ejercicio (tarifa anual del Art. 152 sobre las percepciones
+        <strong>gravadas</strong>, menos el subsidio al empleo acreditado) contra lo retenido en el año.
         La diferencia se aplica en la nómina de diciembre. Se excluye automáticamente a quien
-        ganó más de ${fmt(AJUSTE_LIMITE_ART97)}, o entró o salió durante el ejercicio.
+        ganó más de ${fmt(AJUSTE_LIMITE_ART97)}, a quien inició labores después del 1 de enero
+        y a quien dejó de prestar servicios antes del 1 de diciembre (Art. 97, penúltimo párrafo).
       </p>
     </div>
 
@@ -174,8 +202,9 @@ async function renderAjusteAnual(el) {
           <thead>
             <tr>
               <th>Trabajador</th>
-              <th title="Total de percepciones del ejercicio">Base anual</th>
-              <th title="Tarifa anual Art. 152 LISR">ISR del ejercicio</th>
+              <th title="Percepciones gravadas del ejercicio, sin la parte exenta del Art. 93 LISR">Base gravable</th>
+              <th title="Tarifa anual Art. 152 LISR, menos el subsidio al empleo acreditado en el año">ISR del ejercicio</th>
+              <th title="Subsidio al empleo acreditado durante el ejercicio">Subsidio</th>
               <th>ISR retenido</th>
               <th title="Positivo: falta retener. Negativo: se retuvo de más.">Diferencia</th>
               <th>Aplica</th>
@@ -187,8 +216,9 @@ async function renderAjusteAnual(el) {
                 <td><strong>${f.nombre}</strong>
                   ${f.motivoExclusion ? `<div style="font-size:.72rem;color:var(--text-muted);">${f.motivoExclusion}</div>` : ''}
                 </td>
-                <td>${fmt(f.base)}</td>
-                <td>${fmt(f.isrAnual)}</td>
+                <td>${fmt(f.base)}${f.sinDesglose ? ' <span title="Sin la migración 49 no se puede separar la parte exenta: esta base incluye ingresos exentos y sobreestima el impuesto." style="color:var(--amber-warn);">!</span>' : ''}</td>
+                <td>${fmt(f.isrAnualNeto)}</td>
+                <td style="color:var(--text-muted);">${fmt(f.subsidio)}</td>
                 <td>${fmt(f.isrRetenido)}</td>
                 <td style="font-weight:700;color:${!f.aplica ? 'var(--text-muted)' : f.diferencia > 0 ? 'var(--red-warn)' : f.diferencia < 0 ? 'var(--green-ok)' : 'var(--text-muted)'};">
                   ${f.diferencia > 0 ? '+' : ''}${fmt(f.diferencia)}
@@ -341,10 +371,12 @@ function _aaExportarXLSX() {
   if (!_AA.filas.length || !window.XLSX) { showToast('Sin datos para exportar.', 'error'); return; }
   const ws = XLSX.utils.json_to_sheet(_AA.filas.map(f => ({
     'Trabajador':            f.nombre,
-    'Base anual (percepciones)': f.base,
-    'ISR del ejercicio (Art. 152)': f.isrAnual,
+    'Ingresos del ejercicio': f.ingresoTotal,
+    'Base gravable (Art. 93 aplicado)': f.base,
+    'ISR tarifa anual (Art. 152)': f.isrAnual,
+    'Subsidio al empleo acreditado': f.subsidio,
+    'ISR del ejercicio neto de subsidio': f.isrAnualNeto,
     'ISR retenido en el año': f.isrRetenido,
-    'Subsidio al empleo':     f.subsidio,
     'Diferencia':             f.diferencia,
     'Resultado':              !f.aplica ? 'No aplica' : f.diferencia > 0 ? 'A cargo' : f.diferencia < 0 ? 'A favor' : 'Sin diferencia',
     'Motivo de exclusión':    f.motivoExclusion || '',

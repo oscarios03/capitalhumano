@@ -1548,7 +1548,16 @@ async function renderPerfilEmpleado(id) {
           <div class="form-grid">
             ${filaInfo(`Salario ${_labelPeriodoSalario(trab.periodo_salario||'mensual').toLowerCase()}`, fmt(trab.salario_mensual))}
             ${filaInfo('Salario diario (Art. 89 LFT)', fmt(calcSalarioDiario(trab.salario_mensual, trab.periodo_salario || 'mensual')))}
-            ${filaInfo('SDI estimado', fmt((() => { const pr = prestacionesEmpresa(); return calcSDI(calcSalarioDiario(trab.salario_mensual, trab.periodo_salario || 'mensual'), vacDaysForYear(1, pr.vacDiasExtra), pr.primaVacPct, pr.aguinaldoDias); })()))}
+            ${filaInfo('SDI estimado', fmt((() => {
+              // Con la antigüedad REAL del trabajador. Estaba fijo en el año 1
+              // (12 días de vacaciones), así que esta ficha mostraba un SDI que
+              // no coincidía con el SBC calculado en la misma pantalla.
+              const pr    = prestacionesEmpresa();
+              const daily = calcSalarioDiario(trab.salario_mensual, trab.periodo_salario || 'mensual');
+              return typeof calcularFactorIntegracion === 'function'
+                ? daily * calcularFactorIntegracion(trab, pr)
+                : calcSDI(daily, vacDaysForYear(1, pr.vacDiasExtra), pr.primaVacPct, pr.aguinaldoDias);
+            })()), 'Salario diario × factor de integración (Art. 27 LSS), con los días de vacaciones de su antigüedad actual')}
             ${filaInfo('SBC vigente (Art. 27 LSS)', `
               ${trab.sbc ? fmt(trab.sbc) : '<span style="color:var(--text-muted);">Sin calcular</span>'}
               <span style="font-size:.7rem;color:var(--text-muted);margin-left:6px;">
@@ -1647,8 +1656,10 @@ async function renderPerfilEmpleado(id) {
   } catch(e) { showError(e); }
 }
 
-function filaInfo(label, value) {
-  return `<div class="form-group"><label class="form-label">${label}</label><div style="padding:10px 0;font-size:.95rem;font-weight:600;">${value || '—'}</div></div>`;
+/** @param {string} [ayuda] Tooltip con el fundamento o la fórmula del dato. */
+function filaInfo(label, value, ayuda) {
+  const t = ayuda ? ` title="${escapeHtml(ayuda)}"` : '';
+  return `<div class="form-group"${t}><label class="form-label">${label}</label><div style="padding:10px 0;font-size:.95rem;font-weight:600;">${value || '—'}</div></div>`;
 }
 
 /**
