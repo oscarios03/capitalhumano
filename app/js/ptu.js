@@ -3,12 +3,64 @@
  * Art. 117-131 LFT: 10% utilidad repartible; 50% igual por días / 50% proporcional al salario.
  */
 
-let _PTU = { tab: 1, ejercicios: [], detalle: [] };
+let _PTU = { tab: 1, ejercicios: [], detalle: [], excluidos: new Set(), candidatos: [] };
 const _sbPTU = () => window.supabase;
+
+/**
+ * Promedio de la PTU que cada trabajador recibió en los TRES ejercicios
+ * anteriores (Art. 127 fr. VIII LFT). Es el tope alternativo al de tres meses
+ * de salario, y la ley manda aplicar el que resulte MÁS FAVORABLE.
+ *
+ * Solo promedia los ejercicios que existen en el historial: si un trabajador
+ * tiene dos años guardados, promedia entre dos. Sin historial devuelve 0, con
+ * lo que solo opera el tope de tres meses (el comportamiento anterior).
+ *
+ * @returns {Promise<Object>} { trabajador_id: promedio }
+ */
+async function _promedioPTU3Anios(anio, trabajadorIds) {
+  const out = {};
+  if (!trabajadorIds?.length) return out;
+  try {
+    const { data: ejercicios, error: errE } = await _sbPTU().from('ptu_ejercicios')
+      .select('id,ejercicio')
+      .eq('empresa_id', CTX.empresa.id)
+      .gte('ejercicio', anio - 3)
+      .lte('ejercicio', anio - 1);
+    if (errE) throw errE;
+    if (!ejercicios?.length) return out;
+
+    const { data: filas, error: errD } = await _sbPTU().from('ptu_detalle')
+      .select('trabajador_id,total_ptu,ptu_ejercicio_id')
+      .in('ptu_ejercicio_id', ejercicios.map(e => e.id))
+      .in('trabajador_id', trabajadorIds);
+    if (errD) throw errD;
+
+    const acum = {};
+    for (const f of (filas || [])) {
+      (acum[f.trabajador_id] ||= []).push(parseFloat(f.total_ptu) || 0);
+    }
+    for (const [id, montos] of Object.entries(acum)) {
+      out[id] = parseFloat((montos.reduce((a, m) => a + m, 0) / montos.length).toFixed(2));
+    }
+  } catch (e) {
+    // Sin historial utilizable se sigue con el tope de tres meses; avisar en
+    // consola es preferible a tumbar el cálculo completo del ejercicio.
+    console.warn('No se pudo calcular el promedio de PTU de los 3 ejercicios anteriores:', e.message);
+  }
+  return out;
+}
+
+/** Marca/desmarca a un trabajador como excluido por el Art. 127 fr. I LFT. */
+function _ptuToggleExcluir(id) {
+  if (_PTU.excluidos.has(id)) _PTU.excluidos.delete(id);
+  else _PTU.excluidos.add(id);
+  calcularPTU();
+}
 
 async function renderPTU() {
   const _gen = typeof _navGen !== 'undefined' ? _navGen : 0;
-  _PTU.tab = 1; // Resetear al entrar al módulo
+  _PTU.tab = 1;              // Resetear al entrar al módulo
+  _PTU.excluidos.clear();    // las exclusiones del Art. 127 fr. I son por ejercicio
   try {
     const { data } = await _sbPTU().from('ptu_ejercicios')
       .select('*')
@@ -103,7 +155,7 @@ async function calcularPTU() {
     let recibos = [];
     if (periodoIds.length) {
       const { data, error } = await _sbPTU().from('recibos_nomina')
-        .select('trabajador_id,dias_laborados,salario_base,trabajadores(nombre,salario_mensual,periodo_salario)')
+        .select('trabajador_id,dias_laborados,salario_base,trabajadores(nombre,salario_mensual,periodo_salario,es_puesto_direccion)')
         .in('periodo_id', periodoIds);
       if (error) throw error;
       recibos = data || [];
@@ -114,6 +166,7 @@ async function calcularPTU() {
     for (const r of recibos) {
       if (!map[r.trabajador_id]) map[r.trabajador_id] = {
         id: r.trabajador_id, nombre: r.trabajadores?.nombre || '—', dias: 0, salarioAcum: 0, periodos: 0,
+        confianza: !!r.trabajadores?.es_puesto_direccion,
         salarioMensualOrd: calcSalarioDiario(parseFloat(r.trabajadores?.salario_mensual) || 0,
                                              r.trabajadores?.periodo_salario || 'mensual') * 30,
       };
@@ -121,40 +174,67 @@ async function calcularPTU() {
       map[r.trabajador_id].salarioAcum += parseFloat(r.salario_base) || 0;
       map[r.trabajador_id].periodos++;
     }
-    const trabajadores = Object.values(map);
+    // Art. 127 fr. I LFT: los directores, administradores y gerentes generales
+    // NO participan en las utilidades. La plataforma no puede deducirlo sola
+    // (es_puesto_direccion agrupa también a técnicos especializados, que SÍ
+    // participan), así que se excluye a quien el usuario marque en la tabla.
+    const trabajadores = Object.values(map).filter(t => !_PTU.excluidos.has(t.id));
+    const excluidosFrI = Object.values(map).filter(t => _PTU.excluidos.has(t.id));
+    _PTU.candidatos = Object.values(map);
 
     if (!trabajadores.length) {
       res.innerHTML = `<div class="alert alert-warn" style="margin-top:16px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg><span>No se encontraron recibos de nómina para el año ${anio}. Genera la nómina del año antes de calcular el PTU.</span></div>`;
       return;
     }
 
+    // Art. 127 fr. II LFT: el salario de los trabajadores de CONFIANZA se topa
+    // al del trabajador de planta de más alto salario, aumentado en un 20%.
+    // Sin este tope, un salario de confianza alto se llevaba una porción de la
+    // mitad "por salarios" que la ley no le concede.
+    const salariosPlanta = trabajadores.filter(t => !t.confianza).map(t => t.salarioAcum);
+    const topeConfianza  = salariosPlanta.length ? Math.max(...salariosPlanta) * 1.20 : null;
+    for (const t of trabajadores) {
+      t.salarioParaReparto = (t.confianza && topeConfianza != null)
+        ? Math.min(t.salarioAcum, topeConfianza) : t.salarioAcum;
+      t.topadoConfianza = t.salarioParaReparto < t.salarioAcum;
+    }
+
     const totalDias    = trabajadores.reduce((a,t) => a + t.dias, 0);
-    const totalSalario = trabajadores.reduce((a,t) => a + t.salarioAcum, 0);
+    const totalSalario = trabajadores.reduce((a,t) => a + t.salarioParaReparto, 0);
     const parteDias    = utilidad * 0.5;
     const parteSalario = utilidad * 0.5;
     const factorDias   = totalDias    > 0 ? parteDias    / totalDias    : 0;
     const factorSal    = totalSalario > 0 ? parteSalario / totalSalario : 0;
 
+    // Art. 127 fr. VIII LFT (reforma 2021): el tope individual es el importe
+    // MÁS FAVORABLE al trabajador entre tres meses de su salario y el promedio
+    // de la PTU recibida en los últimos tres años. Antes solo se aplicaba el de
+    // tres meses y se recortaba a quien el promedio histórico protegía.
+    const promedios = await _promedioPTU3Anios(anio, trabajadores.map(t => t.id));
+
     // Exención de ISR: 15 UMA (Art. 93 fr. XIV LISR); el excedente se grava
-    // con el procedimiento del Art. 174 RLISR. Tope individual: 3 meses de
-    // salario (Art. 127 fr. VIII LFT, reforma 2021) — el remanente no se paga.
+    // con el procedimiento del Art. 174 RLISR.
     const uma        = _umaVigente();
     const exencionPTU = 15 * uma;
 
     const detalle = trabajadores.map(t => {
       const sdProm  = t.periodos > 0 ? t.salarioAcum / t.periodos : 0;
       const pd      = t.dias      * factorDias;
-      const ps      = t.salarioAcum * factorSal;
+      const ps      = t.salarioParaReparto * factorSal;
       const bruto   = pd + ps;
       const tope3m  = t.salarioMensualOrd > 0 ? t.salarioMensualOrd * 3 : Infinity;
-      const topado  = bruto > tope3m;
-      const total   = parseFloat(Math.min(bruto, tope3m).toFixed(2));
+      const topeProm = promedios[t.id] || 0;
+      // El más favorable de los dos (Art. 127 fr. VIII)
+      const tope    = Math.max(tope3m, topeProm);
+      const topado  = bruto > tope;
+      const topeUsado = !topado ? null : (tope === topeProm && topeProm > tope3m ? 'promedio3' : '3meses');
+      const total   = parseFloat(Math.min(bruto, tope).toFixed(2));
       const exento  = parseFloat(Math.min(total, exencionPTU).toFixed(2));
       const gravado = parseFloat(Math.max(0, total - exento).toFixed(2));
       const isr     = typeof calcISRArt174 === 'function'
         ? calcISRArt174(gravado, t.salarioMensualOrd).isr : 0;
       const neto    = parseFloat((total - isr).toFixed(2));
-      return { ...t, sdProm, pd, ps, bruto, topado, total, exento, gravado, isr, neto };
+      return { ...t, sdProm, pd, ps, bruto, tope3m, topeProm, topado, topeUsado, total, exento, gravado, isr, neto };
     });
 
     const totalPTU  = detalle.reduce((a,d) => a + d.total, 0);
@@ -171,38 +251,54 @@ async function calcularPTU() {
         <div class="kpi-grid" style="margin:12px 0 16px;">
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-calendar"></use></svg></div><div class="kpi-num">${totalDias.toLocaleString()}</div><div class="kpi-label">Total días trabajados</div></div>
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="kpi-num">${fmt(totalSalario)}</div><div class="kpi-label">Masa salarial del año</div></div>
-          <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-pie"></use></svg></div><div class="kpi-num">${fmt(totalPTU)}</div><div class="kpi-label">PTU a repartir (con tope 3 meses)</div></div>
+          <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-pie"></use></svg></div><div class="kpi-num">${fmt(totalPTU)}</div><div class="kpi-label">PTU a repartir (con topes Art. 127 fr. VIII)</div></div>
           <div class="kpi-card" title="ISR del excedente de 15 UMA (${fmt(exencionPTU)}), procedimiento Art. 174 RLISR"><div class="kpi-icon"><svg class="ic"><use href="#i-bar"></use></svg></div><div class="kpi-num" style="color:var(--red-warn);">${fmt(totalISR)}</div><div class="kpi-label">ISR a retener</div></div>
           <div class="kpi-card"><div class="kpi-icon"><svg class="ic"><use href="#i-wallet"></use></svg></div><div class="kpi-num">${fmt(totalNeto)}</div><div class="kpi-label">Neto a pagar</div></div>
         </div>
+        ${_PTU.candidatos.some(t => t.confianza) || excluidosFrI.length ? `
+        <div class="alert alert-warn" style="margin-bottom:12px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+          <span><strong>Art. 127 fr. I LFT:</strong> los directores, administradores y gerentes generales
+          <strong>no participan</strong> en el reparto. El sistema no puede distinguirlos solo (la marca de
+          puesto agrupa también a técnicos especializados, que sí participan): desmarca en la tabla a quien
+          corresponda.${excluidosFrI.length ? ` Excluidos ahora: <strong>${excluidosFrI.map(t => escapeHtml(t.nombre)).join(', ')}</strong>.` : ''}</span>
+        </div>` : ''}
         ${remanente > 0 ? `
         <div class="alert alert-info" style="margin-bottom:12px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-info"></use></svg>
-          <span>Se aplicó el <strong>tope de 3 meses de salario</strong> (Art. 127 fr. VIII LFT) a los trabajadores marcados con .
-          Remanente no repartido por tope: <strong>${fmt(remanente)}</strong>. Verifica con tu contador si aplica el promedio de PTU de los últimos 3 años como tope alternativo más favorable.</span>
+          <span>Se aplicó el tope individual del <strong>Art. 127 fr. VIII LFT</strong>, tomando en cada caso
+          el importe más favorable entre tres meses de salario y el promedio de la PTU de los tres ejercicios
+          anteriores. Remanente no repartido por tope: <strong>${fmt(remanente)}</strong>.</span>
         </div>` : ''}
         <div class="table-wrap">
           <table class="data-table" id="ptu-tabla-resultado">
             <thead>
-              <tr><th>Trabajador</th><th>Días</th><th>Salario acumulado</th><th>Parte días</th><th>Parte salario</th><th>Total PTU</th><th title="Exento hasta 15 UMA (Art. 93 fr. XIV LISR)">Exento</th><th title="Art. 174 RLISR">ISR</th><th>Neto</th></tr>
+              <tr><th title="Desmarca a directores, administradores y gerentes generales (Art. 127 fr. I LFT)">Participa</th><th>Trabajador</th><th>Días</th><th>Salario acumulado</th><th>Parte días</th><th>Parte salario</th><th>Total PTU</th><th title="Exento hasta 15 UMA (Art. 93 fr. XIV LISR)">Exento</th><th title="Art. 174 RLISR">ISR</th><th>Neto</th></tr>
             </thead>
             <tbody>
               ${detalle.map(d => `
                 <tr>
-                  <td><strong>${escapeHtml(d.nombre)}</strong></td>
+                  <td><input type="checkbox" checked onchange="_ptuToggleExcluir('${d.id}')" title="Quitar del reparto (Art. 127 fr. I LFT)" /></td>
+                  <td><strong>${escapeHtml(d.nombre)}</strong>${d.confianza ? ' <span style="font-size:.68rem;color:var(--amber-warn);" title="Marcado como puesto de dirección/confianza: revisa si le aplica la exclusión del Art. 127 fr. I">confianza</span>' : ''}</td>
                   <td>${d.dias}</td>
-                  <td>${fmt(d.salarioAcum)}</td>
+                  <td>${fmt(d.salarioAcum)}${d.topadoConfianza ? ` <span style="font-size:.68rem;color:var(--amber-warn);" title="Salario topado a ${fmt(d.salarioParaReparto)} para el reparto: el del trabajador de planta mejor pagado + 20% (Art. 127 fr. II LFT)">topado</span>` : ''}</td>
                   <td>${fmt(d.pd)}</td>
                   <td>${fmt(d.ps)}</td>
-                  <td><strong>${fmt(d.total)}</strong>${d.topado ? ' <span title="Topado a 3 meses de salario (Art. 127 fr. VIII LFT)"></span>' : ''}</td>
+                  <td><strong>${fmt(d.total)}</strong>${d.topado ? ` <span style="font-size:.68rem;color:var(--amber-warn);" title="Tope Art. 127 fr. VIII: ${d.topeUsado === 'promedio3' ? `promedio de PTU de los 3 ejercicios anteriores (${fmt(d.topeProm)})` : `3 meses de salario (${fmt(d.tope3m)})`}, el más favorable">tope</span>` : ''}</td>
                   <td style="color:var(--text-muted);">${fmt(d.exento)}</td>
                   <td style="color:${d.isr > 0 ? 'var(--red-warn)' : 'var(--text-muted)'};">${fmt(d.isr)}</td>
                   <td><strong>${fmt(d.neto)}</strong></td>
                 </tr>
               `).join('')}
+              ${excluidosFrI.map(t => `
+                <tr style="opacity:.5;">
+                  <td><input type="checkbox" onchange="_ptuToggleExcluir('${t.id}')" title="Reincorporar al reparto" /></td>
+                  <td><strong>${escapeHtml(t.nombre)}</strong> <span style="font-size:.7rem;color:var(--text-muted);">excluido (Art. 127 fr. I)</span></td>
+                  <td colspan="8" style="color:var(--text-muted);font-size:.8rem;">No participa en el reparto</td>
+                </tr>
+              `).join('')}
             </tbody>
             <tfoot>
               <tr style="font-weight:700;border-top:2px solid var(--border);">
-                <td>TOTAL</td>
+                <td colspan="2">TOTAL</td>
                 <td>${totalDias}</td>
                 <td>${fmt(totalSalario)}</td>
                 <td>${fmt(parteDias)}</td>
@@ -267,10 +363,14 @@ function _exportarPTU() {
     'Trabajador':         t.nombre,
     'Días trabajados':    t.dias,
     'Salario acumulado':  parseFloat(t.salarioAcum.toFixed(2)),
+    'Salario para reparto (Art. 127 fr. II)': parseFloat((t.salarioParaReparto ?? t.salarioAcum).toFixed(2)),
     'Parte días (50%)':   parseFloat(t.pd.toFixed(2)),
     'Parte salario (50%)': parseFloat(t.ps.toFixed(2)),
     'PTU bruta':          parseFloat(t.bruto.toFixed(2)),
-    'Tope 3 meses aplicado': t.topado ? 'SÍ' : 'No',
+    'Tope 3 meses':       Number.isFinite(t.tope3m) ? parseFloat(t.tope3m.toFixed(2)) : '',
+    'Tope promedio 3 años': parseFloat((t.topeProm || 0).toFixed(2)),
+    'Tope aplicado (Art. 127 fr. VIII)': !t.topado ? 'Ninguno'
+      : t.topeUsado === 'promedio3' ? 'Promedio de 3 años' : '3 meses de salario',
     'Total PTU':          parseFloat(t.total.toFixed(2)),
     'Exento (15 UMA)':    t.exento,
     'Gravado':            t.gravado,

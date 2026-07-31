@@ -177,6 +177,140 @@ function horasSemanalesPactadas({ horaInicio, horaFin, horaDescansoInicio, horaD
   return parseFloat((((bruto - descanso) / 60) * dias).toFixed(2));
 }
 
+// ─── TIEMPO EXTRAORDINARIO (Arts. 66-68 LFT) ─────────────────────────────────
+// Jornada DIARIA máxima del art. 61 LFT, como respaldo cuando el trabajador no
+// tiene horario capturado. Se usa para convertir el salario diario a salario
+// por hora: dividir siempre entre 8 subvalúa la hora un 12.5% en jornada
+// nocturna y un 6.7% en mixta, y con ello el tiempo extraordinario.
+const JORNADA_DIARIA_MAX = { diurna: 8, nocturna: 7, mixta: 7.5 };
+
+/**
+ * Horas de la jornada ordinaria DIARIA del trabajador. Se deriva del horario
+ * realmente capturado (horasSemanalesPactadas ÷ días laborables pactados); si
+ * no hay horario, cae al máximo del art. 61 LFT según el tipo de jornada.
+ */
+function horasJornadaDiaria(trab) {
+  const semanales = horasSemanalesPactadas({
+    horaInicio:         trab?.hora_inicio,
+    horaFin:            trab?.hora_fin,
+    horaDescansoInicio: trab?.hora_descanso_inicio,
+    horaDescansoFin:    trab?.hora_descanso_fin,
+    diasSemana:         trab?.dias_semana,
+  });
+  const dias = Array.isArray(trab?.dias_semana) ? trab.dias_semana.length : 0;
+  if (semanales && dias) {
+    const h = semanales / dias;
+    if (h >= 1 && h <= 12) return parseFloat(h.toFixed(4));
+  }
+  return JORNADA_DIARIA_MAX[trab?.tipo_jornada] ?? JORNADA_DIARIA_MAX.diurna;
+}
+
+/**
+ * Fecha en 'YYYY-MM-DD' usando el calendario LOCAL.
+ *
+ * `toISOString()` convierte a UTC antes de recortar: una fecha construida como
+ * '2026-03-15T00:00:00' local sale como '2026-03-14' en cualquier zona al este
+ * de Greenwich. En México (UTC-6) no se nota, pero basta un usuario o un
+ * servidor en otra zona para que las vacaciones se registren un día antes.
+ */
+function isoLocal(d) {
+  const f = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(f.getTime())) return '';
+  return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
+
+/** Lunes (inicio de semana) de la fecha dada, en ISO 'YYYY-MM-DD'. */
+function _lunesISO(fecha) {
+  const d = new Date(String(fecha).slice(0, 10) + 'T00:00:00');
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return isoLocal(d);
+}
+
+/**
+ * Reparte el tiempo extraordinario en horas al DOBLE y horas al TRIPLE.
+ *
+ * Art. 67 LFT: las horas de jornada extraordinaria se pagan con un 100% más
+ * del salario de las horas ordinarias (doble). Art. 68, segundo párrafo: la
+ * prolongación que EXCEDA de nueve horas A LA SEMANA obliga a pagar el tiempo
+ * excedente con un 200% más (triple). Antes se aplicaba un factor plano a
+ * todas las horas y el trabajador nunca cobraba el triple.
+ *
+ * El tope de 9 h es SEMANAL, no del período de pago: por eso se reciben los
+ * registros de las semanas COMPLETAS que tocan el período y solo se cobra la
+ * parte cuya fecha cae dentro de él. Así una semana partida entre dos
+ * quincenas no reinicia el contador y regala 9 horas al doble en cada mitad.
+ *
+ * @param {Array<{fecha:string, horas_extra:number}>} registros  semanas completas
+ * @param {string} iniISO  primer día del período de pago
+ * @param {string} finISO  último día del período de pago
+ * @param {number} [topeSemanal=9]  horas al doble por semana (horasExtraMaxVigente)
+ * @returns {{dobles:number, triples:number, total:number}}
+ */
+function clasificarHorasExtraPeriodo(registros, iniISO, finISO, topeSemanal = 9) {
+  const semanas = {};
+  for (const r of (registros || [])) {
+    const h = parseFloat(r.horas_extra) || 0;
+    if (h <= 0) continue;
+    const fecha = String(r.fecha).slice(0, 10);
+    (semanas[_lunesISO(fecha)] ||= []).push({ fecha, h });
+  }
+
+  let dobles = 0, triples = 0;
+  for (const dias of Object.values(semanas)) {
+    dias.sort((a, b) => a.fecha.localeCompare(b.fecha));
+    let acumSemana = 0;
+    for (const d of dias) {
+      const cupoDoble = Math.max(0, topeSemanal - acumSemana);
+      const enDoble   = Math.min(d.h, cupoDoble);
+      const enTriple  = d.h - enDoble;
+      acumSemana += d.h;
+      if (d.fecha >= iniISO && d.fecha <= finISO) { dobles += enDoble; triples += enTriple; }
+    }
+  }
+  return {
+    dobles:  parseFloat(dobles.toFixed(2)),
+    triples: parseFloat(triples.toFixed(2)),
+    total:   parseFloat((dobles + triples).toFixed(2)),
+  };
+}
+
+// ─── DÍAS LABORABLES DEL TRABAJADOR ──────────────────────────────────────────
+// trabajadores.dias_semana guarda los días pactados por nombre.
+const _DOW_NOMBRE = {
+  domingo: 0, lunes: 1, martes: 2, miercoles: 3, miércoles: 3,
+  jueves: 4, viernes: 5, sabado: 6, sábado: 6,
+};
+
+/**
+ * Conjunto de días de la semana (0=domingo … 6=sábado) que el trabajador
+ * labora. Se usa para contar vacaciones y permisos: contar siempre lunes a
+ * viernes castiga a quien descansa martes o trabaja sábados — le consumía días
+ * de vacaciones en su día de descanso, o se los dejaba de contar.
+ * Sin `dias_semana` capturado se conserva el criterio anterior (L-V).
+ */
+function diasLaborablesDe(trab) {
+  const arr = Array.isArray(trab?.dias_semana) ? trab.dias_semana : null;
+  if (!arr || !arr.length) return new Set([1, 2, 3, 4, 5]);
+  const set = new Set();
+  for (const d of arr) {
+    const n = _DOW_NOMBRE[String(d).trim().toLowerCase()];
+    if (n !== undefined) set.add(n);
+  }
+  return set.size ? set : new Set([1, 2, 3, 4, 5]);
+}
+
+/** Cuenta los días laborables del trabajador en [ini, fin], ambos inclusive. */
+function contarDiasLaborables(ini, fin, trab) {
+  const dias = diasLaborablesDe(trab);
+  let n = 0;
+  const cur = new Date(ini);
+  while (cur <= fin) {
+    if (dias.has(cur.getDay())) n++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return n;
+}
+
 const MESES = ['enero','febrero','marzo','abril','mayo','junio',
                'julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
@@ -194,10 +328,18 @@ function fullYears(start, end) {
 
 function fracYears(start, end) { return Math.max(0, daysBetween(start, end) / 365); }
 
+/**
+ * Días de vacaciones del año de antigüedad indicado (Art. 76 LFT, reforma
+ * 2023). A partir del sexto año la tabla sube 2 días por cada 5 de servicio,
+ * y la fórmula de continuación tiene que empalmar con el último renglón:
+ * año 39 → 32 días, año 40 → 34 (no 36). La versión anterior arrancaba
+ * corrida un escalón y regalaba 2 días de más de por vida a partir del año
+ * 40, lo que además inflaba el factor de integración y el SBC.
+ */
 function vacDaysForYear(yrs, extraDias = 0) {
   if (yrs <= 0) return 12 + extraDias;
   for (const r of VACATION_TABLE) if (yrs >= r.from && yrs <= r.to) return r.days + extraDias;
-  return 30 + (Math.floor((yrs - 30) / 5) + 1) * 2 + extraDias;
+  return 20 + Math.floor((yrs - 5) / 5) * 2 + extraDias;
 }
 
 /**
@@ -220,11 +362,36 @@ function propVacDays(start, end, extraDias = 0) {
  * Días trabajados dentro del año calendario de la fecha de baja.
  * Si el trabajador ingresó este año, cuenta desde su ingreso;
  * si ya venía del año anterior, cuenta desde el 1 de enero.
+ *
+ * Cuenta AMBOS EXTREMOS: un ejercicio completo son 365 días, no 364.
+ * daysBetween() mide la diferencia entre dos fechas, no los días laborados,
+ * y usarlo tal cual hacía que un año entero devengara 364/365 × 15 = 14.9589
+ * días de aguinaldo — el Art. 87 LFT exige 15.
  */
 function diasEnAnoCalendario(startDate, endDate) {
   const inicioAno = new Date(endDate.getFullYear(), 0, 1);
   const fechaBase = startDate > inicioAno ? startDate : inicioAno;
-  return Math.max(0, daysBetween(fechaBase, endDate));
+  if (endDate < fechaBase) return 0;
+  return daysBetween(fechaBase, endDate) + 1;
+}
+
+/**
+ * Días devengados de aguinaldo dentro del año calendario de la baja
+ * (Art. 87 LFT).
+ *
+ * Cuando la baja ocurre en diciembre el aguinaldo cubre hasta el 31 de
+ * diciembre, porque para entonces ya se pagó (o se debe pagar) el del
+ * ejercicio completo. Pero eso NO significa 365 días para todos: quien
+ * ingresó en noviembre devenga desde su ingreso. Fijar 365 en diciembre le
+ * pagaba 15 días completos a quien llevaba mes y medio en la empresa.
+ *
+ * El tope de 365 evita que un año bisiesto devengue más de los días
+ * configurados (el divisor de la fórmula es 365 fijo).
+ */
+function diasAguinaldoDevengados(startDate, endDate) {
+  const esDiciembre = endDate.getMonth() === 11;
+  const hasta = esDiciembre ? new Date(endDate.getFullYear(), 11, 31) : endDate;
+  return Math.min(365, diasEnAnoCalendario(startDate, hasta));
 }
 
 function calcSDI(daily, vacDays, primaPct, agDays) {
@@ -417,6 +584,12 @@ function prestacionesEmpresa(emp) {
     primaVacPct:   Math.max(PRIMA_VAC_PCT, num(e.prima_vacacional_pct, PRIMA_VAC_PCT)),
     primaDomPct:   Math.max(0.25, num(e.prima_dominical_pct, 0.25)),   // Art. 71 LFT
     factorHE:      Math.max(2, num(e.factor_horas_extra, 2)),          // Art. 67-68 LFT
+    // Los 3 primeros días de enfermedad general no los cubre el IMSS (el
+    // subsidio del Art. 96 LSS empieza el 4º) ni los obliga la LFT: la
+    // relación está suspendida (Art. 42 fr. II). Es una prestación de la
+    // empresa. Default true para no recortar en silencio lo que ya se venía
+    // pagando; se apaga en Mi Empresa si solo se cubre el mínimo de ley.
+    pagaPrimeros3DiasIncap: e.paga_primeros_3_dias_incap !== false,
     fondoAhorro: {
       activo:        !!e.fondo_ahorro_empresa_activo,
       pctTrabajador: num(e.fondo_ahorro_pct_trabajador, 0.13),
@@ -484,12 +657,23 @@ function calcularPrimaDominical(salarioDiario, domingosTrabajados, pct = 0.25) {
  * @param {number} diasPeriodo
  * @param {number} smgDiario      Salario mínimo vigente (config_valores)
  * @param {number} umaDiaria      UMA vigente (config_valores) — modalidad 'vsm'
+ * @param {number} [retencionesPrevias=0]  ISR + cuota obrera del IMSS del
+ *        periodo. El piso del salario mínimo se mide sobre el neto, no sobre
+ *        el bruto: sin esto, retenciones + descuentos podían dejar al
+ *        trabajador por debajo del mínimo pese al tope.
  * @returns {{ aplicados: Array, totalDescontado: number }}
  */
-function calcularDescuentosPeriodo(descuentos, salarioPeriodo, diasPeriodo, smgDiario, umaDiaria) {
+function calcularDescuentosPeriodo(descuentos, salarioPeriodo, diasPeriodo, smgDiario, umaDiaria, retencionesPrevias = 0) {
   const smgPeriodo    = smgDiario * diasPeriodo;
-  let disponibleTotal = salarioPeriodo - smgPeriodo;      // nunca dejar el neto bajo el SMG (salvo pensión)
-  let disponibleTope110 = Math.max(0, disponibleTotal * 0.30); // Art. 110 fr. I — préstamos de la empresa
+  // El piso del salario mínimo se mide sobre lo que el trabajador REALMENTE va
+  // a cobrar, así que hay que descontar antes el ISR y la cuota obrera del
+  // IMSS. Midiéndolo sobre el bruto, la suma de retenciones más descuentos
+  // podía dejar el neto por debajo del mínimo aunque la función jurara que no.
+  const netoAntesDescuentos = salarioPeriodo - (parseFloat(retencionesPrevias) || 0);
+  let disponibleTotal = netoAntesDescuentos - smgPeriodo;
+  // El tope del Art. 110 fr. I sí se mide sobre el excedente del SALARIO
+  // respecto del mínimo, que es lo que dice la fracción.
+  let disponibleTope110 = Math.max(0, (salarioPeriodo - smgPeriodo) * 0.30);
 
   const ordenados = [...(descuentos || [])].sort((a, b) => (a.prioridad ?? 100) - (b.prioridad ?? 100));
   const aplicados = [];
@@ -631,6 +815,178 @@ function desglosarPrestacion(prestacion, salarioDiario, umaDiaria) {
   };
 }
 
+// ─── INCAPACIDADES Y LICENCIAS (Art. 42 LFT, Arts. 58, 96 y 101 LSS) ─────────
+/**
+ * Clasifica los días de incapacidad/licencia que caen en un período de nómina
+ * según QUIÉN los paga. Antes cada tipo se trataba igual y con dos fundamentos
+ * equivocados:
+ *
+ *  · RIESGO DE TRABAJO — el IMSS paga el 100% del salario desde el PRIMER día
+ *    (Art. 58 fr. I LSS). El patrón no cubre nada; pagarle los tres primeros
+ *    días era pagar dos veces lo mismo.
+ *  · ENFERMEDAD GENERAL y RECAÍDA — el subsidio del IMSS es del 60% y empieza
+ *    el CUARTO día (Art. 96 LSS). Los tres primeros no los cubre nadie por
+ *    ley: la relación está suspendida (Art. 42 fr. II LFT) y no hay obligación
+ *    de pagar salario. Muchas empresas los cubren como prestación, así que es
+ *    configurable; el Art. 42 LFT que se citaba antes no obliga a ese pago.
+ *  · MATERNIDAD — el IMSS paga el 100% durante 84 días (Art. 101 LSS).
+ *  · PATERNIDAD — NO es una incapacidad del IMSS y el Seguro Social no paga
+ *    nada. Son cinco días laborables de permiso CON GOCE a cargo del patrón
+ *    (Art. 132 fr. XXVII Bis LFT). Tratarlos como incapacidad descontaba esos
+ *    días del salario sin que nadie los repusiera: el trabajador los perdía.
+ *
+ * @param {Array}   incapacidades  filas con { tipo, fecha_inicio, fecha_fin }
+ * @param {Date}    dIni           primer día del período
+ * @param {Date}    dFin           último día del período
+ * @param {boolean} [pagaPrimeros3=true]  ¿la empresa cubre los 3 primeros días
+ *                                        de enfermedad general / recaída?
+ * @returns {{diasSuspendidos:number, diasACargoPatron:number,
+ *            diasPaternidad:number, detalle:Array}}
+ */
+function clasificarIncapacidadPeriodo(incapacidades, dIni, dFin, pagaPrimeros3 = true) {
+  const DIA = 86400000;
+  const dias = (a, b) => (b >= a ? Math.round((b - a) / DIA) + 1 : 0);
+
+  let diasSuspendidos = 0, diasACargoPatron = 0, diasPaternidad = 0;
+  const detalle = [];
+
+  for (const inc of (incapacidades || [])) {
+    const ini = new Date(String(inc.fecha_inicio).slice(0, 10) + 'T00:00:00');
+    const fin = new Date(String(inc.fecha_fin   || inc.fecha_inicio).slice(0, 10) + 'T00:00:00');
+    if (isNaN(ini) || isNaN(fin)) continue;
+
+    const desde = new Date(Math.max(dIni, ini));
+    const hasta = new Date(Math.min(dFin, fin));
+    const enPeriodo = dias(desde, hasta);
+    if (enPeriodo <= 0) continue;
+
+    if (inc.tipo === 'paternidad') {
+      // Permiso con goce: no sale del salario. Tope de 5 días laborables
+      // (Art. 132 fr. XXVII Bis LFT) contados sobre toda la licencia.
+      const totales = Math.min(5, dias(ini, fin));
+      const previos = Math.max(0, dias(ini, new Date(desde.getTime() - DIA)));
+      const cuentan = Math.max(0, Math.min(enPeriodo, totales - previos));
+      diasPaternidad += cuentan;
+      detalle.push({ tipo: inc.tipo, dias: cuentan, paga: 'patrón (permiso con goce)' });
+      continue;
+    }
+
+    // El resto suspende la relación: esos días no los cubre el salario.
+    diasSuspendidos += enPeriodo;
+
+    if (['enfermedad_general', 'recaida'].includes(inc.tipo) && pagaPrimeros3) {
+      const tercerDia = new Date(ini); tercerDia.setDate(ini.getDate() + 2);
+      const finTres   = new Date(Math.min(hasta, tercerDia));
+      const tres      = dias(desde, finTres);
+      diasACargoPatron += tres;
+      detalle.push({ tipo: inc.tipo, dias: enPeriodo, aCargoPatron: tres, paga: 'IMSS 60% desde el 4º día' });
+    } else {
+      detalle.push({
+        tipo: inc.tipo, dias: enPeriodo, aCargoPatron: 0,
+        paga: inc.tipo === 'riesgo_trabajo' ? 'IMSS 100% desde el 1er día'
+            : inc.tipo === 'maternidad'     ? 'IMSS 100% (84 días)'
+            : 'IMSS 60% desde el 4º día',
+      });
+    }
+  }
+
+  return { diasSuspendidos, diasACargoPatron, diasPaternidad, detalle };
+}
+
+// ─── EXENCIONES DE ISR EN NÓMINA ORDINARIA (Art. 93 LISR) ────────────────────
+/**
+ * Parte EXENTA de las percepciones de un período de nómina ordinaria.
+ *
+ * Antes el ISR se retenía sobre el total de percepciones: se gravaban íntegros
+ * los vales de despensa, el tiempo extraordinario, la prima dominical y la
+ * prima vacacional, todos con exención expresa en el Art. 93 LISR. El desglose
+ * fiscal de las prestaciones sí se calculaba, pero después de retener y sin
+ * entrar nunca a la base.
+ *
+ * Conceptos y fundamento:
+ *  · Tiempo extraordinario dentro del límite legal (Art. 93 fr. I): exento al
+ *    100% para quien percibe el salario mínimo; para los demás, el 50% sin
+ *    exceder 5 SMG por cada semana de servicios. Las horas al TRIPLE quedan
+ *    fuera: por definición exceden el límite del Art. 68 LFT y se gravan
+ *    íntegras.
+ *  · Día de descanso obligatorio trabajado (misma fracción I): mismo trato.
+ *  · Prima dominical (Art. 93 fr. XIV): exenta hasta 1 UMA por cada domingo.
+ *  · Prima vacacional (Art. 93 fr. XIV): exenta hasta 15 UMA al AÑO.
+ *  · Previsión social —vales, premios, ayudas— (Art. 93 fr. VIII y IX): lo que
+ *    ya resolvió desglosarPrestacion() para cada prestación.
+ *
+ * LIMITACIÓN CONOCIDA: el tope de la prima vacacional es anual y aquí se
+ * aplica por período, sin acumulado del ejercicio. Si un trabajador parte sus
+ * vacaciones en varios períodos de pago puede quedar exento de más; el ajuste
+ * anual del Art. 97 (ajuste_anual.js) lo corrige al cierre. Documentarlo es
+ * preferible a gravar todo, que era el error anterior y es el más caro.
+ *
+ * @param {Object} c
+ * @param {number} [c.montoHEDoble=0]    Importe de las horas extra al doble
+ * @param {number} [c.montoHETriple=0]   Importe de las horas extra al triple
+ * @param {number} [c.primaDominical=0]
+ * @param {number} [c.domingosTrabajados=0]
+ * @param {number} [c.primaFestivo=0]    Pago adicional por festivo trabajado
+ * @param {number} [c.primaVacacional=0]
+ * @param {number} [c.previsionSocialExenta=0]  Suma de exentoISR de desglosarPrestacion()
+ * @param {number} [c.diasPeriodo=15]
+ * @param {number} [c.salarioDiario=0]
+ * @param {number} uma   UMA diaria vigente
+ * @param {number} smg   Salario mínimo diario de la zona del trabajador
+ * @returns {{exentoTotal:number, detalle:Object}}
+ */
+function desglosarExencionesNomina(c, uma, smg) {
+  const n = (v) => Math.max(0, parseFloat(v) || 0);
+  const dias    = n(c.diasPeriodo) || 15;
+  const semanas = Math.max(1, dias / 7);
+  // Tolerancia de un centavo: un salario diario capturado a mano rara vez
+  // coincide al céntimo con el mínimo publicado.
+  const esSalarioMinimo = n(c.salarioDiario) > 0 && n(c.salarioDiario) <= smg + 0.01;
+
+  // Art. 93 fr. I — tiempo extra y descanso obligatorio trabajado
+  const baseFrI  = n(c.montoHEDoble) + n(c.primaFestivo);
+  const topeFrI  = 5 * smg * semanas;
+  const tiempoExtra = esSalarioMinimo
+    ? baseFrI
+    : Math.min(baseFrI * 0.50, topeFrI);
+
+  // Art. 93 fr. XIV — prima dominical (1 UMA por domingo) y prima vacacional
+  const primaDominical  = Math.min(n(c.primaDominical), uma * n(c.domingosTrabajados));
+  const primaVacacional = Math.min(n(c.primaVacacional), 15 * uma);
+
+  const previsionSocial = n(c.previsionSocialExenta);
+
+  const detalle = {
+    tiempoExtra:     parseFloat(tiempoExtra.toFixed(2)),
+    primaDominical:  parseFloat(primaDominical.toFixed(2)),
+    primaVacacional: parseFloat(primaVacacional.toFixed(2)),
+    previsionSocial: parseFloat(previsionSocial.toFixed(2)),
+  };
+  const exentoTotal = parseFloat(
+    Object.values(detalle).reduce((a, v) => a + v, 0).toFixed(2)
+  );
+  return { exentoTotal, detalle };
+}
+
+/**
+ * Salario diario que efectivamente se usó en un recibo ya guardado.
+ *
+ * Los recibos imprimían "N días × salario diario" recalculando el salario
+ * ACTUAL del trabajador: si hubo aumento después de cerrar el período, el
+ * renglón dejaba de multiplicar al salario_base guardado y el recibo no
+ * cuadraba. Se deriva del propio recibo y solo se cae al salario vigente si
+ * el recibo no trae días (recibos de aguinaldo, por ejemplo).
+ *
+ * @param {Object} recibo         fila de recibos_nomina
+ * @param {number} fallbackDiario salario diario vigente, como respaldo
+ */
+function salarioDiarioDelRecibo(recibo, fallbackDiario) {
+  const base = parseFloat(recibo?.salario_base) || 0;
+  const dias = parseFloat(recibo?.dias_laborados) || 0;
+  if (base > 0 && dias > 0) return parseFloat((base / dias).toFixed(2));
+  return parseFloat(fallbackDiario) || 0;
+}
+
 function formatDateLong(d) {
   // Acepta Date, '2025-03-15' o '2025-03-15T00:00:00' sin duplicar el sufijo
   let date;
@@ -710,9 +1066,7 @@ function calcLiquidacion(p) {
   const pv  = vac * prest.primaVacPct;
 
   // Aguinaldo: año calendario actual; si es diciembre y ya fue pagado → $0
-  const esDiciembre = p.endDate.getMonth() === 11;
-  const diasAg = p.aguinaldoPagado ? 0
-    : (esDiciembre ? 365 : diasEnAnoCalendario(p.startDate, p.endDate));
+  const diasAg = p.aguinaldoPagado ? 0 : diasAguinaldoDevengados(p.startDate, p.endDate);
   const ag = prest.aguinaldoDias * (diasAg / 365) * sdi;
 
   const ic            = INDEM_CONST_DAYS  * sdi;
@@ -817,9 +1171,7 @@ function calcFiniquito(p) {
   const pv  = vac * prest.primaVacPct;
 
   // Aguinaldo: año calendario actual; si es diciembre y ya fue pagado → $0
-  const esDiciembre = p.endDate.getMonth() === 11;
-  const diasAg = p.aguinaldoPagado ? 0
-    : (esDiciembre ? 365 : diasEnAnoCalendario(p.startDate, p.endDate));
+  const diasAg = p.aguinaldoPagado ? 0 : diasAguinaldoDevengados(p.startDate, p.endDate);
   const ag = prest.aguinaldoDias * (diasAg / 365) * sdi;
 
   const pa = hasAntig ? PRIMA_ANTIG_DAYS * frac * sdiCap : 0;
@@ -1021,6 +1373,26 @@ function calcularSBC(trabajador, montoVariableIntegrable = 0, prest) {
 }
 
 // ─── NÚMERO A PALABRAS ────────────────────────────────────────────────────────
+/**
+ * Importe en letra con centavos, en el formato usual de los documentos de pago:
+ * "MIL DOSCIENTOS CINCUENTA PESOS 50/100 M.N.".
+ *
+ * numToWords() trunca los centavos, así que un recibo por $12,450.75 se leía
+ * "DOCE MIL CUATROCIENTOS CINCUENTA PESOS M.N." — la letra no coincidía con la
+ * cifra, que es justo lo que la letra sirve para evitar en un documento que se
+ * firma y se puede exhibir en juicio.
+ *
+ * Redondear a centavos ANTES de partir evita que el error de punto flotante
+ * convierta 99.995 en un "100/100" de tres dígitos.
+ */
+function montoEnLetras(monto) {
+  const redondeado = Math.round((parseFloat(monto) || 0) * 100) / 100;
+  let entero    = Math.floor(redondeado + 1e-9);
+  let centavos  = Math.round((redondeado - entero) * 100);
+  if (centavos === 100) { entero += 1; centavos = 0; }
+  return `${numToWords(entero)} PESOS ${String(centavos).padStart(2, '0')}/100 M.N.`;
+}
+
 function numToWords(num) {
   const n = Math.floor(num);
   if (n === 0) return 'CERO';

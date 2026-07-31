@@ -185,7 +185,21 @@ async function renderEmpresa() {
           <label class="form-label" for="presta-factor-he">Factor de pago de horas extra</label>
           <input id="presta-factor-he" type="number" class="form-input" min="2" max="4" step="0.1"
             value="${e.factor_horas_extra ?? 2}" style="max-width:140px;" />
-          <div class="helper-text">2.0 = doble, mínimo de ley (Art. 67 LFT). Se aplica sobre el salario por hora (jornada de 8 hrs) a las horas extra capturadas en Asistencia.</div>
+          <div class="helper-text">2.0 = doble, mínimo de ley (Art. 67 LFT). Se aplica sobre el salario por hora, calculado con la jornada capturada en cada trabajador. Las horas que excedan el tope semanal se pagan al triple automáticamente (Art. 68 LFT).</div>
+        </div>
+
+        <div class="form-group span-2">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;">
+            <input type="checkbox" id="presta-incap-3dias" style="width:16px;height:16px;accent-color:var(--gold-primary);"
+              ${e.paga_primeros_3_dias_incap !== false ? 'checked' : ''} />
+            <span><strong>Cubrir los 3 primeros días de incapacidad por enfermedad general</strong></span>
+          </label>
+          <div class="helper-text" style="margin-top:6px;">
+            El IMSS empieza a pagar el subsidio hasta el 4° día (Art. 96 LSS) y la LFT no obliga a cubrir los
+            anteriores: durante la incapacidad la relación queda suspendida (Art. 42 fr. II LFT). Es una prestación
+            de la empresa. Desactívalo si solo cubres el mínimo de ley.
+            No aplica a riesgo de trabajo ni a maternidad, que el IMSS paga al 100% desde el primer día.
+          </div>
         </div>
 
         <div class="form-group span-2" style="border-top:1px solid var(--border);padding-top:14px;">
@@ -789,6 +803,7 @@ async function handleGuardarPrestaciones() {
   const valesOn    = eid('presta-vales-activo')?.checked || false;
   const valesTipo  = eid('presta-vales-tipo')?.value === 'pct' ? 'pct' : 'monto';
   const valesValor = parseFloat(eid('presta-vales-valor')?.value) || 0;
+  const incap3     = eid('presta-incap-3dias')?.checked ?? true;
 
   const fail = (t) => { msg.textContent = t; msg.className = 'error-msg'; msg.style.display = ''; };
   if (!Number.isFinite(aguinaldo) || aguinaldo < 15) return fail('El aguinaldo no puede ser menor a 15 días (mínimo Art. 87 LFT).');
@@ -812,6 +827,7 @@ async function handleGuardarPrestaciones() {
     vales_despensa_activo:       valesOn,
     vales_despensa_tipo:         valesTipo,
     vales_despensa_valor:        valesTipo === 'pct' ? valesValor / 100 : valesValor,
+    paga_primeros_3_dias_incap:  incap3,
     festivos_adicionales:        _festivosTmp,
   };
 
@@ -821,7 +837,17 @@ async function handleGuardarPrestaciones() {
     msg.textContent = 'Prestaciones guardadas. Aplican a nóminas generadas o recalculadas a partir de ahora.';
     msg.className = 'alert alert-success'; msg.style.display = '';
   } catch(e) {
-    if (/column|does not exist|schema cache/i.test(e.message || '')) {
+    if (/paga_primeros_3_dias_incap/i.test(e.message || '')) {
+      // Reintentar sin la columna de la migración 50: el resto de las
+      // prestaciones sí se guarda, y la nómina asume el default (sí cubrirlos).
+      try {
+        const { paga_primeros_3_dias_incap, ...sin50 } = datos;
+        await actualizarEmpresa(CTX.empresa.id, sin50);
+        CTX.empresa = { ...CTX.empresa, ...sin50 };
+        msg.textContent = 'Prestaciones guardadas, salvo la cobertura de los 3 primeros días de incapacidad: falta aplicar la migración 50_migration_incapacidades_y_licencias.sql en Supabase.';
+        msg.className = 'alert alert-warn'; msg.style.display = '';
+      } catch(e2) { fail(friendlyError(e2)); }
+    } else if (/column|does not exist|schema cache/i.test(e.message || '')) {
       fail('Falta aplicar la migración 14_migration_prestaciones.sql en Supabase (SQL Editor).');
     } else {
       fail(friendlyError(e));

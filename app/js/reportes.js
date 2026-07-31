@@ -489,7 +489,14 @@ function _calcularFilasSUA() {
   const _umaRep   = _umaVigente();
   return _REP.trabajadores.filter(t => t.estado === 'activo').map(t => {
     const sd  = calcSalarioDiario(t.salario_mensual, t.periodo_salario || 'mensual');
-    const sdi = calcSDI ? calcSDI(sd, vacDaysForYear(0, _prestRep.vacDiasExtra), _prestRep.primaVacPct, _prestRep.aguinaldoDias) : sd * 1.045;
+    // SDI con los días de vacaciones que REALMENTE corresponden a la antigüedad
+    // de cada trabajador. Antes se usaba vacDaysForYear(0) —12 días, año cero—
+    // para toda la plantilla, así que el listado que se entrega al contador
+    // subvaluaba el SDI de cualquiera con más de un año. calcularFactorIntegracion()
+    // es el mismo criterio que usa calcularSBC() en la nómina.
+    const sdi = typeof calcularFactorIntegracion === 'function'
+      ? parseFloat((sd * calcularFactorIntegracion(t, _prestRep)).toFixed(2))
+      : calcSDI(sd, vacDaysForYear(1, _prestRep.vacDiasExtra), _prestRep.primaVacPct, _prestRep.aguinaldoDias);
     // Base de cotización: SBC del trabajador si existe, si no el SDI estimado
     const sbc = parseFloat(t.sbc) > 0 ? parseFloat(t.sbc) : sdi;
     // IMSS obrero mensual (30 días) por ramos sobre SBC, consistente con la nómina
@@ -554,7 +561,10 @@ function _textoSUAcsv(filas) {
   const rows = filas.map(t => [
     _csvSafe(t.nss||''), _csvSafe(t.rfc||''), _csvSafe(t.nombre||''),
     t.sd.toFixed(2),
-    (t.sdi ?? t.sd * 1.045).toFixed(2),
+    // Sin respaldo con factor fijo: t.sdi ya viene del factor de integración
+    // real de cada trabajador (ver _calcularFilasSUA). El 1.045 que había aquí
+    // era un tercer criterio de SDI, distinto del de la tabla y del de nómina.
+    t.sdi.toFixed(2),
     t.imssOb.toFixed(2),
     t.immsPat.toFixed(2),
   ].join('|')).join('\n');
@@ -830,12 +840,20 @@ async function _repGenAntiguedades() {
     let proximo = new Date(hoy.getFullYear(), ingreso.getMonth(), ingreso.getDate());
     if (proximo < hoy) proximo = new Date(hoy.getFullYear() + 1, ingreso.getMonth(), ingreso.getDate());
     const diasParaAniversario = Math.round((proximo - hoy) / 86400000);
+    // Prima de antigüedad proyectada (Art. 162 LFT). Debe dar lo mismo que el
+    // módulo de bajas: se topa el SDI —no el salario diario— a 2 SMG, y los
+    // años van con fracción, igual que calcFiniquito(). Antes este reporte
+    // topaba el salario diario y usaba años enteros, así que el mismo
+    // trabajador arrojaba dos cifras distintas según la pantalla.
     let primaAntig = 0;
     if (anios >= 15) {
-      const daily = calcSalarioDiario(parseFloat(t.salario_mensual) || 0, t.periodo_salario || 'mensual');
-      const smg = _smgVigente(t.smg_zone);
-      const sdiCap = Math.min(daily, 2 * smg);
-      primaAntig = parseFloat((anios * PRIMA_ANTIG_DAYS * sdiCap).toFixed(2));
+      const prest  = prestacionesEmpresa();
+      const daily  = calcSalarioDiario(parseFloat(t.salario_mensual) || 0, t.periodo_salario || 'mensual');
+      const smg    = _smgVigente(t.smg_zone);
+      const sdi    = calcSDI(daily, vacDaysForYear(anios + 1, prest.vacDiasExtra), prest.primaVacPct, prest.aguinaldoDias);
+      const sdiCap = Math.min(sdi, 2 * smg);
+      const frac   = Math.max(0, (hoy - ingreso) / 86400000 / 365);
+      primaAntig = parseFloat((frac * PRIMA_ANTIG_DAYS * sdiCap).toFixed(2));
     }
     return { nombre: t.nombre, fecha_ingreso: t.fecha_ingreso, anios, proximo, diasParaAniversario, cumplira: anios + 1, primaAntig };
   }).sort((a,b) => a.diasParaAniversario - b.diasParaAniversario);

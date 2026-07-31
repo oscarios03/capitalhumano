@@ -34,10 +34,11 @@ async function renderAguinaldo() {
 
     const rows = (trabajadores || []).map(t => {
       const ingreso      = new Date(t.fecha_ingreso + 'T00:00:00');
-      const inicioAnio   = new Date(anioActual, 0, 1);
       const finAnio      = new Date(anioActual, 11, 31);
-      const inicio       = ingreso > inicioAnio ? ingreso : inicioAnio;
-      const diasTrab     = diasEnAnoCalendario ? diasEnAnoCalendario(inicio, finAnio) : 365;
+      // diasAguinaldoDevengados() cuenta ambos extremos y topa a 365: un
+      // ejercicio completo son 15 días de aguinaldo exactos (Art. 87 LFT),
+      // no 14.9589 como salía al medir la diferencia entre 1-ene y 31-dic.
+      const diasTrab     = diasAguinaldoDevengados(ingreso, finAnio);
       const diasAguinaldo = parseFloat(((diasTrab / 365) * diasAgEmpresa).toFixed(4));
       const sd           = calcSalarioDiario(t.salario_mensual, t.periodo_salario || 'mensual');
       const monto        = sd * diasAguinaldo;

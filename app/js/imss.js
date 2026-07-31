@@ -349,6 +349,14 @@ function _bimestreAnterior(hoy) {
 // que excede los límites del Art. 66 LFT (9 h/sem); como eso depende del detalle
 // semanal se reportan aparte y NO se integran automáticamente aquí — verificar.
 function _percVariablesIntegraSBC(r) {
+  // Excedentes de previsión social que SÍ integran: vales por encima del 40%
+  // de la UMA diaria (Art. 27 fr. VI LSS) y premios de puntualidad/asistencia
+  // por encima del 10% del SBC (fr. VII). desglosarPrestacion() ya calcula el
+  // excedente de cada prestación en `integraSBC` y lo guarda en el recibo;
+  // omitirlo dejaba fuera del SBC una parte que la ley sí integra.
+  const excedentes = (Array.isArray(r.prestaciones_detalle) ? r.prestaciones_detalle : [])
+    .reduce((s, p) => s + (parseFloat(p.integraSBC) || 0), 0);
+
   return parseFloat((
       parseFloat(r.comisiones_ventas || 0)
     + parseFloat(r.comisiones_recuperacion || 0)
@@ -356,6 +364,7 @@ function _percVariablesIntegraSBC(r) {
     + parseFloat(r.prima_dominical || 0)
     + parseFloat(r.prima_festivo || 0)
     + parseFloat(r.bonos || 0)
+    + excedentes
   ).toFixed(2));
 }
 

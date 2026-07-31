@@ -8,6 +8,51 @@ function _labelPrestacion(tipo) {
     ayuda_transporte:'Ayuda de transporte', otro:'Otra prestación' }[tipo] || tipo;
 }
 
+/**
+ * Leyenda del renglón de la cuota obrera del IMSS.
+ *
+ * Decía "2.25% s/ base — Art. 25 LSS", y ninguna de las dos cosas reproducía el
+ * importe: la cuota obrera son CINCO ramos sobre el SBC (0.25% + 0.375% +
+ * 0.625% + 1.125%, más 0.40% sobre el excedente de 3 UMA), lo que da entre
+ * 2.375% y 2.71% según el salario; y el Art. 25 LSS solo cubre uno de los cinco
+ * (gastos médicos de pensionados). Un recibo tiene que dejar al trabajador
+ * verificar la cifra (Arts. 82, 88 y 132 fr. VII LFT).
+ */
+function _detalleIMSSObrero(recibo) {
+  const dias = Math.max(0, (parseInt(recibo.dias_laborados) || 0)
+    - (parseInt(recibo.dias_falta) || 0)
+    - (parseInt(recibo.dias_falta_justif) || 0)
+    - (parseInt(recibo.dias_permiso_sin) || 0));
+  const base = dias > 0 ? ` · ${dias} días cotizados` : '';
+  return `2.375% del SBC + 0.40% del excedente de 3 UMA${base}  Arts. 25, 106, 107, 147 y 168 LSS`;
+}
+
+/**
+ * Leyenda de los vales de despensa. El Art. 27 LISR que se citaba regula la
+ * DEDUCCIÓN del patrón, no la exención del trabajador: para él son previsión
+ * social (Art. 93 fr. VIII LISR) y ante el IMSS no integran al SBC hasta el
+ * 40% de la UMA diaria (Art. 27 fr. VI LSS).
+ */
+function _detalleVales(recibo) {
+  const ex = parseFloat(recibo.percepciones_exentas || 0) > 0 && recibo.exenciones_detalle
+    ? parseFloat(recibo.exenciones_detalle.previsionSocial || 0) : 0;
+  const detalle = ex > 0 ? `Exento ${fmt(ex)} · ` : '';
+  return `${detalle}Art. 93 fr. VIII LISR y Art. 27 fr. VI LSS`;
+}
+
+/**
+ * Leyenda del renglón de horas extra en el recibo. Desglosa dobles y triples
+ * cuando existe el dato (migración 49): el trabajador tiene que poder
+ * reproducir el importe, y "12 hrs" no explica por qué se pagó lo que se pagó.
+ */
+function _detalleHorasExtra(recibo) {
+  const dbl = parseFloat(recibo.horas_extra_dobles  || 0);
+  const tpl = parseFloat(recibo.horas_extra_triples || 0);
+  if (tpl > 0) return `${dbl} hrs al doble + ${tpl} hrs al triple  Arts. 67 y 68 LFT`;
+  if (dbl > 0) return `${dbl} hrs al doble  Art. 67 LFT`;
+  return `${recibo.horas_extra} hrs  Arts. 67-68 LFT`;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  TABLAS ISR 2026 — Art. 96 LISR / Anexo 8 RMF (DOF 28/12/2025)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -85,6 +130,22 @@ function _subsidioEmpleoPeriodo(basePeriodo, factorMes) {
 }
 
 /**
+ * Tramo de una tarifa de ISR para una base dada.
+ *
+ * El fallback anterior era `|| tabla[tabla.length - 1]`: si la base no caía en
+ * ningún renglón, aplicaba el tramo del 35% y la cuota fija de ese tramo, lo
+ * que para una base pequeña da un ISR NEGATIVO enorme. Solo es alcanzable con
+ * bases menores a $0.01 o si una tarifa futura se captura con un hueco de
+ * redondeo, pero el tramo correcto siempre es el último cuyo límite inferior
+ * no rebasa la base.
+ */
+function _tramoISR(tabla, base) {
+  let tramo = tabla[0];
+  for (const b of tabla) { if (base >= b.limInf) tramo = b; else break; }
+  return tramo;
+}
+
+/**
  * Calcula ISR retenido y subsidio al empleo para un salario y período,
  * aplicando la tarifa de la periodicidad correspondiente.
  * `subsidio` es el efectivamente ACREDITADO (topado al ISR del período).
@@ -99,7 +160,7 @@ function calcISR(salarioPeriodo, periodo) {
   const base = salarioPeriodo;
   if (base <= 0) return { isr: 0, subsidio: 0, isrNeto: 0 };
 
-  const bracket  = tabla.find(b => base >= b.limInf && base <= b.limSup) || tabla[tabla.length - 1];
+  const bracket  = _tramoISR(tabla, base);
   const isrBruto = bracket.cuota + (base - bracket.limInf) * bracket.pct;
   const subsidio = Math.min(isrBruto, _subsidioEmpleoPeriodo(base, factorMes));
   const isrNeto  = Math.max(0, isrBruto - subsidio);
@@ -114,8 +175,7 @@ function calcISR(salarioPeriodo, periodo) {
 /** ISR mensual bruto (tarifa Art. 96 LISR), sin subsidio. Auxiliar del Art. 174 RLISR. */
 function _isrMensualBruto(baseMensual) {
   if (!(baseMensual > 0)) return 0;
-  const b = ISR_MENSUAL_2026.find(x => baseMensual >= x.limInf && baseMensual <= x.limSup)
-            || ISR_MENSUAL_2026[ISR_MENSUAL_2026.length - 1];
+  const b = _tramoISR(ISR_MENSUAL_2026, baseMensual);
   return b.cuota + (baseMensual - b.limInf) * b.pct;
 }
 
@@ -315,8 +375,15 @@ async function renderNominaModulo() {
   const main = document.getElementById('main-view');
   main.innerHTML = `<div class="loading"><div class="spinner"></div> Cargando nómina…</div>`;
   try {
+    // Se traen los activos MÁS los dados de baja en el último año: a quien se
+    // va a media quincena todavía hay que pagarle los días que trabajó, y
+    // filtrando por estado='activo' su último recibo nunca se generaba.
+    // generarNominaPeriodo() decide después quién traslapa con el período.
+    // Las vistas que sí necesitan solo altas vigentes ya filtran por estado.
+    const haceUnAnio = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
     const [trabs, sucs, periodos] = await Promise.all([
-      _sbN().from('trabajadores').select('*').eq('empresa_id', CTX.empresa.id).eq('estado','activo').order('nombre'),
+      _sbN().from('trabajadores').select('*').eq('empresa_id', CTX.empresa.id)
+        .or(`estado.eq.activo,and(estado.eq.baja,fecha_baja.gte.${haceUnAnio})`).order('nombre'),
       _sbN().from('sucursales').select('id,nombre').eq('empresa_id', CTX.empresa.id).eq('activa', true).order('nombre'),
       _sbN().from('periodos_nomina').select('*').eq('empresa_id', CTX.empresa.id).order('fecha_inicio', { ascending:false }),
     ]);
@@ -541,7 +608,7 @@ async function guardarSalarioReconciliacion(id) {
 // ── Modal: Nuevo Período ─────────────────────────────────────────────────────
 function _detectarTipoPeriodoDominante() {
   const conteo = { semanal: 0, quincenal: 0, mensual: 0 };
-  (_N.trabajadores || []).forEach(t => {
+  (_N.trabajadores || []).filter(t => t.estado === 'activo').forEach(t => {
     const p = t.periodo_salario || 'mensual';
     if (conteo[p] !== undefined) conteo[p]++;
   });
@@ -1224,10 +1291,14 @@ async function editarReciboInline(reciboId) {
   if (!r) return;
   const t     = r.trabajadores || {};
   const daily = calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual');
-  // Tarifa default: salario por hora (jornada de 8 hrs) × factor de la empresa (Art. 67-68 LFT)
+  // Tarifa default: salario por hora × factor de la empresa (Art. 67 LFT). La
+  // hora sale de la jornada REALMENTE pactada, no de un 8 fijo (una jornada
+  // nocturna es de 7 h y la hora vale 12.5% más). r.trabajadores no trae el
+  // horario, por eso se busca la ficha completa en _N.trabajadores.
+  const _tFicha  = (_N.trabajadores || []).find(x => x.id === r.trabajador_id) || t;
   const tarifaHE = parseFloat(r.horas_extra || 0) > 0
     ? (parseFloat(r.monto_horas_extra || 0) / parseFloat(r.horas_extra)).toFixed(2)
-    : ((daily / 8) * prestacionesEmpresa().factorHE).toFixed(2);
+    : ((daily / horasJornadaDiaria(_tFicha)) * prestacionesEmpresa().factorHE).toFixed(2);
 
   // Función auxiliar para campo numérico
   const nv = (campo, def = 0) => parseFloat(r[campo] || def);
@@ -1444,6 +1515,78 @@ function _imssObreroRecibo(r, salBase) {
     : parseFloat((parseFloat(salBase || 0) * IMSS_OBRERO_PCT).toFixed(2));
 }
 
+/** Suma de los descuentos que viven en recibos_nomina.descuentos_detalle. */
+function _totalDescuentosDetalle(r) {
+  return parseFloat((Array.isArray(r?.descuentos_detalle) ? r.descuentos_detalle : [])
+    .reduce((s, d) => s + (parseFloat(d.monto) || 0), 0).toFixed(2));
+}
+
+/**
+ * Base gravable de ISR de un recibo EDITADO a mano, con las exenciones del
+ * Art. 93 LISR aplicadas igual que en la generación automática. Sin esto,
+ * tocar cualquier campo de un recibo volvía a gravar el total y deshacía el
+ * desglose fiscal del período.
+ *
+ * El formulario de edición no captura fechas, así que la proporción
+ * doble/triple del tiempo extra se hereda del recibo guardado (migración 49);
+ * si el usuario cambió el número de horas, se reparte en la misma proporción.
+ *
+ * @returns {{percDevengadas:number, exentoTotal:number, percGravable:number, detalle:Object}}
+ */
+function _baseGravableRecibo(r, c) {
+  const n = (v) => Math.max(0, parseFloat(v) || 0);
+  const prest = prestacionesEmpresa();
+  const t = (_N.trabajadores || []).find(x => x.id === r.trabajador_id) || {};
+  const daily = calcSalarioDiario(parseFloat(t.salario_mensual || 0), t.periodo_salario || 'mensual');
+
+  const percDevengadas = parseFloat((
+    c.totalPerc - n(r.monto_faltas) - n(r.monto_falta_justif) - n(r.monto_permiso_sin)
+  ).toFixed(2));
+
+  if (typeof desglosarExencionesNomina !== 'function') {
+    return { percDevengadas, exentoTotal: 0, percGravable: percDevengadas, detalle: {} };
+  }
+
+  // Reparto doble/triple heredado del recibo guardado
+  const dblGuardadas = n(r.horas_extra_dobles);
+  const tplGuardadas = n(r.horas_extra_triples);
+  const totGuardadas = dblGuardadas + tplGuardadas;
+  const propDoble = totGuardadas > 0 ? dblGuardadas / totGuardadas : 1;
+  const montoHEDoble  = parseFloat((n(c.montoHE) * propDoble).toFixed(2));
+  const montoHETriple = parseFloat((n(c.montoHE) - montoHEDoble).toFixed(2));
+
+  // El formulario no captura cuántos domingos se trabajaron: se derivan del
+  // propio importe de la prima dominical.
+  const domingos = daily > 0 && prest.primaDomPct > 0
+    ? Math.round(n(c.primaDom) / (daily * prest.primaDomPct)) : 0;
+
+  const { exentoTotal, detalle } = desglosarExencionesNomina({
+    montoHEDoble, montoHETriple,
+    primaDominical:     n(c.primaDom),
+    domingosTrabajados: domingos,
+    primaFestivo:       n(c.primaFest),
+    primaVacacional:    n(c.primaVac),
+    // Vales: mismo tope del 40% de la UMA diaria que usa desglosarPrestacion()
+    previsionSocialExenta: n(c.vales) > 0
+      ? desglosarPrestacion({ tipo:'vales_despensa', montoPeriodo:n(c.vales),
+          diasPeriodo: n(r.dias_laborados) || 15 }, daily, _umaVigente()).exentoISR
+      : 0,
+    diasPeriodo:   n(r.dias_laborados) || 15,
+    salarioDiario: daily,
+  }, _umaVigente(), _smgVigente(t.smg_zone || 'general'));
+
+  // Aguinaldo capturado a mano: exento hasta 30 UMA (Art. 93 fr. XIV LISR)
+  const exentoAg = Math.min(n(c.aguinaldo), 30 * _umaVigente());
+  const total = parseFloat((exentoTotal + exentoAg).toFixed(2));
+
+  return {
+    percDevengadas,
+    exentoTotal: total,
+    percGravable: parseFloat(Math.max(0, percDevengadas - total).toFixed(2)),
+    detalle: { ...detalle, aguinaldo: parseFloat(exentoAg.toFixed(2)) },
+  };
+}
+
 function _recalcularPreviewRecibo() {
   if (!window._reData) return;
   const { r, periodoTipo } = window._reData;
@@ -1477,8 +1620,11 @@ function _recalcularPreviewRecibo() {
   const montoFaltaJustif = parseFloat(r.monto_falta_justif || 0);
   const montoPSin        = parseFloat(r.monto_permiso_sin || 0);
 
-  // ISR e IMSS sobre la base devengada (percepciones menos ausencias sin goce)
-  const percGravable = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
+  // ISR sobre la base devengada MENOS la parte exenta del Art. 93 LISR; el
+  // IMSS obrero va sobre el SBC, no sobre las percepciones.
+  const { percGravable } = _baseGravableRecibo(r, {
+    totalPerc, montoHE, primaDom, primaFest, primaVac, aguinaldo, vales,
+  });
   const { isrNeto } = calcISR(percGravable, periodoTipo);
   const imss        = _imssObreroRecibo(r, salBase);
 
@@ -1489,7 +1635,12 @@ function _recalcularPreviewRecibo() {
   const pension     = g('re-pensión');
   const otrasDed    = g('re-otras-ded');
 
-  const totalDed  = parseFloat((montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto + fondoAhorro + prestamo + infonavit + pension + otrasDed).toFixed(2));
+  // Los descuentos de la migración 17 (FONACOT, caja de ahorro, otros) viven
+  // en descuentos_detalle y no tienen campo en este formulario; hay que
+  // conservarlos en el total o editar un recibo se los borraba del neto.
+  const otrosDescuentos = _totalDescuentosDetalle(r);
+
+  const totalDed  = parseFloat((montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto + fondoAhorro + prestamo + infonavit + pension + otrasDed + otrosDescuentos).toFixed(2));
   const neto      = parseFloat((totalPerc - totalDed).toFixed(2));
 
   const el = (id) => document.getElementById(id);
@@ -1540,9 +1691,11 @@ async function guardarEdicionRecibo(reciboId) {
   const montoFaltaJustif = parseFloat(r.monto_falta_justif || 0);
   const montoPSin        = parseFloat(r.monto_permiso_sin || 0);
 
-  // ISR e IMSS sobre la base devengada (percepciones menos ausencias sin goce)
-  const percGravable = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
-  const { isrNeto } = calcISR(percGravable, periodoTipo);
+  // ISR sobre la base devengada MENOS la parte exenta del Art. 93 LISR
+  const baseFiscal = _baseGravableRecibo(r, {
+    totalPerc, montoHE, primaDom, primaFest, primaVac, aguinaldo, vales,
+  });
+  const { isrNeto } = calcISR(baseFiscal.percGravable, periodoTipo);
   const imss        = _imssObreroRecibo(r, salBase);
 
   // Deducciones
@@ -1554,9 +1707,13 @@ async function guardarEdicionRecibo(reciboId) {
   const otrasDed    = g('re-otras-ded');
   const notas       = gs('re-notas');
 
+  // Ver _recalcularPreviewRecibo: los descuentos de la migración 17 no tienen
+  // campo en el formulario y deben conservarse en el total.
+  const otrosDescuentos = _totalDescuentosDetalle(r);
+
   const totalDed = parseFloat((
     montoFaltas + montoFaltaJustif + montoPSin + imss + isrNeto +
-    fondoAhorro + prestamo + infonavit + pension + otrasDed
+    fondoAhorro + prestamo + infonavit + pension + otrasDed + otrosDescuentos
   ).toFixed(2));
   const neto = parseFloat((totalPerc - totalDed).toFixed(2));
 
@@ -1597,10 +1754,25 @@ async function guardarEdicionRecibo(reciboId) {
       total_percepciones:    totalPerc,
       total_deducciones:     totalDed,
       neto_pagar:            neto,
+      // Base fiscal recalculada, para que el ajuste anual del Art. 97 lea la
+      // misma cifra sobre la que se retuvo (migración 49).
+      percepciones_exentas:  baseFiscal.exentoTotal,
+      percepciones_gravadas: baseFiscal.percGravable,
+      exenciones_detalle:    baseFiscal.detalle,
     };
-    let updQ = _sbN().from('recibos_nomina').update(datosRecibo).eq('id', reciboId);
-    if (r.updated_at) updQ = updQ.eq('updated_at', r.updated_at);
-    const { data: filaAct, error: errUpd } = await updQ.select('id');
+    const _update = (datos) => {
+      let q = _sbN().from('recibos_nomina').update(datos).eq('id', reciboId);
+      if (r.updated_at) q = q.eq('updated_at', r.updated_at);
+      return q.select('id');
+    };
+    let { data: filaAct, error: errUpd } = await _update(datosRecibo);
+    // Tolerancia: sin la migración 49 no existen las columnas de base fiscal.
+    // El ISR ya se retuvo bien; solo no se guarda el desglose.
+    if (errUpd && /percepciones_(exentas|gravadas)|exenciones_detalle/i.test(errUpd.message || '')) {
+      console.warn('Columnas de la migración 49 no existen — aplica 49_migration_horas_extra_y_base_gravable.sql');
+      const { percepciones_exentas, percepciones_gravadas, exenciones_detalle, ...sin49 } = datosRecibo;
+      ({ data: filaAct, error: errUpd } = await _update(sin49));
+    }
     if (errUpd) throw errUpd;
     if (r.updated_at && (!filaAct || filaAct.length === 0)) {
       throw new Error('Alguien más editó este recibo mientras tanto. Recarga la página e intenta de nuevo.');
@@ -1863,27 +2035,91 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     asistMap[a.trabajador_id].push(a);
   });
 
-  // Días totales del período
-  const dIni        = new Date(fechaIni + 'T00:00:00');
-  const dFin        = new Date(fechaFin + 'T00:00:00');
-  const diasPeriodo = Math.ceil((dFin - dIni) / 86400000) + 1;
+  // Tiempo extraordinario: el tope de 9 h del Art. 68 LFT es SEMANAL, así que
+  // hay que ver las SEMANAS COMPLETAS que tocan el período — si no, una semana
+  // partida entre dos quincenas reinicia el contador y regala hasta 9 horas al
+  // doble en cada mitad, que legalmente van al triple. Se paga solo la parte
+  // cuya fecha cae dentro del período (lo resuelve clasificarHorasExtraPeriodo).
+  const _domingoISO = (f) => {
+    const d = new Date(_lunesISO(f) + 'T00:00:00');
+    d.setDate(d.getDate() + 6);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const heMap = {};
+  const { data: asistHE, error: errHE } = await _sbN()
+    .from('asistencia')
+    .select('trabajador_id, fecha, horas_extra')
+    .eq('empresa_id', CTX.empresa.id)
+    .gte('fecha', _lunesISO(fechaIni))
+    .lte('fecha', _domingoISO(fechaFin));
+  if (errHE) {
+    // Sin la migración 14 no hay columna horas_extra: se degrada al detalle
+    // del propio período, que ya viene en asistMap.
+    console.warn('No se pudieron leer las horas extra de las semanas completas:', errHE.message);
+  } else {
+    (asistHE || []).forEach(a => { (heMap[a.trabajador_id] ||= []).push(a); });
+  }
+
+  // Tope semanal de horas al doble vigente para el año del período (Transitorio
+  // Cuarto del decreto de reducción de jornada: 9 h en 2026-2027, 10 en 2028…).
+  const topeHEDoble = typeof horasExtraMaxVigente === 'function'
+    ? horasExtraMaxVigente(new Date(fechaFin + 'T00:00:00').getFullYear())
+    : 9;
+
+  // Extremos del período. Los días que cubre cada recibo ya no son los del
+  // período completo, sino los de vigencia de cada relación laboral dentro
+  // de él (ver diasVigentes en el bucle).
+  const dIni = new Date(fechaIni + 'T00:00:00');
+  const dFin = new Date(fechaFin + 'T00:00:00');
 
   // UMA diaria vigente (config_valores, migración 15; con respaldo local)
   const UMA_DIARIA_2026    = _umaVigente();
   const SBC_TOPE_INFONAVIT = 25 * UMA_DIARIA_2026; // tope Art. 29 Ley INFONAVIT
 
   const recibos = [];
+  const omitidosPorVigencia = [];
   for (const t of trabs) {
+    // Días del período en que la relación laboral estuvo VIGENTE. Antes se
+    // pagaba el período completo a todos: quien ingresaba el día 10 de una
+    // quincena cobraba los 15 días, y a quien se daba de baja a media
+    // quincena no se le generaba recibo. El salario se debe por el tiempo
+    // efectivamente puesto a disposición (Arts. 82 y 83 LFT).
+    const fIngreso = t.fecha_ingreso ? new Date(t.fecha_ingreso + 'T00:00:00') : null;
+    const fBaja    = t.fecha_baja    ? new Date(t.fecha_baja    + 'T00:00:00') : null;
+    const relIni   = (fIngreso && fIngreso > dIni) ? fIngreso : dIni;
+    const relFin   = (fBaja    && fBaja    < dFin) ? fBaja    : dFin;
+    const diasVigentes = relFin >= relIni
+      ? Math.round((relFin - relIni) / 86400000) + 1
+      : 0;
+    if (diasVigentes === 0) { omitidosPorVigencia.push(t.nombre); continue; }
+
     const asist = asistMap[t.id] || [];
 
     const faltas      = asist.filter(a => a.tipo === 'falta').length;
     const faltaJustif = asist.filter(a => a.tipo === 'falta_justif').length;
     const permisoSin  = asist.filter(a => a.tipo === 'permiso_sin').length;
-    const incapDias   = asist.filter(a => a.tipo === 'incapacidad').length;
 
-    // Días que cubre el salario base = TODOS los días naturales del período,
-    // menos los de incapacidad (los cubre el IMSS vía subsidio; el patrón solo
-    // paga los primeros 3 días de enfermedad general/riesgo → incapacidadMonto).
+    // Incapacidades y licencias: FUENTE ÚNICA la tabla `incapacidades`, que es
+    // la que trae el tipo. Antes los días se restaban contando registros de
+    // asistencia y el pago salía de esta tabla: si solo existía una de las dos
+    // fuentes, o se pagaba dos veces o se descontaba sin reponer nada.
+    // La asistencia queda como respaldo para quien captura ahí y no registra
+    // la incapacidad; sin tipo, se asume enfermedad general.
+    const incapFilas = incapMap[t.id] || [];
+    const inc = clasificarIncapacidadPeriodo(
+      incapFilas.length
+        ? incapFilas
+        : asist.filter(a => a.tipo === 'incapacidad')
+               .map(a => ({ tipo:'enfermedad_general', fecha_inicio:a.fecha, fecha_fin:a.fecha })),
+      dIni, dFin, prest.pagaPrimeros3DiasIncap
+    );
+
+    // Días que cubre el salario base = TODOS los días naturales de vigencia,
+    // menos los que suspenden la relación por incapacidad (Art. 42 fr. II LFT):
+    // esos los cubre el IMSS y el patrón solo repone, como percepción aparte,
+    // los primeros 3 días de enfermedad general si los otorga.
+    // Los días de PATERNIDAD no se restan: son permiso con goce a cargo del
+    // patrón (Art. 132 fr. XXVII Bis LFT), no una incapacidad del IMSS.
     //
     // Se parte del total de días del período y NO de los días con registro de
     // asistencia, porque el 7º día de descanso se paga íntegro (Arts. 69-72
@@ -1894,15 +2130,28 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     // Faltas y permisos sin goce NO se restan aquí: se descuentan de forma
     // explícita como deducción (monto_faltas / monto_permiso_sin) para que el
     // recibo las muestre. Restarlas también aquí las cobraría DOS VECES.
-    const diasPagados = Math.max(0, diasPeriodo - incapDias);
+    const diasPagados = Math.max(0, diasVigentes - inc.diasSuspendidos);
 
     // Salario diario según período de pago
     const daily = calcSalarioDiario(t.salario_mensual, t.periodo_salario || 'mensual');
 
-    // Horas extra capturadas en asistencia: tarifa = salario/hora (jornada 8 h) × factor empresa
-    const horasExtra = parseFloat(asist.reduce((s, a) => s + (parseFloat(a.horas_extra) || 0), 0).toFixed(2));
-    const tarifaHE   = parseFloat(((daily / 8) * prest.factorHE).toFixed(2));
-    const montoHE    = parseFloat((horasExtra * tarifaHE).toFixed(2));
+    // Horas extra (Arts. 66-68 LFT). La hora ordinaria sale de la jornada
+    // REALMENTE pactada, no de un 8 fijo. Las primeras `topeHEDoble` horas de
+    // cada semana van al doble y el excedente al triple; si la empresa mejora
+    // el factor del doble, el del triple se mueve con él sin bajar de 3.
+    const horaOrdinaria = parseFloat((daily / horasJornadaDiaria(t)).toFixed(4));
+    const factorDoble   = prest.factorHE;                     // ≥ 2 (Art. 67)
+    const factorTriple  = Math.max(3, prest.factorHE + 1);    // ≥ 3 (Art. 68)
+    const he = (heMap[t.id] && heMap[t.id].length)
+      ? clasificarHorasExtraPeriodo(heMap[t.id], fechaIni, fechaFin, topeHEDoble)
+      : clasificarHorasExtraPeriodo(asist, fechaIni, fechaFin, topeHEDoble);
+    const horasExtra    = he.total;
+    const horasExtraDbl = he.dobles;
+    const horasExtraTpl = he.triples;
+    const tarifaHE      = parseFloat((horaOrdinaria * factorDoble).toFixed(2));
+    const montoHE       = parseFloat((
+      he.dobles * horaOrdinaria * factorDoble + he.triples * horaOrdinaria * factorTriple
+    ).toFixed(2));
 
     // Prima dominical: domingos efectivamente trabajados (Art. 71 LFT)
     const domingosTrab = asist.filter(a =>
@@ -1938,22 +2187,14 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       p.modalidad === 'porcentaje_salario' ? salBase * (parseFloat(p.valor) || 0) / 100 : parseFloat(p.valor || 0)
     ), 0).toFixed(2));
 
-    // Incapacidad a cargo del patrón: primeros 3 días de enfermedad general /
-    // recaída / riesgo de trabajo que caen dentro del período (Art. 42 LFT).
-    // Maternidad/paternidad las cubre el IMSS al 100% (patrón no paga aquí).
-    let incapacidadDias   = 0;
-    let incapacidadMonto  = 0;
-    for (const inc of (incapMap[t.id] || [])) {
-      if (!['enfermedad_general','recaida','riesgo_trabajo'].includes(inc.tipo)) continue;
-      const incIni    = new Date(inc.fecha_inicio + 'T00:00:00');
-      const tercerDia = new Date(incIni); tercerDia.setDate(incIni.getDate() + 2); // días 1-3
-      const incFin    = new Date(inc.fecha_fin + 'T00:00:00');
-      // Intersección de [período] ∩ [incapacidad] ∩ [primeros 3 días]
-      const start = new Date(Math.max(dIni, incIni));
-      const end   = new Date(Math.min(dFin, incFin, tercerDia));
-      if (end >= start) incapacidadDias += Math.round((end - start) / 86400000) + 1;
-    }
-    if (incapacidadDias > 0) incapacidadMonto = parseFloat((daily * incapacidadDias).toFixed(2));
+    // Importe a cargo del patrón por los 3 primeros días de enfermedad general
+    // o recaída (prestación de empresa: el IMSS empieza a subsidiar el 4º día,
+    // Art. 96 LSS). Riesgo de trabajo y maternidad NO entran: el IMSS los
+    // cubre al 100% desde el primer día (Arts. 58 fr. I y 101 LSS) y pagarlos
+    // aquí los duplicaba. Ver clasificarIncapacidadPeriodo().
+    const incapacidadDias  = inc.diasACargoPatron;
+    const incapacidadMonto = incapacidadDias > 0
+      ? parseFloat((daily * incapacidadDias).toFixed(2)) : 0;
 
     // Prima vacacional de los días de vacaciones que se gozan en este
     // período (Art. 80 LFT: mínimo 25% del salario de esos días). Se
@@ -1968,8 +2209,9 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       const vFin  = new Date(v.fecha_fin + 'T00:00:00');
       const start = new Date(Math.max(dIni, vIni));
       const end   = new Date(Math.min(dFin, vFin));
-      const cur   = new Date(start);
-      while (cur <= end) { const dw = cur.getDay(); if (dw >= 1 && dw <= 5) diasVacPeriodo++; cur.setDate(cur.getDate() + 1); }
+      // Días laborables del trabajador, no un lunes-viernes fijo (mismo
+      // criterio que vacaciones.js al capturar y aprobar la solicitud).
+      if (end >= start) diasVacPeriodo += contarDiasLaborables(start, end, t);
     }
     const primaVacGoce = parseFloat((diasVacPeriodo * daily * prest.primaVacPct).toFixed(2));
 
@@ -1979,32 +2221,6 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     const montoFaltas      = parseFloat((daily * faltas).toFixed(2));
     const montoFaltaJustif = parseFloat((daily * faltaJustif).toFixed(2));
     const montoPSin        = parseFloat((daily * permisoSin).toFixed(2));
-
-    // Días efectivamente devengados y base gravable: se descuentan las
-    // ausencias sin goce (faltas injustificadas, faltas justificadas y
-    // permisos sin goce). El ISR y las cuotas del IMSS se calculan sobre lo
-    // realmente percibido, NO sobre el salario de días que el trabajador no
-    // cobra: hacerlo sobre el bruto inflado le retiene de más (ISR progresivo
-    // y cuota obrera sobre un ingreso que nunca recibe).
-    const diasCotizados = Math.max(0, diasPagados - faltas - faltaJustif - permisoSin);
-    const percGravable  = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
-
-    // IMSS obrero por ramos sobre el SBC diario (fallback: salario diario si el
-    // trabajador aún no tiene SBC calculado). Días cotizados = días devengados.
-    const sbcDiarioIMSS = parseFloat(t.sbc) > 0 ? parseFloat(t.sbc) : daily;
-    const imss        = typeof calcIMSSObrero === 'function'
-      ? calcIMSSObrero(sbcDiarioIMSS, diasCotizados, UMA_DIARIA_2026)
-      : parseFloat((percGravable * IMSS_OBRERO_PCT).toFixed(2));
-    const { isrNeto, subsidio: subsidioEmpleo } = calcISR(percGravable, t.periodo_salario || 'mensual');
-
-    // Costo patronal del período (migración 32) — informativo, no afecta el
-    // neto del trabajador: cuotas patronales IMSS (con la prima de riesgo de
-    // la empresa) e ISN estatal sobre las percepciones.
-    const imssPatronal = typeof calcIMSSPatronal === 'function'
-      ? calcIMSSPatronal(sbcDiarioIMSS, diasCotizados, UMA_DIARIA_2026,
-                         CTX.empresa.prima_riesgo_pct, t.smg_zone || 'general').total
-      : 0;
-    const isnPeriodo   = parseFloat((percGravable * (parseFloat(CTX.empresa.isn_pct) || 0)).toFixed(2));
 
     // ── Deducciones especiales según config del trabajador ──────────────────
 
@@ -2017,24 +2233,21 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       fondoAhorroPatronal = fondoAhorroObrero; // patrón aporta igual (informativo)
     }
 
-    // Aportación patronal INFONAVIT 5% SBC — obligatoria para TODOS (Art. 29 fracc. II Ley INFONAVIT)
-    // No se descuenta al trabajador; es costo del patrón. Se registra informativo en el recibo.
-    const sdiInfonavit      = Math.min(daily, SBC_TOPE_INFONAVIT);
-    const infonavitPatronal = parseFloat((sdiInfonavit * 0.05 * diasPeriodo).toFixed(2));
-
     // Desglose fiscal de previsión social (migración 18): qué integra al SBC
     // (informativo, lo usa la Fase 5/SBC) y qué está exento/gravado para ISR.
+    // Va ANTES de retener: este bloque vivía después del cálculo del ISR, así
+    // que la parte exenta se guardaba en el recibo pero nunca salía de la base.
     let prestacionesExento  = 0;
     let prestacionesGravado = 0;
     const prestacionesDetalle = [];
     if (typeof desglosarPrestacion === 'function') {
       if (vales > 0) {
-        const dv = desglosarPrestacion({ tipo:'vales_despensa', montoPeriodo:vales, diasPeriodo }, daily, UMA_DIARIA_2026);
+        const dv = desglosarPrestacion({ tipo:'vales_despensa', montoPeriodo:vales, diasPeriodo: diasPagados }, daily, UMA_DIARIA_2026);
         prestacionesExento += dv.exentoISR; prestacionesGravado += dv.gravadoISR;
         prestacionesDetalle.push({ tipo:'vales_despensa', ...dv });
       }
       if (fondoAhorroObrero > 0) {
-        const df = desglosarPrestacion({ tipo:'fondo_ahorro', montoPeriodo:fondoAhorroPatronal, aportacionTrabajador:fondoAhorroObrero, salarioBasePeriodo:salBase, diasPeriodo }, daily, UMA_DIARIA_2026);
+        const df = desglosarPrestacion({ tipo:'fondo_ahorro', montoPeriodo:fondoAhorroPatronal, aportacionTrabajador:fondoAhorroObrero, salarioBasePeriodo:salBase, diasPeriodo: diasPagados }, daily, UMA_DIARIA_2026);
         prestacionesExento += df.exentoISR; prestacionesGravado += df.gravadoISR;
         prestacionesDetalle.push({ tipo:'fondo_ahorro', ...df });
       }
@@ -2042,13 +2255,65 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
         const montoP = p.modalidad === 'porcentaje_salario'
           ? parseFloat((salBase * (parseFloat(p.valor)||0) / 100).toFixed(2))
           : parseFloat(p.valor || 0);
-        const dp = desglosarPrestacion({ tipo:p.tipo, montoPeriodo:montoP, diasPeriodo }, daily, UMA_DIARIA_2026);
+        const dp = desglosarPrestacion({ tipo:p.tipo, montoPeriodo:montoP, diasPeriodo: diasPagados }, daily, UMA_DIARIA_2026);
         prestacionesExento += dp.exentoISR; prestacionesGravado += dp.gravadoISR;
         prestacionesDetalle.push({ tipo:p.tipo, descripcion:p.tipo, montoAplicado: montoP, integraSBC: dp.integraSBC, exentoISR: dp.exentoISR, gravadoISR: dp.gravadoISR });
       }
     }
     prestacionesExento  = parseFloat(prestacionesExento.toFixed(2));
     prestacionesGravado = parseFloat(prestacionesGravado.toFixed(2));
+
+    // Días efectivamente devengados y base gravable: se descuentan las
+    // ausencias sin goce (faltas injustificadas, faltas justificadas y
+    // permisos sin goce). El ISR y las cuotas del IMSS se calculan sobre lo
+    // realmente percibido, NO sobre el salario de días que el trabajador no
+    // cobra: hacerlo sobre el bruto inflado le retiene de más (ISR progresivo
+    // y cuota obrera sobre un ingreso que nunca recibe).
+    //
+    // Y se resta la parte EXENTA del Art. 93 LISR (tiempo extra dentro del
+    // límite legal, prima dominical, prima vacacional y previsión social):
+    // gravarla completa era una sobre-retención en cada recibo.
+    const diasCotizados = Math.max(0, diasPagados - faltas - faltaJustif - permisoSin);
+    const smgTrabajador = _smgVigente(t.smg_zone || 'general');
+    const exenciones = desglosarExencionesNomina({
+      montoHEDoble:          parseFloat((he.dobles  * horaOrdinaria * factorDoble).toFixed(2)),
+      montoHETriple:         parseFloat((he.triples * horaOrdinaria * factorTriple).toFixed(2)),
+      primaDominical:        primaDom,
+      domingosTrabajados:    domingosTrab,
+      primaFestivo,
+      primaVacacional:       primaVacGoce,
+      previsionSocialExenta: prestacionesExento,
+      diasPeriodo:           diasPagados,
+      salarioDiario:         daily,
+    }, UMA_DIARIA_2026, smgTrabajador);
+
+    const percDevengadas = parseFloat((totalPerc - montoFaltas - montoFaltaJustif - montoPSin).toFixed(2));
+    const percGravable   = parseFloat(Math.max(0, percDevengadas - exenciones.exentoTotal).toFixed(2));
+
+    // IMSS obrero por ramos sobre el SBC diario (fallback: salario diario si el
+    // trabajador aún no tiene SBC calculado). Días cotizados = días devengados.
+    const sbcDiarioIMSS = parseFloat(t.sbc) > 0 ? parseFloat(t.sbc) : daily;
+    const imss        = typeof calcIMSSObrero === 'function'
+      ? calcIMSSObrero(sbcDiarioIMSS, diasCotizados, UMA_DIARIA_2026)
+      : parseFloat((percDevengadas * IMSS_OBRERO_PCT).toFixed(2));
+    const { isrNeto, subsidio: subsidioEmpleo } = calcISR(percGravable, t.periodo_salario || 'mensual');
+
+    // Costo patronal del período (migración 32) — informativo, no afecta el
+    // neto del trabajador: cuotas patronales IMSS (con la prima de riesgo de
+    // la empresa) e ISN estatal sobre las percepciones. El ISN grava la
+    // remuneración total, no la base de ISR: va sobre lo devengado.
+    const imssPatronal = typeof calcIMSSPatronal === 'function'
+      ? calcIMSSPatronal(sbcDiarioIMSS, diasCotizados, UMA_DIARIA_2026,
+                         CTX.empresa.prima_riesgo_pct, t.smg_zone || 'general').total
+      : 0;
+    const isnPeriodo   = parseFloat((percDevengadas * (parseFloat(CTX.empresa.isn_pct) || 0)).toFixed(2));
+
+    // Aportación patronal INFONAVIT 5% SBC — obligatoria para TODOS (Art. 29 fracc. II Ley INFONAVIT)
+    // No se descuenta al trabajador; es costo del patrón. Se registra informativo en el recibo.
+    // La base es el SBC (no el salario diario) y los días son los cotizados,
+    // igual que las cuotas patronales del IMSS y que costoTotalEmpleado().
+    const sdiInfonavit      = Math.min(sbcDiarioIMSS, SBC_TOPE_INFONAVIT);
+    const infonavitPatronal = parseFloat((sdiInfonavit * 0.05 * diasCotizados).toFixed(2));
 
     // Descuentos/préstamos (INFONAVIT, FONACOT, pensión alimenticia, préstamo
     // empresa) — migración 17: se calculan con calcularDescuentosPeriodo()
@@ -2063,7 +2328,11 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
 
     const descuentosTrab = descMap[t.id] || [];
     if (descuentosDisponibles && descuentosTrab.length > 0) {
-      const { aplicados } = calcularDescuentosPeriodo(descuentosTrab, totalPerc, diasPeriodo, smgDiarioVigente, UMA_DIARIA_2026);
+      // Base del tope del Art. 110: lo devengado (no la base de ISR, que ya
+      // viene neta de exenciones y dejaría un margen de descuento artificial).
+      const { aplicados } = calcularDescuentosPeriodo(
+        descuentosTrab, percDevengadas, diasPagados, smgDiarioVigente, UMA_DIARIA_2026,
+        imss + isrNeto);   // el piso del mínimo se mide sobre el neto
       for (const a of aplicados) {
         const tipo = a.descuento.tipo;
         if (tipo === 'infonavit') infonavitDescuento += a.montoAplicado;
@@ -2090,7 +2359,7 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       if (t.infonavit_activo) {
         const tipo = t.infonavit_tipo || 'cuota_fija';
         const val  = parseFloat(t.infonavit_valor || 0);
-        if (tipo === 'factor')    infonavitDescuento = parseFloat((val * UMA_DIARIA_2026 * diasPeriodo).toFixed(2));
+        if (tipo === 'factor')    infonavitDescuento = parseFloat((val * UMA_DIARIA_2026 * diasPagados).toFixed(2));
         else if (tipo === 'pct')  infonavitDescuento = parseFloat((salBase * val).toFixed(2));
         else                      infonavitDescuento = val;
       }
@@ -2133,8 +2402,15 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       // multiplicador ("N días × salario diario"), así que debe cuadrar
       // exactamente con salario_base. Las faltas van aparte, como deducción.
       dias_laborados:       diasPagados,
-      otros_ingresos:       incapacidadMonto, // pago patronal primeros 3 días de incapacidad (Art. 42 LFT)
+      // Prestación de empresa por los 3 primeros días de enfermedad general
+      // (el subsidio del IMSS empieza el 4º día, Art. 96 LSS).
+      otros_ingresos:       incapacidadMonto,
+      dias_incapacidad:     inc.diasSuspendidos,
+      dias_paternidad:      inc.diasPaternidad,
+      incapacidad_detalle:  inc.detalle,
       horas_extra:          horasExtra,
+      horas_extra_dobles:   horasExtraDbl,
+      horas_extra_triples:  horasExtraTpl,
       monto_horas_extra:    montoHE,
       prima_dominical:      primaDom,
       prima_festivo:        primaFestivo,
@@ -2169,6 +2445,12 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
       prestaciones_exento:  prestacionesExento,
       prestaciones_gravado: prestacionesGravado,
       prestaciones_detalle: prestacionesDetalle,
+      // Base del ISR del período, ya separada (migración 49). El ajuste anual
+      // del Art. 97 la necesita: sumar total_percepciones incluía los exentos
+      // y calculaba un impuesto del ejercicio que nadie debía.
+      percepciones_exentas:  exenciones.exentoTotal,
+      percepciones_gravadas: percGravable,
+      exenciones_detalle:    exenciones.detalle,
       total_deducciones:    totalDed,
       neto_pagar:           neto,
       forma_pago:           t.forma_pago || 'deposito',
@@ -2180,13 +2462,26 @@ async function generarNominaPeriodo(periodoId, fechaIni, fechaFin, sucursalId, o
     });
   }
 
+  if (omitidosPorVigencia.length) {
+    console.info(`Sin recibo por no traslapar con el período (alta posterior o baja anterior): ${omitidosPorVigencia.join(', ')}`);
+  }
+
   // Upsert masivo
   const { error } = await _sbN()
     .from('recibos_nomina')
     .upsert(recibos, { onConflict: 'trabajador_id,periodo_id' });
   if (error) {
     // Tolerancia: si la migración 35 no está aplicada, reintentar sin las columnas de pago mixto
-    if (/metodo_pago|monto_efectivo/i.test(error.message || '')) {
+    if (/horas_extra_(dobles|triples)|percepciones_(exentas|gravadas)|exenciones_detalle|dias_(incapacidad|paternidad)|incapacidad_detalle/i.test(error.message || '')) {
+      console.warn('Columnas de las migraciones 49/50 no existen — aplícalas. Los cálculos ya son correctos; solo no se guarda el desglose.');
+      const sin49 = recibos.map(({ horas_extra_dobles, horas_extra_triples,
+        percepciones_exentas, percepciones_gravadas, exenciones_detalle,
+        dias_incapacidad, dias_paternidad, incapacidad_detalle, ...resto }) => resto);
+      const { error: err49 } = await _sbN()
+        .from('recibos_nomina')
+        .upsert(sin49, { onConflict: 'trabajador_id,periodo_id' });
+      if (err49) throw err49;
+    } else if (/metodo_pago|monto_efectivo/i.test(error.message || '')) {
       console.warn('Columnas recibos_nomina.metodo_pago/monto_efectivo no existen — aplica la migración 35_migration_nomina_extras.sql');
       const sinPagoMixto = recibos.map(({ metodo_pago, monto_efectivo, ...resto }) => resto);
       const { error: err35 } = await _sbN()
@@ -2443,7 +2738,8 @@ async function descargarReciboNomina(reciboId) {
 
     const t  = recibo.trabajadores   || {};
     const p  = recibo.periodos_nomina || {};
-    const daily = calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual');
+    // Salario diario CON EL QUE SE CALCULÓ el recibo, no el vigente hoy.
+    const daily = salarioDiarioDelRecibo(recibo, calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual'));
 
     // ── Filas de percepciones ────────────────────────────────────────────────
     const percRows = [
@@ -2460,13 +2756,13 @@ async function descargarReciboNomina(reciboId) {
     if (parseFloat(recibo.aguinaldo_prop || 0) > 0)
       percRows.push(['Aguinaldo proporcional', 'Art. 87 LFT', recibo.aguinaldo_prop]);
     if (parseFloat(recibo.monto_horas_extra || 0) > 0)
-      percRows.push(['Horas extra', `${recibo.horas_extra} hrs  Art. 67-68 LFT`, recibo.monto_horas_extra]);
+      percRows.push(['Horas extra', _detalleHorasExtra(recibo), recibo.monto_horas_extra]);
     if (parseFloat(recibo.prima_dominical || 0) > 0)
       percRows.push(['Prima dominical', 'Art. 71 LFT', recibo.prima_dominical]);
     if (parseFloat(recibo.prima_festivo || 0) > 0)
       percRows.push(['Prima por día festivo trabajado', 'Art. 75 LFT', recibo.prima_festivo]);
     if (parseFloat(recibo.vales_despensa || 0) > 0)
-      percRows.push(['Vales de despensa', 'Art. 27 LISR', recibo.vales_despensa]);
+      percRows.push(['Vales de despensa', _detalleVales(recibo), recibo.vales_despensa]);
     (Array.isArray(recibo.prestaciones_detalle) ? recibo.prestaciones_detalle : [])
       .filter(p => ['premio_puntualidad','premio_asistencia','ayuda_transporte','otro'].includes(p.tipo) && parseFloat(p.montoAplicado||0) > 0)
       .forEach(p => percRows.push([_labelPrestacion(p.tipo), `Exento ISR ${fmt(p.exentoISR||0)} · Gravado ${fmt(p.gravadoISR||0)}`, p.montoAplicado]));
@@ -2478,13 +2774,13 @@ async function descargarReciboNomina(reciboId) {
     // ── Filas de deducciones ─────────────────────────────────────────────────
     const dedRows = [];
     if (parseFloat(recibo.monto_faltas || 0) > 0)
-      dedRows.push(['Desc. por faltas', `${recibo.dias_falta} días × ${fmt(daily)}  Art. 58 LFT`, recibo.monto_faltas]);
+      dedRows.push(['Desc. por faltas', `${recibo.dias_falta} días × ${fmt(daily)}  Arts. 82 y 83 LFT`, recibo.monto_faltas]);
     if (parseFloat(recibo.monto_falta_justif || 0) > 0)
       dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} días × ${fmt(daily)}  Arts. 82-84 LFT`, recibo.monto_falta_justif]);
     if (parseFloat(recibo.monto_permiso_sin || 0) > 0)
       dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} días`, recibo.monto_permiso_sin]);
     if (parseFloat(recibo.cuota_imss || 0) > 0)
-      dedRows.push(['Cuota IMSS obrero', '2.25% s/ base  Art. 25 LSS', recibo.cuota_imss]);
+      dedRows.push(['Cuota IMSS obrero', _detalleIMSSObrero(recibo), recibo.cuota_imss]);
     if (parseFloat(recibo.isr_retenido || 0) > 0)
       dedRows.push(['ISR retenido', 'Art. 96 LISR 2026', recibo.isr_retenido]);
     if (parseFloat(recibo.fondo_ahorro_obrero || 0) > 0)
@@ -2501,20 +2797,43 @@ async function descargarReciboNomina(reciboId) {
     });
     if (parseFloat(recibo.otras_deducciones || 0) > 0)
       dedRows.push(['Otras deducciones', recibo.notas || '—', recibo.otras_deducciones]);
+    // El ajuste anual del Art. 97 se suma a total_deducciones pero no tenía
+    // renglón: en diciembre el SUBTOTAL DEDUCCIONES salía mayor que la suma de
+    // lo listado, sin explicación. Puede ser negativo (se retuvo de más).
+    if (parseFloat(recibo.ajuste_anual_isr || 0) !== 0)
+      dedRows.push([
+        `Ajuste anual de ISR ${parseFloat(recibo.ajuste_anual_isr) > 0 ? '(a cargo)' : '(a favor)'}`,
+        'Art. 97 LISR — diferencia del ejercicio', recibo.ajuste_anual_isr,
+      ]);
 
     const mkPercRow = ([concepto, calculo, monto]) => `
       <tr>
-        <td style="padding:7px 10px;font-size:.82rem;color:var(--text-main);">${concepto}</td>
-        <td style="padding:7px 10px;font-size:.78rem;color:var(--text-muted);">${calculo}</td>
+        <td style="padding:7px 10px;font-size:.82rem;color:var(--text-main);">${escapeHtml(String(concepto))}</td>
+        <td style="padding:7px 10px;font-size:.78rem;color:var(--text-muted);">${escapeHtml(String(calculo))}</td>
         <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--green-ok);">${fmt(monto)}</td>
       </tr>`;
 
-    const mkDedRow = ([concepto, calculo, monto]) => `
+    // Un importe negativo (ajuste anual a favor) DEVUELVE dinero: se pinta con
+    // signo y color propios en vez de un "-$-100" sin sentido.
+    const mkDedRow = ([concepto, calculo, monto]) => {
+      const m = parseFloat(monto) || 0;
+      const neg = m < 0;
+      return `
       <tr>
-        <td style="padding:7px 10px;font-size:.82rem;color:var(--text-main);">${concepto}</td>
-        <td style="padding:7px 10px;font-size:.78rem;color:var(--text-muted);">${calculo}</td>
-        <td style="padding:7px 10px;text-align:right;font-weight:700;color:var(--red-warn);">-${fmt(monto)}</td>
+        <td style="padding:7px 10px;font-size:.82rem;color:var(--text-main);">${escapeHtml(String(concepto))}</td>
+        <td style="padding:7px 10px;font-size:.78rem;color:var(--text-muted);">${escapeHtml(String(calculo))}</td>
+        <td style="padding:7px 10px;text-align:right;font-weight:700;color:${neg ? 'var(--green-ok)' : 'var(--red-warn)'};">${neg ? '+' : '-'}${fmt(Math.abs(m))}</td>
       </tr>`;
+    };
+
+    // Cuadre: las filas se arman aquí y los subtotales vienen de la BD, así que
+    // pueden divergir si algún concepto se guarda sin renglón. Antes eso pasaba
+    // callado; ahora se marca para poder corregirlo en vez de firmar un recibo
+    // que no suma.
+    const _sumaFilas = (rows) => parseFloat(rows.reduce((a, r) => a + (parseFloat(r[2]) || 0), 0).toFixed(2));
+    const descuadrePerc = parseFloat((_sumaFilas(percRows) - parseFloat(recibo.total_percepciones || 0)).toFixed(2));
+    const descuadreDed  = parseFloat((_sumaFilas(dedRows)  - parseFloat(recibo.total_deducciones  || 0)).toFixed(2));
+    const hayDescuadre  = Math.abs(descuadrePerc) > 0.01 || Math.abs(descuadreDed) > 0.01;
 
     showModal(`
       <div class="modal animate-in" style="max-width:660px;width:95vw;">
@@ -2641,18 +2960,34 @@ async function descargarReciboNomina(reciboId) {
               ${fmt(recibo.neto_pagar)}
             </div>
             <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:4px;">
-              ${numToWords(recibo.neto_pagar)} pesos M.N.
+              ${montoEnLetras(recibo.neto_pagar)}
             </div>
           </div>
 
-          <!-- Acumulados del año -->
+          ${hayDescuadre ? `
+          <div class="alert alert-warn" style="margin-bottom:10px;"><svg class="ic" style="flex-shrink:0;"><use href="#i-alert"></use></svg>
+            <span>Los renglones listados no suman los subtotales guardados
+            ${Math.abs(descuadrePerc) > 0.01 ? `(percepciones: ${fmt(Math.abs(descuadrePerc))} de diferencia)` : ''}
+            ${Math.abs(descuadreDed) > 0.01 ? `(deducciones: ${fmt(Math.abs(descuadreDed))} de diferencia)` : ''}.
+            Recalcula el período antes de aprobar: un recibo que no cuadra no acredita el pago
+            (Arts. 82, 88 y 132 fr. VII LFT).</span>
+          </div>` : ''}
+
+          <!-- Acumulados del año / del período -->
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;">
             ${[
-              ['Percibido acum. año', fmt(recibo.acum_percepciones || recibo.total_percepciones), 'var(--green-ok)'],
-              ['ISR acum. retenido',  fmt(recibo.acum_isr         || recibo.isr_retenido),        'var(--red-warn)'],
-              ['IMSS obrero acum.',   fmt(recibo.cuota_imss),                                      'var(--blue-accent)'],
-            ].map(([lbl, val, col]) => `
-              <div style="background:var(--bg-surface);border:1px solid var(--border);
+              // Los dos primeros son acumulados del ejercicio cuando existen; el
+              // tercero mostraba la cuota DEL PERÍODO con etiqueta de acumulado.
+              ['Percibido acum. año', fmt(recibo.acum_percepciones || recibo.total_percepciones),
+               recibo.acum_percepciones ? 'var(--green-ok)' : 'var(--text-muted)',
+               recibo.acum_percepciones ? 'Acumulado del ejercicio' : 'Solo este período: no hay acumulado del ejercicio'],
+              ['ISR acum. retenido', fmt(recibo.acum_isr || recibo.isr_retenido),
+               recibo.acum_isr ? 'var(--red-warn)' : 'var(--text-muted)',
+               recibo.acum_isr ? 'Acumulado del ejercicio' : 'Solo este período: no hay acumulado del ejercicio'],
+              ['IMSS obrero del período', fmt(recibo.cuota_imss), 'var(--blue-accent)',
+               'Cuota obrera de este período'],
+            ].map(([lbl, val, col, ayuda]) => `
+              <div title="${escapeHtml(ayuda)}" style="background:var(--bg-surface);border:1px solid var(--border);
                           border-radius:var(--radius-sm);padding:8px;text-align:center;">
                 <div style="font-size:.85rem;font-weight:700;color:${col};">${val}</div>
                 <div style="font-size:.65rem;color:var(--text-muted);margin-top:2px;">${lbl}</div>
@@ -2742,7 +3077,8 @@ async function _generarReciboNominaBlob(reciboId) {
   const p   = recibo.periodos_nomina || {};
 
   const folio = recibo.folio || `NOM-${reciboId.slice(-6)}`;
-  const daily = calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual');
+  // Salario diario CON EL QUE SE CALCULÓ el recibo, no el vigente hoy.
+  const daily = salarioDiarioDelRecibo(recibo, calcSalarioDiario(t.salario_mensual || 0, t.periodo_salario || 'mensual'));
   let y = 0;
   const ck = (n = 20) => { if (y + n > ph - 20) { doc.addPage(); y = 22; } };
 
@@ -2786,10 +3122,10 @@ async function _generarReciboNominaBlob(reciboId) {
   if (parseFloat(recibo.bono_meta||0) > 0)              percRows.push([`Bono por meta${recibo.concepto_bono_meta?' — '+recibo.concepto_bono_meta:''}`, 'RIT / Acuerdo', fmt(recibo.bono_meta)]);
   if (parseFloat(recibo.prima_vacacional||0) > 0)       percRows.push(['Prima vacacional prop.', 'Art. 80 LFT', fmt(recibo.prima_vacacional)]);
   if (parseFloat(recibo.aguinaldo_prop||0) > 0)         percRows.push(['Aguinaldo proporcional', 'Art. 87 LFT', fmt(recibo.aguinaldo_prop)]);
-  if (parseFloat(recibo.monto_horas_extra||0) > 0)      percRows.push(['Horas extra', `${recibo.horas_extra} hrs  Art. 67-68 LFT`, fmt(recibo.monto_horas_extra)]);
+  if (parseFloat(recibo.monto_horas_extra||0) > 0)      percRows.push(['Horas extra', _detalleHorasExtra(recibo), fmt(recibo.monto_horas_extra)]);
   if (parseFloat(recibo.prima_dominical||0) > 0)        percRows.push(['Prima dominical', 'Art. 71 LFT', fmt(recibo.prima_dominical)]);
   if (parseFloat(recibo.prima_festivo||0) > 0)          percRows.push(['Prima por día festivo trabajado', 'Art. 75 LFT', fmt(recibo.prima_festivo)]);
-  if (parseFloat(recibo.vales_despensa||0) > 0)         percRows.push(['Vales de despensa', 'Art. 27 LISR', fmt(recibo.vales_despensa)]);
+  if (parseFloat(recibo.vales_despensa||0) > 0)         percRows.push(['Vales de despensa', _detalleVales(recibo), fmt(recibo.vales_despensa)]);
   (Array.isArray(recibo.prestaciones_detalle) ? recibo.prestaciones_detalle : [])
     .filter(p => ['premio_puntualidad','premio_asistencia','ayuda_transporte','otro'].includes(p.tipo) && parseFloat(p.montoAplicado||0) > 0)
     .forEach(p => percRows.push([_labelPrestacion(p.tipo), `Exento ISR ${fmt(p.exentoISR||0)} · Gravado ${fmt(p.gravadoISR||0)}`, fmt(p.montoAplicado)]));
@@ -2814,7 +3150,7 @@ async function _generarReciboNominaBlob(reciboId) {
   if (parseFloat(recibo.monto_faltas||0) > 0)           dedRows.push(['Desc. por faltas', `${recibo.dias_falta} días x ${fmt(daily)}  Art. 58 LFT`, `-${fmt(recibo.monto_faltas)}`]);
   if (parseFloat(recibo.monto_falta_justif||0) > 0)     dedRows.push(['Desc. faltas justificadas', `${recibo.dias_falta_justif} días x ${fmt(daily)}  Arts. 82-84 LFT`, `-${fmt(recibo.monto_falta_justif)}`]);
   if (parseFloat(recibo.monto_permiso_sin||0) > 0)      dedRows.push(['Desc. permiso sin goce', `${recibo.dias_permiso_sin} dias`, `-${fmt(recibo.monto_permiso_sin)}`]);
-  if (parseFloat(recibo.cuota_imss||0) > 0)             dedRows.push(['Cuota IMSS obrero', '2.25% s/base  Art. 25 LSS', `-${fmt(recibo.cuota_imss)}`]);
+  if (parseFloat(recibo.cuota_imss||0) > 0)             dedRows.push(['Cuota IMSS obrero', _detalleIMSSObrero(recibo), `-${fmt(recibo.cuota_imss)}`]);
   if (parseFloat(recibo.isr_retenido||0) > 0)           dedRows.push(['ISR retenido', 'Art. 96 LISR 2026', `-${fmt(recibo.isr_retenido)}`]);
   if (parseFloat(recibo.fondo_ahorro_obrero||0) > 0)    dedRows.push(['Fondo de ahorro obrero', 'Art. 110 fr. IV LFT', `-${fmt(recibo.fondo_ahorro_obrero)}`]);
   if (parseFloat(recibo.prestamo_empresa||0) > 0)       dedRows.push(['Prestamo empresa', 'Art. 110 fr. I LFT', `-${fmt(recibo.prestamo_empresa)}`]);
@@ -2846,7 +3182,7 @@ async function _generarReciboNominaBlob(reciboId) {
   doc.setFont('Roboto','bold'); doc.setFontSize(9); doc.setTextColor(180,185,200);
   doc.text('NETO A PAGAR', pw/2, y+7, { align:'center' });
   doc.setFontSize(15); doc.setTextColor(21,128,61);
-  doc.text(`${fmt(recibo.neto_pagar)}   (${numToWords(recibo.neto_pagar)} PESOS M.N.)`, pw/2, y+17, { align:'center' });
+  doc.text(`${fmt(recibo.neto_pagar)}   (${montoEnLetras(recibo.neto_pagar)})`, pw/2, y+17, { align:'center' });
   y += 30;
 
   // 6. ACUMULADOS
